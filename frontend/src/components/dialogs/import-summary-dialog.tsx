@@ -52,7 +52,7 @@ export function ImportSummaryDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o || !importing) onOpenChange(o); }}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Importar textos</DialogTitle>
           <DialogDescription>
@@ -62,7 +62,7 @@ export function ImportSummaryDialog({
         </DialogHeader>
 
         {summary ? (
-          <div className="space-y-3">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <Badge variant="outline">{summary.format.toUpperCase()}</Badge>
               <Badge variant="outline">{kindLabel}</Badge>
@@ -105,7 +105,7 @@ export function ImportSummaryDialog({
               </div>
             ) : null}
 
-            <ScrollArea className="max-h-64 rounded-md border">
+            <ScrollArea className="h-64 rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
