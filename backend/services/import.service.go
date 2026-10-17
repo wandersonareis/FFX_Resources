@@ -247,7 +247,11 @@ func hashMatch(importedEntry, storeEntry dto.FileEntry) (pairs []rowPair, unmatc
 			continue
 		}
 		claimed[si] = true
-		pairs = append(pairs, rowPair{store: storeEntry.Rows[si], imported: r})
+		// O padding de tela da store vence (keepStorePadding): o par já nasce
+		// com o texto 'us' reconciliado, então a validação de tags, a contagem
+		// de alterados (diff só de padding não conta) e o merge usam o mesmo
+		// valor final sem nenhuma passada extra.
+		pairs = append(pairs, rowPair{store: storeEntry.Rows[si], imported: reconcileImportPadding(storeEntry.Rows[si], r)})
 	}
 	return pairs, unmatched
 }
