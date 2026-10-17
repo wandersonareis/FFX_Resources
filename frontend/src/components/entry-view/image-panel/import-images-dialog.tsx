@@ -50,7 +50,7 @@ export function ImportImagesDialog({
         if (!o || !busy) onOpenChange(o);
       }}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Importar imagens traduzidas</DialogTitle>
           <DialogDescription>

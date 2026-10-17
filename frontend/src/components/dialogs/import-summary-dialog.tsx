@@ -52,7 +52,7 @@ export function ImportSummaryDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o || !importing) onOpenChange(o); }}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Importar textos</DialogTitle>
           <DialogDescription>

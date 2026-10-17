@@ -119,7 +119,7 @@ export function VbfExtractDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !extracting && onClose()}>
-      <DialogContent showCloseButton={!extracting}>
+      <DialogContent className="sm:max-w-sm" showCloseButton={!extracting}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <HardDriveDownload size={18} />
