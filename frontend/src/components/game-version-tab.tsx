@@ -25,6 +25,8 @@ import {
 import { ContentTree } from "@/components/entry-view/content-tree";
 import { EntryTable } from "@/components/entry-view/entry-table";
 import { TableBar } from "@/components/entry-view/entry-table/table-bar";
+import { useEntryFind } from "@/components/entry-view/find/use-entry-find";
+import { FindBar } from "@/components/entry-view/find/find-bar";
 import { ImageActionDialogs } from "@/components/dialogs/image-action-dialogs";
 import { ImagePanel } from "@/components/entry-view/image-panel";
 import { TranslationDialog } from "@/components/dialogs/translation-dialog";
@@ -44,6 +46,11 @@ export function GameVersionTab({ version }: { version: GameVersionId }) {
   const loading = useSelector(view.store, (s) => s.loading);
   const progress = useSelector(view.store, (s) => s.progress);
   const [saving, setSaving] = useState(false);
+  // Busca & substituição local no arquivo aberto (Ctrl+F). O estado fica no
+  // find-store por versão; os matches derivam das rows aqui montadas.
+  const find = useEntryFind(view);
+  // A barra só faz sentido com um arquivo de TEXTO aberto (images não tem rows).
+  const showFind = find.open && !!selectedEntry && activeKind !== "images";
   // Largura da sidebar persistida (percentual do grupo por id de painel).
   const { defaultLayout, onLayoutChanged } = usePersistedLayout("sidebar");
 
@@ -126,7 +133,11 @@ export function GameVersionTab({ version }: { version: GameVersionId }) {
               hasDirty={hasDirty}
               saving={saving}
               onSave={() => void onSaveAll()}
+              onOpenFind={activeKind !== "images" ? find.openFind : undefined}
             />
+            {/* Busca & substituição local: fora do rolante (shrink-0), abaixo
+                da save bar — digita já destaca e salta ao 1º match da tabela. */}
+            {showFind ? <FindBar find={find} /> : null}
             {/* Único rolante da aba: a barra está fora do overflow, então só
                 as linhas rolam (o cabeçalho gruda em top-0 desse wrapper). */}
             <div className="min-h-0 flex-1 overflow-y-auto">
@@ -136,7 +147,11 @@ export function GameVersionTab({ version }: { version: GameVersionId }) {
               activeKind === "images" ? (
                 <ImagePanel view={view} />
               ) : (
-                <EntryTable view={view} />
+                <EntryTable
+                  view={view}
+                  matchesByRow={find.matchesByRow}
+                  activeRowKey={find.activeMatch?.rowKey ?? null}
+                />
               )
             ) : loading ? (
               <p className="mt-4 opacity-70">Carregando…</p>

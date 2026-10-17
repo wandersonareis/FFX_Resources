@@ -8,6 +8,7 @@ import { linkedRowText } from '@/lib/ffx/hash-ref';
 import { locFromVbfPath } from '@/lib/ffx/tree-data';
 import type { EntryRow } from '@/lib/ffx/tree-data';
 import type { EntryKind } from '@/lib/ffx/display-names';
+import type { GameTextMark } from '@/lib/ffx/game-text-parser';
 import type { EntryView } from '../entry-view-store';
 import { columnHelper } from './table-types';
 import { buildIndexColumn } from './columns/index-column';
@@ -27,6 +28,7 @@ export function useEntryTableColumns({
   refLinks,
   version,
   actions,
+  matchesByRow,
 }: {
   rows: dto.TextRow[];
   activeKind: EntryKind;
@@ -34,6 +36,8 @@ export function useEntryTableColumns({
   refLinks: Record<string, dto.RefLink>;
   version: EntryView['version'];
   actions: EntryView['actions'];
+  /** Destaques da busca local (rowKey → intervalos em <mark>). */
+  matchesByRow: Map<string, GameTextMark[]>;
 }) {
   const { store: drafts, snapshot } = useEditDraft();
 
@@ -95,10 +99,11 @@ export function useEntryTableColumns({
           refLinks,
           textLoc,
           linkedValueOf,
+          matchesByRow,
         }),
       ]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeKind, selectedEntry, version, snapshot.revision, drafts, actions, lockitSeq, refLinks, linkedValueOf]
+    [activeKind, selectedEntry, version, snapshot.revision, drafts, actions, lockitSeq, refLinks, linkedValueOf, matchesByRow]
   );
 
   return columns;

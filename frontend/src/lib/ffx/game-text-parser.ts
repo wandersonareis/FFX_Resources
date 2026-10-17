@@ -9,12 +9,29 @@ import {
 } from './game-text-tags';
 import type { ChipValidator } from './tag-catalog';
 
-/** Destaque opcional de um intervalo do texto (usado pelo snippet da busca). */
-export interface GameTextMarkOptions {
+/** Um destaque (intervalo) do texto em <mark> — busca. */
+export interface GameTextMark {
   /** Início (inclusivo) em CODE POINTS do texto de entrada. */
-  markStart?: number;
+  start: number;
   /** Fim (exclusivo) em CODE POINTS do texto de entrada. */
+  end: number;
+  /** Match ATIVO da navegação — destaque distinto (classe find-current). */
+  current?: boolean;
+}
+
+export interface GameTextMarkOptions {
+  /** Um único intervalo — formato legado do snippet da busca geral. */
+  markStart?: number;
   markEnd?: number;
+  /** Vários intervalos (busca local na tabela); convive com o legado. */
+  marks?: readonly GameTextMark[];
+}
+
+/** Intervalo já resolvido em UTF-16 (a varredura trabalha em offsets absolutos). */
+interface ResolvedMark {
+  start: number;
+  end: number;
+  current: boolean;
 }
 
 /** Offset em code points -> índice UTF-16 (clamp nas pontas). */
@@ -46,8 +63,10 @@ export const gameTextParser = {
    * digitadas, senão o HTML divergiria do valor e o setContent perderia o
    * cursor.
    *
-   * `options` (opcional) destaca um intervalo do texto em <mark> — usado
-   * pelo snippet da busca. Sem ele, a saída é byte-idêntica à de sempre.
+   * `options` (opcional) destaca intervalos do texto em <mark> — o snippet
+   * da busca geral usa o par legado markStart/markEnd; a busca local da
+   * tabela passa `marks[]` (o atual ganha a classe find-current). Sem
+   * nenhum dos dois, a saída é byte-idêntica à de sempre.
    */
   parseGameTextToHTML(
     rawText: string,
@@ -56,10 +75,11 @@ export const gameTextParser = {
   ): string {
     if (!rawText) return '<p></p>';
 
-    // Destaque (busca): markStart/markEnd em CODE POINTS do texto cru,
-    // resolvidos uma única vez para UTF-16 — a varredura trabalha em
-    // offsets absolutos e nunca corta uma tag no meio.
-    const mark = this.resolveMarkRange(rawText, options);
+    // Destaque (busca): markStart/markEnd legado OU vários intervalos da
+    // busca local, em CODE POINTS do texto cru, resolvidos uma única vez
+    // para UTF-16 — a varredura trabalha em offsets absolutos e nunca corta
+    // uma tag no meio.
+    const marks = this.resolveMarks(rawText, options);
 
     // Quebras: \n real ou {TEXT_NEWLINE} viram parágrafos. O split leva
     // grupo de captura (separadores intercalados no resultado), então o
@@ -106,7 +126,7 @@ export const gameTextParser = {
               paraStart + lastIndex,
               currentColor,
               italicActive,
-              mark
+              marks
             );
           }
         }
@@ -155,13 +175,14 @@ export const gameTextParser = {
           }
           // Destaque que intersecta a TAG inteira: o chip ganha o <mark>
           // (não há texto fora da braces para envolver — senão o hit
-          // ficaria invisível).
+          // ficaria invisível). Vários marks podem intersectar; o atual
+          // (find-current) tem prioridade na classe.
           const tagStart = paraStart + matchIndex;
           const tagEnd = paraStart + tagRegex.lastIndex;
-          resultHTML +=
-            mark && mark.start < tagEnd && mark.end > tagStart
-              ? `<mark>${chipHTML}</mark>`
-              : chipHTML;
+          const chipMark = this.markOverlapping(marks, tagStart, tagEnd);
+          resultHTML += chipMark
+            ? `<mark${chipMark.current ? ' class="find-current"' : ''}>${chipHTML}</mark>`
+            : chipHTML;
         }
 
         lastIndex = tagRegex.lastIndex;
@@ -175,7 +196,7 @@ export const gameTextParser = {
             paraStart + lastIndex,
             currentColor,
             italicActive,
-            mark
+            marks
           );
         }
       }
@@ -283,22 +304,31 @@ export const gameTextParser = {
     absoluteStart: number,
     color: string | null,
     italic: boolean,
-    mark: { start: number; end: number } | null
+    marks: readonly ResolvedMark[]
   ): string {
     const absoluteEnd = absoluteStart + text.length;
-    if (!mark || mark.end <= absoluteStart || mark.start >= absoluteEnd) {
+    const hits = marks
+      .filter((mark) => mark.end > absoluteStart && mark.start < absoluteEnd)
+      .sort((a, b) => a.start - b.start);
+    if (hits.length === 0) {
       return this.wrapStyledText(text, color, italic);
     }
-    // O corte é ANTES do escape (escapar muda o comprimento); as 3 partes
-    // são escapadas individualmente e o <mark> entra no meio, POR DENTRO
-    // de itálico/cor — mesma aparência da tabela.
-    const from = Math.max(mark.start, absoluteStart) - absoluteStart;
-    const to = Math.min(mark.end, absoluteEnd) - absoluteStart;
-    const escaped =
-      this.escapeHtml(text.slice(0, from)) +
-      `<mark>${this.escapeHtml(text.slice(from, to))}</mark>` +
-      this.escapeHtml(text.slice(to));
-    return this.wrapStyledTextHtml(escaped, color, italic);
+    // Os cortes são ANTES do escape (escapar muda o comprimento); cada trecho
+    // é escapado individualmente e o <mark> entra no meio, POR DENTRO de
+    // itálico/cor — mesma aparência da tabela.
+    let html = '';
+    let cursor = 0; // offset relativo ao início do segmento já emitido
+    for (const mark of hits) {
+      const from = Math.max(mark.start, absoluteStart) - absoluteStart;
+      const to = Math.min(mark.end, absoluteEnd) - absoluteStart;
+      if (from > cursor) html += this.escapeHtml(text.slice(cursor, from));
+      html += `<mark${mark.current ? ' class="find-current"' : ''}>${this.escapeHtml(
+        text.slice(from, to)
+      )}</mark>`;
+      cursor = to;
+    }
+    if (cursor < text.length) html += this.escapeHtml(text.slice(cursor));
+    return this.wrapStyledTextHtml(html, color, italic);
   },
 
   wrapStyledText(text: string, color: string | null, italic: boolean): string {
@@ -316,18 +346,38 @@ export const gameTextParser = {
     return html;
   },
 
-  /** markStart/markEnd em code points -> intervalo UTF-16 (null = sem destaque). */
-  resolveMarkRange(
+  /** markStart/markEnd legado OU marks[] -> intervalos UTF-16 (pode vir vazio). */
+  resolveMarks(
     rawText: string,
     options?: GameTextMarkOptions
-  ): { start: number; end: number } | null {
-    if (options?.markStart == null || options?.markEnd == null) return null;
-    const start = toUtf16Index(rawText, Math.max(0, options.markStart));
-    const end = toUtf16Index(
-      rawText,
-      Math.max(options.markEnd, options.markStart)
-    );
-    return end > start ? { start, end } : null;
+  ): ResolvedMark[] {
+    const out: ResolvedMark[] = [];
+    if (options?.markStart != null && options?.markEnd != null) {
+      const start = toUtf16Index(rawText, Math.max(0, options.markStart));
+      const end = toUtf16Index(
+        rawText,
+        Math.max(options.markEnd, options.markStart)
+      );
+      if (end > start) out.push({ start, end, current: false });
+    }
+    for (const mark of options?.marks ?? []) {
+      const start = toUtf16Index(rawText, Math.max(0, mark.start));
+      const end = toUtf16Index(rawText, Math.max(mark.end, mark.start));
+      if (end > start) {
+        out.push({ start, end, current: mark.current === true });
+      }
+    }
+    return out.sort((a, b) => a.start - b.start || a.end - b.end);
+  },
+
+  /** Mark que intersecta o intervalo dado (o atual vence, senão o 1º). */
+  markOverlapping(
+    marks: readonly ResolvedMark[],
+    start: number,
+    end: number
+  ): ResolvedMark | null {
+    const hits = marks.filter((mark) => mark.start < end && mark.end > start);
+    return hits.find((mark) => mark.current) ?? hits[0] ?? null;
   },
 
   /**

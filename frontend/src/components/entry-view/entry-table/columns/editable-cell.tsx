@@ -1,5 +1,6 @@
 import { RotateCcw } from 'lucide-react';
 import { GameTextView } from '@/components/game-text-view';
+import type { GameTextMark } from '@/lib/ffx/game-text-parser';
 
 /**
  * Célula traduzida comum: texto editável (clique abre o editor) e o botão de
@@ -9,12 +10,15 @@ export function EditableCell({
   displayed,
   edited,
   canRevert,
+  marks,
   onOpen,
   onRevert,
 }: {
   displayed: string;
   edited: boolean;
   canRevert: boolean;
+  /** Destaques da busca local (intervalos em <mark> no texto exibido). */
+  marks?: readonly GameTextMark[];
   onOpen: (() => void) | undefined;
   onRevert: () => void;
 }) {
@@ -24,7 +28,7 @@ export function EditableCell({
         className={`text-cell translated-cell min-w-0 px-2 flex-1${edited || canRevert ? ' edited' : ''}`}
         onClick={onOpen}
       >
-        <GameTextView text={displayed} />
+        <GameTextView text={displayed} marks={marks} />
       </div>
       {canRevert ? (
         <button

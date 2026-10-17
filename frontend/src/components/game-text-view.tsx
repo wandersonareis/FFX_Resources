@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { formatGameTextForDisplay } from '@/lib/ffx/game-text-format';
+import type { GameTextMark } from '@/lib/ffx/game-text-parser';
 
 interface GameTextViewProps {
   /** Texto canônico com tags (ex: linha de TextRow.text[lang]). */
@@ -9,6 +10,11 @@ interface GameTextViewProps {
   /** Conteúdo quando o texto está vazio (padrão: nada). */
   fallback?: string;
   className?: string;
+  /**
+   * Destaques da busca local (code points do texto, MESMA régua do find).
+   * Vazio/ausente = HTML byte-idêntico ao de sempre (sem <mark>).
+   */
+  marks?: readonly GameTextMark[];
 }
 
 /**
@@ -20,10 +26,15 @@ interface GameTextViewProps {
  * modal de busca). O parser escapa todo texto/atributo, então o HTML é seguro
  * para dangerouslySetInnerHTML.
  */
-export function GameTextView({ text, fallback = '', className }: GameTextViewProps) {
+export function GameTextView({
+  text,
+  fallback = '',
+  className,
+  marks,
+}: GameTextViewProps) {
   const { paddingSummary, html } = useMemo(
-    () => formatGameTextForDisplay(text),
-    [text]
+    () => formatGameTextForDisplay(text, marks),
+    [text, marks]
   );
 
   if (!text) {
@@ -41,7 +52,14 @@ export function GameTextView({ text, fallback = '', className }: GameTextViewPro
         </div>
       )}
       <div
-        className="[&_p]:mb-1 [&_p:last-child]:mb-0"
+        className={
+          // Destaque da busca local: <mark> por fora (como no modal de
+          // busca), find-current (cor primária) para o match ativo. Sem
+          // marks o HTML não tem <mark>, então as regras ficam inertes.
+          '[&_mark]:rounded-sm [&_mark]:bg-yellow-200 [&_mark]:px-0.5 dark:[&_mark]:bg-yellow-500/40 ' +
+          '[&_mark.find-current]:bg-primary/30 dark:[&_mark.find-current]:bg-primary/40 ' +
+          '[&_p]:mb-1 [&_p:last-child]:mb-0'
+        }
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </div>

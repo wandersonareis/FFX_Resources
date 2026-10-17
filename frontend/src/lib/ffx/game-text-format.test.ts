@@ -27,6 +27,19 @@ describe('formatGameTextForDisplay', () => {
     });
     expect(formatGameTextForDisplay(undefined).html).toBe('<p></p>');
   });
+
+  it('marks[] andam junto com o corte do padding (offset em code points)', () => {
+    // Padding "  \n" = 3 code points; "Oi" está em [12,14] do texto COM
+    // padding. Ao remover o prefixo o destaque precisa deslizar para
+    // [9,11] do corpo ({CLR:RED}Oi{TEXT_NORMAL}!).
+    const raw = '  \n{CLR:RED}Oi{TEXT_NORMAL}!';
+    const html = formatGameTextForDisplay(raw, [{ start: 12, end: 14 }]).html;
+    expect(html).toContain('<mark>Oi</mark>');
+  });
+
+  it('sem marks[] o HTML permanece sem <mark>', () => {
+    expect(formatGameTextForDisplay('Oi', []).html).toBe('<p>Oi</p>');
+  });
 });
 
 describe('formatGameTextSnippetForSearch', () => {

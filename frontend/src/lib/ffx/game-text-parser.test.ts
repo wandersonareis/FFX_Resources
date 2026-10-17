@@ -172,6 +172,51 @@ describe('parseGameTextToHTML: destaque markStart/markEnd', () => {
   });
 });
 
+describe('parseGameTextToHTML: destaque múltiplo marks[] (busca local)', () => {
+  it('sem marks[] a saída é idêntica (nada de highlight fantasma)', () => {
+    const raw = 'Tidus e Yuna e Wakka';
+    expect(
+      gameTextParser.parseGameTextToHTML(raw, undefined, { marks: [] })
+    ).toBe(gameTextParser.parseGameTextToHTML(raw));
+  });
+
+  it('destaca TODOS os intervalos', () => {
+    const html = gameTextParser.parseGameTextToHTML('Tidus e Yuna', undefined, {
+      marks: [
+        { start: 0, end: 5 },
+        { start: 8, end: 12 },
+      ],
+    });
+    expect(html).toBe('<p><mark>Tidus</mark> e <mark>Yuna</mark></p>');
+  });
+
+  it('o match atual ganha a classe find-current', () => {
+    const html = gameTextParser.parseGameTextToHTML('a b c', undefined, {
+      marks: [
+        { start: 0, end: 1 },
+        { start: 4, end: 5, current: true },
+      ],
+    });
+    expect(html).toBe('<p><mark>a</mark> b <mark class="find-current">c</mark></p>');
+  });
+
+  it('convive com o par legado markStart/markEnd', () => {
+    const html = gameTextParser.parseGameTextToHTML('a b c', undefined, {
+      markStart: 0,
+      markEnd: 1,
+      marks: [{ start: 4, end: 5 }],
+    });
+    expect(html).toBe('<p><mark>a</mark> b <mark>c</mark></p>');
+  });
+
+  it('destaca chip inteiro quando o mark intersecta a tag', () => {
+    const html = gameTextParser.parseGameTextToHTML('x{CMD:01:02}y', undefined, {
+      marks: [{ start: 2, end: 6 }],
+    });
+    expect(html).toContain('<mark><span data-game-tag="{CMD:01:02}"');
+  });
+});
+
 describe('serializeJSONToGameText', () => {
   it('emite o valor do chip verbatim', () => {
     const json = {

@@ -1,6 +1,7 @@
 import * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { rowKey, useEditDraft } from '@/lib/ffx/edit-draft';
 import { SOURCE_LANG } from '@/lib/ffx/save-all';
+import type { GameTextMark } from '@/lib/ffx/game-text-parser';
 import type { EntryRow } from '@/lib/ffx/tree-data';
 import type { EntryView } from '../../entry-view-store';
 import { columnHelper, MISSING_SIDE } from '../table-types';
@@ -16,6 +17,8 @@ export type TranslatedColumnDeps = {
   refLinks: Record<string, dto.RefLink>;
   textLoc: string;
   linkedValueOf: (row: dto.TextRow) => string | undefined;
+  /** Destaques da busca local (rowKey → intervalos em <mark>). */
+  matchesByRow: Map<string, GameTextMark[]>;
 };
 
 /**
@@ -31,6 +34,7 @@ export function buildTranslatedColumn({
   refLinks,
   textLoc,
   linkedValueOf,
+  matchesByRow,
 }: TranslatedColumnDeps) {
   return columnHelper.accessor(
     (row) => {
@@ -129,6 +133,7 @@ export function buildTranslatedColumn({
               original={original}
               defTranslated={defTranslated}
               readOnly={readOnly}
+              marks={matchesByRow.get(rowKey(row))}
               onOpen={readOnly ? undefined : () => actions.openLinked(row)}
               onEditAsDivergent={() => actions.openLinked(row, true)}
             />
@@ -147,6 +152,7 @@ export function buildTranslatedColumn({
             displayed={displayed}
             edited={edited}
             canRevert={canRevert}
+            marks={matchesByRow.get(rowKey(row))}
             onOpen={readOnly ? undefined : () => actions.openDialog(row)}
             onRevert={() => actions.revertToOriginal(row)}
           />

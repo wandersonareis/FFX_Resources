@@ -1,6 +1,7 @@
 import { GitBranch } from 'lucide-react';
 import { GameTextView } from '@/components/game-text-view';
 import { LINKED_SIDE } from '@/lib/ffx/hash-ref';
+import type { GameTextMark } from '@/lib/ffx/game-text-parser';
 
 /**
  * Célula de linha LINKADA (ref dedupada): o texto da def em cor própria, com
@@ -12,6 +13,7 @@ export function LinkedCell({
   original,
   defTranslated,
   readOnly,
+  marks,
   onOpen,
   onEditAsDivergent,
 }: {
@@ -19,6 +21,8 @@ export function LinkedCell({
   original: string;
   defTranslated: boolean;
   readOnly: boolean;
+  /** Destaques da busca local (intervalos em <mark> no texto exibido). */
+  marks?: readonly GameTextMark[];
   onOpen: (() => void) | undefined;
   onEditAsDivergent: () => void;
 }) {
@@ -33,7 +37,7 @@ export function LinkedCell({
         }
         onClick={onOpen}
       >
-        <GameTextView text={defText} fallback="—" className={LINKED_SIDE} />
+        <GameTextView text={defText} fallback="—" className={LINKED_SIDE} marks={marks} />
       </div>
       {!readOnly ? (
         <button

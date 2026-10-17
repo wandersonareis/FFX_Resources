@@ -209,6 +209,23 @@ export interface EntryActions {
   openLinked(row: dto.TextRow, divergent?: boolean): void;
   /** Rascunha o original desta própria row, self-target, para re-convergir. */
   revertToOriginal(row: dto.TextRow): void;
+  /**
+   * Busca local (substituição): garante a base do rascunho do ALVO — defs
+   * em outra entrada precisam ser carregadas antes de gravar (mesmo caminho
+   * do editor aberto pela ref). false = não deu para preparar (não grave).
+   */
+  ensureCellEditBase(target: TranslationTarget): Promise<boolean>;
+  /**
+   * Busca local (substituição): grava `text` na célula endereçada por
+   * (target, row, lang) via rascunho e repinta a tabela — o MESMO caminho do
+   * commit do editor, sem abrir diálogo. O salvar existente persiste depois.
+   */
+  applyCellEdit(
+    target: TranslationTarget,
+    row: dto.TextRow,
+    lang: string,
+    text: string
+  ): void;
   /** Navegação ←/→ do modal sem fechar (value aplicado como rascunho). */
   navigateRow(direction: 'prev' | 'next', value?: string): void;
   /** Fechamento do modal (value != undefined aplica a edição). */
@@ -1095,6 +1112,27 @@ export function createEntryView(version: GameVersionId): EntryView {
         original,
         entry.vbf?.root ?? '',
         true
+      );
+      patch({ rows: [...store.state.rows] });
+    },
+    ensureCellEditBase: async (target) => {
+      const entry = store.state.selectedEntry;
+      // Alvo da própria entrada aberta: a base já foi registrada na abertura.
+      if (!entry || (target.id === entry.id && target.source === (entry.vbf?.root ?? ''))) {
+        return !!entry;
+      }
+      // Def em outra entrada (ou fonte diferente): prepara o rascunho dela.
+      return ensureDraftBase(target);
+    },
+    applyCellEdit: (target, row, lang, text) => {
+      editDraft.setCell(
+        version,
+        target.kind,
+        target.id,
+        row,
+        lang,
+        text,
+        target.source
       );
       patch({ rows: [...store.state.rows] });
     },

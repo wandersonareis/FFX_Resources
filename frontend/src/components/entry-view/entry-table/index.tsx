@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { memo, useEffect } from 'react';
 import { useTable } from '@tanstack/react-table';
 import { useSelector } from '@tanstack/react-store';
 import { rowKey } from '@/lib/ffx/edit-draft';
 import { DEDUP_VIEW_KINDS } from '@/lib/ffx/hash-ref';
 import { Table } from '@/components/ui/table';
+import type { GameTextMark } from '@/lib/ffx/game-text-parser';
 import { type EntryView } from '../entry-view-store';
 import { features } from './table-types';
 import { useEntryTableHotkeys } from './use-entry-table-hotkeys';
@@ -18,8 +19,23 @@ import { EntryTableEmpty } from './entry-table-empty';
  * Tabela de linhas do arquivo selecionado: colunas (Original/Traduzido),
  * navegação por teclado ↑/↓/Enter e foco da 1ª linha pedido pela árvore
  * (ArrowRight). Estado compartilhado (rows, seleção) vem do store da view.
+ *
+ * Memorizada: recebe da busca local SÓ as props estáveis (o Mapa de matches,
+ * que muda quando o query ADIADO assenta, e a row ativa). Assim, digitar na
+ * busca não reconcilia todas as linhas a cada tecla — só o valor adiado
+ * (useDeferredValue no hook) dispara a re-render quando a digitação trava.
  */
-export function EntryTable({ view }: { view: EntryView }) {
+export const EntryTable = memo(function EntryTable({
+  view,
+  matchesByRow,
+  activeRowKey,
+}: {
+  view: EntryView;
+  /** Destaques da busca local (estável entre teclas: vem do query adiado). */
+  matchesByRow: Map<string, GameTextMark[]>;
+  /** rowKey do match ativo (string|null — valor, não objeto). */
+  activeRowKey: string | null;
+}) {
   const { store, actions } = view;
   const rows = useSelector(store, (s) => s.rows);
   const activeKind = useSelector(store, (s) => s.activeKind);
@@ -38,6 +54,7 @@ export function EntryTable({ view }: { view: EntryView }) {
     refLinks,
     version,
     actions,
+    matchesByRow,
   });
 
   const table = useTable({
@@ -67,6 +84,13 @@ export function EntryTable({ view }: { view: EntryView }) {
     row.focus();
     row.scrollIntoView({ block: 'center' });
   }, [pendingTableRowFocus, loading, selectedEntry, rows, rowRefs, actions]);
+
+  // Busca local: o match ativo rola para o centro SEM roubar o foco do input
+  // (digitação contínua). A pintura do match vem do <mark> find-current.
+  useEffect(() => {
+    if (!activeRowKey) return;
+    rowRefs.current.get(activeRowKey)?.scrollIntoView({ block: 'center' });
+  }, [activeRowKey, rowRefs]);
 
   // ArrowRight na folha: quando o arquivo termina de carregar, foca a
   // primeira linha (apenas focus() no DOM.
@@ -109,4 +133,4 @@ export function EntryTable({ view }: { view: EntryView }) {
       </Table>
     </div>
   );
-}
+});

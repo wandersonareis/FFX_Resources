@@ -19,6 +19,8 @@ export const SHORTCUTS = {
   config: { keys: 'Mod+,', label: 'Abrir Configurações' },
   /** app-shell → abre o modal de busca da aba ATIVA (palette Ctrl+K). */
   search: { keys: 'Mod+K', label: 'Buscar' },
+  /** app-shell → abre a busca & substituição local na tabela da aba ativa. */
+  findInFile: { keys: 'Mod+F', label: 'Buscar neste arquivo' },
   /** app-shell → uma tecla por aba de GAME_VERSIONS (1 = FFX, 2 = EC, ...). */
   versionTabs: {
     keys: ['Mod+1', 'Mod+2', 'Mod+3', 'Mod+4'],

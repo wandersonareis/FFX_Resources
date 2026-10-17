@@ -5,6 +5,7 @@ import { useHotkey, useHotkeys } from '@tanstack/react-hotkeys';
 import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { SHORTCUTS, shortcutTip } from '@/lib/ffx/shortcuts';
 import { openSearchDialog } from '@/lib/ffx/search-store';
+import { openFileFind } from '@/lib/ffx/find-store';
 import { QuitApp } from '@/bindings/ffxresources/app';
 import { SetGameVersion } from '@/bindings/ffxresources/configservice';
 import { GAME_VERSIONS, GameVersionId } from '@/lib/ffx/game-version';
@@ -80,6 +81,13 @@ export function AppShell() {
     SHORTCUTS.search.keys,
     () => openSearchDialog(GAME_VERSIONS[selectedIndex].id),
     { meta: { name: SHORTCUTS.search.label, group: 'Global' } }
+  );
+  // Ctrl+F: abre a busca & substituição local na tabela da aba ATIVA (a barra
+  // renderiza dentro da aba, sob a save bar).
+  useHotkey(
+    SHORTCUTS.findInFile.keys,
+    () => openFileFind(GAME_VERSIONS[selectedIndex].id),
+    { meta: { name: SHORTCUTS.findInFile.label, group: 'Global' } }
   );
   // Ctrl+, : abrir Configurações (convenção de settings).
   useHotkey(SHORTCUTS.config.keys, () => setConfigOpen(true), {

@@ -1,4 +1,4 @@
-import { gameTextParser } from './game-text-parser';
+import { gameTextParser, type GameTextMark } from './game-text-parser';
 import { splitLeadingPadding, summarizePadding } from './leading-padding';
 
 /**
@@ -21,12 +21,32 @@ export interface FormattedGameText {
   html: string;
 }
 
-/** Exibição completa de uma linha/texto canônico. */
-export function formatGameTextForDisplay(text?: string): FormattedGameText {
+/**
+ * Exibição completa de um texto canônico, com destaque opcional da busca
+ * local (`marks` em code points do texto COM padding — o prefixo é removido
+ * aqui e os intervalos andam junto, igual ao snippet da busca geral).
+ */
+export function formatGameTextForDisplay(
+  text?: string,
+  marks?: readonly GameTextMark[]
+): FormattedGameText {
   const { padding, body } = splitLeadingPadding(text ?? '');
+  const shift = [...padding].length;
+  const shifted =
+    marks && marks.length > 0 && shift > 0
+      ? marks.map((mark) => ({
+          ...mark,
+          start: Math.max(0, mark.start - shift),
+          end: Math.max(0, mark.end - shift),
+        }))
+      : marks;
   return {
     paddingSummary: summarizePadding(padding),
-    html: gameTextParser.parseGameTextToHTML(body),
+    html: gameTextParser.parseGameTextToHTML(
+      body,
+      undefined,
+      shifted && shifted.length > 0 ? { marks: shifted } : undefined
+    ),
   };
 }
 
