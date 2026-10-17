@@ -13,7 +13,7 @@ info:
   description: "Editor de recursos do FINAL FANTASY X and X-2 HD Remaster"
   copyright: "(c) Wanderson A. dos Reis"
   comments: "Editor de recursos do FINAL FANTASY X and X-2 HD Remaster"
-  version: "2.0.0"
+  version: "2.0.1"
 
 # Configuração do modo de desenvolvimento (wails3 dev).
 dev_mode:
