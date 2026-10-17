@@ -1,6 +1,8 @@
 build/bin
 node_modules
 frontend/out
+# Material de trabalho dos agentes de tradução (dicionário de termos etc.).
+.agent/
 # Cache do Task, usado pelo `wails3 build`/`wails3 dev` (Wails v3)
 .task/
 # Gerado por `wails3 generate syso` e removido ao fim do build; um resquício
