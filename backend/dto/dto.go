@@ -85,11 +85,16 @@ type TextRow struct {
 // através do link. Como Original, é exclusivo de exibição e nunca entra em
 // apply/export (payload de apply leva só index/name/hash/text).
 type RefLink struct {
-	Text        string `json:"text"`
-	Original    string `json:"original,omitempty"`
-	SourceID    string `json:"sourceId,omitempty"`
-	SourceIndex int    `json:"sourceIndex"`
-	SourceName  string `json:"sourceName,omitempty"`
+	Text     string `json:"text"`
+	Original string `json:"original,omitempty"`
+	// Originals é o pristine da def em TODOS os idiomas (lang → texto). O
+	// Original acima é só 'us' (tooltip); o editor aberto pela ref precisa
+	// do mapa inteiro para exibir a coluna de idiomas extras — sem ele, a
+	// ref apontando para uma def em OUTRO arquivo mostraria os extras vazios.
+	Originals   map[string]string `json:"originals,omitempty"`
+	SourceID    string            `json:"sourceId,omitempty"`
+	SourceIndex int               `json:"sourceIndex"`
+	SourceName  string            `json:"sourceName,omitempty"`
 }
 
 // RowKey devolve a chave estável da row (index:name) — a mesma que o

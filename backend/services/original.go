@@ -52,11 +52,12 @@ var (
 	originalCache = map[string]originalValue{}
 	originalMacro = map[common.GameVersion]dto.Collection{}
 
-	// refOriginalCache memoiza rows do pristine por RowKey para o tooltip
-	// de repetição (fillRefOriginals). nil = def sem original em data/
-	// (ausência memoizada: não vira re-leitura por clique).
-	refOriginalMu    sync.Mutex
-	refOriginalCache = map[string]map[string]string{}
+	// refOriginalsCache memoiza o pristine POR IDIOMA (RowKey → lang →
+	// texto) para o tooltip de repetição e para o editor abre-pela-ref
+	// (RefLink.Originals). nil = def sem original em data/ (ausência
+	// memoizada: não vira re-leitura por clique).
+	refOriginalsMu    sync.Mutex
+	refOriginalsCache = map[string]map[string]map[string]string{}
 )
 
 func originalCacheKey(kind string, version common.GameVersion, id string) string {
@@ -358,54 +359,82 @@ func (s *MetadataService) fillRefOriginals(entry dto.FileEntry, kind, id string,
 		return entry
 	}
 	for key, ref := range entry.Refs {
-		if ref.Original != "" {
+		if ref.Original != "" && ref.Originals != nil {
 			continue
 		}
 		defID := ref.SourceID
 		if defID == "" {
 			defID = id
 		}
-		rows := s.refOriginalRows(kind, defID, version)
-		if orig, ok := rows[dto.RowKey(dto.TextRow{Index: ref.SourceIndex, Name: ref.SourceName})]; ok {
-			ref.Original = orig
+		defKey := dto.RowKey(dto.TextRow{Index: ref.SourceIndex, Name: ref.SourceName})
+		if ref.Original == "" {
+			if orig, ok := s.refOriginalRows(kind, defID, version)[defKey]; ok {
+				ref.Original = orig
+			}
+		}
+		// Mapa de idiomas da def: é o que o editor abre-pela-ref mostra
+		// na coluna de idiomas extras. Sem ele, a ref cuja def vive em
+		// OUTRO arquivo perdia os extras e mostrava só 'us'.
+		if ref.Originals == nil {
+			if byLang, ok := s.refOriginalsMap(kind, defID, version)[defKey]; ok {
+				ref.Originals = byLang
+			}
+		}
+		if ref.Original != "" || ref.Originals != nil {
 			entry.Refs[key] = ref
 		}
 	}
 	return entry
 }
 
-// refOriginalRows devolve o texto 'us' do pristine de data/ por RowKey,
-// com memo de sessão. O pristine não muda com apply (mods/ é outra árvore),
-// então o memo só cai no clearOriginalCache — inclusive porque, com .vbf
-// ativo, o originalFor bypassa o cache dele e sem memo cada clique da view
-// releria/reparsaria data/ uma vez por def da entrega.
+// refOriginalRows devolve o texto 'us' do pristine de data/ por RowKey — o
+// recorte de um idioma do refOriginalsMap (fonte única do pristine memoizado
+// em sessão). O pristine não muda com apply (mods/ é outra árvore), então o
+// memo só cai no clearOriginalCache.
 func (s *MetadataService) refOriginalRows(kind, id string, version common.GameVersion) map[string]string {
+	byLang := s.refOriginalsMap(kind, id, version)
+	if byLang == nil {
+		return nil
+	}
+	rows := make(map[string]string, len(byLang))
+	for key, langs := range byLang {
+		rows[key] = langs[common.DefaultLocalization]
+	}
+	return rows
+}
+
+// refOriginalsMap devolve o pristine POR IDIOMA (RowKey → lang → texto) com
+// memo de sessão — o espelho multi-idioma de refOriginalRows. Alimenta o
+// RefLink.Originals, que é o que o editor aberto pela ref mostra na coluna
+// de idiomas extras (sem isto, a ref cuja def vive em OUTRO arquivo perdia
+// os extras e mostrava só 'us').
+func (s *MetadataService) refOriginalsMap(kind, id string, version common.GameVersion) map[string]map[string]string {
 	key := originalCacheKey(kind, version, id)
-	refOriginalMu.Lock()
-	if rows, ok := refOriginalCache[key]; ok {
-		refOriginalMu.Unlock()
+	refOriginalsMu.Lock()
+	if rows, ok := refOriginalsCache[key]; ok {
+		refOriginalsMu.Unlock()
 		return rows
 	}
-	refOriginalMu.Unlock()
+	refOriginalsMu.Unlock()
 
 	orig, exists, err := s.originalFor(kind, id, version)
 	if err != nil || !exists {
-		common.LogWarning(
-			"sem original em data/ para a def %s/%s/%s — tooltip de repetição degrada para o texto atual",
-			version, kind, id,
-		)
-		refOriginalMu.Lock()
-		refOriginalCache[key] = nil
-		refOriginalMu.Unlock()
+		refOriginalsMu.Lock()
+		refOriginalsCache[key] = nil
+		refOriginalsMu.Unlock()
 		return nil
 	}
-	rows := make(map[string]string, len(orig.Rows))
+	rows := make(map[string]map[string]string, len(orig.Rows))
 	for _, r := range orig.Rows {
-		rows[dto.RowKey(r)] = r.Text[common.DefaultLocalization]
+		cp := make(map[string]string, len(r.Text))
+		for lang, t := range r.Text {
+			cp[lang] = t
+		}
+		rows[dto.RowKey(r)] = cp
 	}
-	refOriginalMu.Lock()
-	refOriginalCache[key] = rows
-	refOriginalMu.Unlock()
+	refOriginalsMu.Lock()
+	refOriginalsCache[key] = rows
+	refOriginalsMu.Unlock()
 	return rows
 }
 
@@ -571,9 +600,9 @@ func clearOriginalCache() {
 	originalCache = map[string]originalValue{}
 	originalMacro = map[common.GameVersion]dto.Collection{}
 	originalMu.Unlock()
-	refOriginalMu.Lock()
-	refOriginalCache = map[string]map[string]string{}
-	refOriginalMu.Unlock()
+	refOriginalsMu.Lock()
+	refOriginalsCache = map[string]map[string]map[string]string{}
+	refOriginalsMu.Unlock()
 }
 
 // InvalidateViewCaches descarta tudo que foi DERIVADO da árvore de

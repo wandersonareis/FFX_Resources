@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"ffxresources/backend/common"
+	"ffxresources/backend/core/encoding"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/fileFormats/event"
 	"ffxresources/backend/formatters/hash"
@@ -15,6 +16,22 @@ import (
 func displayRowIsRef(r dto.TextRow) bool {
 	bare, ok := hash.Strip(r.Text[common.DefaultLocalization])
 	return ok && bare == r.Hash[common.DefaultLocalization]
+}
+
+// seedEventsMultiLang semeia um evento com texto em VÁRIOS idiomas ('us' +
+// jp): é o caso que o editor abre-pela-ref precisa exibir na coluna de
+// idiomas extras (RefLink.Originals).
+func seedEventsMultiLang(version common.GameVersion, id, usText, jpText string) {
+	obj := event.NewLocalizedFieldStringObject()
+	us := event.NewEmptyFieldString(ffxencoding.GetCharsetForLanguage(common.DefaultLocalization), version)
+	us.SetRegularString(usText)
+	obj.SetLocalizedContent(common.DefaultLocalization, us)
+	jp := event.NewEmptyFieldString(ffxencoding.GetCharsetForLanguage("jp"), version)
+	jp.SetRegularString(jpText)
+	obj.SetLocalizedContent("jp", jp)
+	event.SetEvent(version, id, &event.EventFile{
+		ID: id, Version: version, Strings: []*event.LocalizedFieldStringObject{obj},
+	})
 }
 
 const sharedOriginal = "Frase compartilhada entre eventos"
@@ -237,6 +254,47 @@ func TestGetEntryRefAnnotationCarriesDefOriginal(t *testing.T) {
 	if link.Original != sharedOriginal {
 		t.Fatalf("Original da anotação deveria carregar o pristine da def: %q != %q",
 			link.Original, sharedOriginal)
+	}
+}
+
+// TestGetEntryRefAnnotationCarriesAllLangOriginals: a anotação de ref deve
+// carregar o pristine da def em TODOS os idiomas (RefLink.Originals), não só
+// 'us'. É o que o editor abre-pela-ref mostra na coluna de idiomas extras —
+// sem o mapa, a ref cuja def vive em OUTRO arquivo perdia os extras e mostrava
+// só 'us' (o Original acima é string única de 'us').
+func TestGetEntryRefAnnotationCarriesAllLangOriginals(t *testing.T) {
+	const jpOriginal = "共有フレーズ"
+	svc := seedDisplayRoot(t)
+	seedEventsMultiLang(common.GameVersionFFX2, "zev001", sharedOriginal, jpOriginal)
+	seedEventsMultiLang(common.GameVersionFFX2, "zev002", sharedOriginal, jpOriginal)
+
+	seedEventsData(t, common.GameVersionFFX2, "zev001")
+	seedEventsData(t, common.GameVersionFFX2, "zev002")
+	stripEventMods(t, common.GameVersionFFX2, "zev001")
+	stripEventMods(t, common.GameVersionFFX2, "zev002")
+
+	twin, err := svc.GetEntry(KindEvents, "zev002", common.GameVersionFFX2)
+	if err != nil {
+		t.Fatalf("get twin: %v", err)
+	}
+	if !displayRowIsRef(twin.Rows[0]) {
+		t.Fatalf("twin não traduzida deveria colapsar sob a def: %q", twin.Rows[0].Text["us"])
+	}
+	link, ok := twin.Refs[dto.RowKey(twin.Rows[0])]
+	if !ok {
+		t.Fatal("row de ref sem anotação Refs")
+	}
+	if link.SourceID != "zev001" {
+		t.Fatalf("anotação deveria apontar para a def zev001: %q", link.SourceID)
+	}
+	if link.Originals == nil {
+		t.Fatal("anotação deveria carregar o mapa de idiomas da def (Originals)")
+	}
+	if link.Originals[common.DefaultLocalization] != sharedOriginal {
+		t.Fatalf("Originals['us'] = %q, esperado %q", link.Originals[common.DefaultLocalization], sharedOriginal)
+	}
+	if link.Originals["jp"] != jpOriginal {
+		t.Fatalf("Originals['jp'] = %q, esperado %q — idioma extra perdido na ref", link.Originals["jp"], jpOriginal)
 	}
 }
 

@@ -745,6 +745,14 @@ export class Metadata {
 export class RefLink {
     "text": string;
     "original"?: string;
+
+    /**
+     * Originals é o pristine da def em TODOS os idiomas (lang → texto). O
+     * Original acima é só 'us' (tooltip); o editor aberto pela ref precisa
+     * do mapa inteiro para exibir a coluna de idiomas extras — sem ele, a
+     * ref apontando para uma def em OUTRO arquivo mostraria os extras vazios.
+     */
+    "originals"?: { [_ in string]?: string };
     "sourceId"?: string;
     "sourceIndex": number;
     "sourceName"?: string;
@@ -765,7 +773,11 @@ export class RefLink {
      * Creates a new RefLink instance from a string or object.
      */
     static createFrom($$source: any = {}): RefLink {
+        const $$createField2_0 = $$createType12;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("originals" in $$parsedSource) {
+            $$parsedSource["originals"] = $$createField2_0($$parsedSource["originals"]);
+        }
         return new RefLink($$parsedSource as Partial<RefLink>);
     }
 }

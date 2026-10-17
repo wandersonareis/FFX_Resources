@@ -1015,10 +1015,14 @@ export function createEntryView(version: GameVersionId): EntryView {
           name: link.sourceName,
           hash: { [SOURCE_LANG]: row.hash?.[SOURCE_LANG] ?? '' },
           text: { [SOURCE_LANG]: live ?? link.text ?? '' },
+          // Pristine da def em TODOS os idiomas (RefLink.Originals): sem o
+          // mapa inteiro, a def em OUTRO arquivo perdia os idiomas extras no
+          // editor (só 'us' aparecia). Fallback para o 'us' único do tooltip.
           original:
-            link.original !== undefined
+            link.originals ??
+            (link.original !== undefined
               ? { [SOURCE_LANG]: link.original }
-              : undefined,
+              : undefined),
         });
       const defText =
         live ??
