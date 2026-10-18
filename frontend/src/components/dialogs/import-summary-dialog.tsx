@@ -33,8 +33,9 @@ interface ImportSummaryDialogProps {
 
 /**
  * Resumo da importação antes de aplicar: estatísticas do arquivo, conferência
- * por entrada (índices vs store), uso do limite binário (uint16) e erros.
- * Qualquer erro bloqueia a importação inteira (botão Importar desabilitado).
+ * por entrada (índices vs store), uso do limite binário (uint16), avisos e
+ * erros. Entradas com problema são ignoradas (aviso) e o import segue com as
+ * demais; só um bloqueador global desabilita o botão Importar.
  */
 export function ImportSummaryDialog({
   summary,
@@ -46,7 +47,12 @@ export function ImportSummaryDialog({
   const entries = summary?.entries ?? [];
   const usages = summary?.usages ?? [];
   const errors = summary?.errors ?? [];
+  const warnings = summary?.warnings ?? [];
+  // Bloqueadores globais (dicionário macro): a importação inteira para.
   const blocked = errors.length > 0;
+  // Entradas com problema são ignoradas — o import segue com as demais;
+  // sem nenhuma entrada restante não há o que aplicar.
+  const importable = entries.some((entry) => !entry.error);
   const kind = (summary?.kind ?? 'events') as EntryKind;
   const kindLabel = KIND_LABELS[kind] ?? summary?.kind ?? '';
 
@@ -89,6 +95,23 @@ export function ImportSummaryDialog({
                 Ao confirmar, o texto importado será <strong>salvo em binário</strong> em
                 <code className="mx-1">mods/</code> e recarregado dali nas próximas sessões
                 (continuidade da tradução).
+              </div>
+            ) : null}
+
+            {warnings.length > 0 ? (
+              <div className="rounded-md border border-warning/50 bg-warning/10 p-2 text-sm text-warning">
+                <p className="font-semibold">
+                  Entradas ignoradas ({warnings.length}):
+                </p>
+                <p className="mt-0.5">
+                  Estas entradas têm erro e serão <strong>ignoradas</strong> se
+                  você continuar — as demais importam normalmente.
+                </p>
+                <ul className="list-disc pl-5">
+                  {warnings.map((w, i) => (
+                    <li key={`${i}:${w}`}>{w}</li>
+                  ))}
+                </ul>
               </div>
             ) : null}
 
@@ -182,7 +205,7 @@ export function ImportSummaryDialog({
             Cancelar
           </Button>
           <Button
-            disabled={blocked || importing || !summary}
+            disabled={blocked || importing || !summary || (entries.length > 0 && !importable)}
             onClick={onConfirm}
           >
             {importing ? 'Importando…' : 'Importar'}

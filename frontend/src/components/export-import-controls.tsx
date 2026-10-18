@@ -158,13 +158,17 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
       if (result.changed_texts === 0) {
         toast.info('Nada a importar.', { id: toastId });
       } else {
-        const pulados =
+        const arquivos =
           result.errors.length > 0
             ? ` (${result.errors.length} arquivo(s) pulado(s))`
             : '';
+        const entradas =
+          result.warnings.length > 0
+            ? ` (${result.warnings.length} entrada(s) ignorada(s))`
+            : '';
         toast.success(
           `Importado: ${result.changed_texts} texto(s) alterado(s) em ` +
-            `${result.files.length} arquivo(s).${pulados}`,
+            `${result.files.length} arquivo(s).${arquivos}${entradas}`,
           { id: toastId }
         );
         // Avisa a aba ativa para recarregar árvore/tabela (rascunhos preservados).
@@ -190,8 +194,10 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
     try {
       const changed = await importFile(current.path, version);
       setImportSummary(null);
+      const ignored = current.warnings?.length ?? 0;
+      const suffix = ignored > 0 ? ` (${ignored} entrada(s) ignorada(s))` : '';
       toast.success(
-        `Importação concluída — ${changed} texto(s) atualizado(s) e salvos em binário (mods/).`,
+        `Importação concluída — ${changed} texto(s) atualizado(s) e salvos em binário (mods/).${suffix}`,
         { id: toastId }
       );
       // Avisa a aba ativa para recarregar árvore/tabela (rascunhos preservados).

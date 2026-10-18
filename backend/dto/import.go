@@ -2,8 +2,9 @@ package dto
 
 // Este arquivo define o resumo da importação devolvido ao modal de
 // confirmação. Erros de arquivo (ilegível, kind/versão divergentes etc.)
-// voltam como error (toast no frontend); erros por entrada ou de capacidade
-// ficam nestes slices — Errors não vazio desabilita o botão Importar.
+// voltam como error (toast no frontend); problemas por entrada ficam em
+// Warnings (a entrada é ignorada e o resto do arquivo importa) e
+// bloqueadores globais em Errors (não vazio desabilita o botão Importar).
 // Todos os slices são inicializados não-nil no backend (nil → JSON null).
 
 // ImportEntryInfo compara uma entrada do arquivo importado com a store.
@@ -17,7 +18,7 @@ type ImportEntryInfo struct {
 }
 
 // ImportUsage reporta o uso pós-rebuild do limite uint16 de um binário
-// (Used em bytes; Over bloqueia a importação).
+// (Used em bytes; Over exclui a entrada da importação — vira aviso).
 type ImportUsage struct {
 	ID    string `json:"id"`
 	Kind  string `json:"kind"`
@@ -41,7 +42,15 @@ type ImportSummary struct {
 	SavesBinary bool              `json:"saves_binary"`
 	Entries     []ImportEntryInfo `json:"entries"`
 	Usages      []ImportUsage     `json:"usages"`
-	Errors      []string          `json:"errors"`
+	// Warnings lista as entradas que têm problema e serão IGNORADAS se o
+	// usuário confirmar (entrada inexistente nesta versão, erro de medição,
+	// estouro do limite uint16). A granularidade é o ARQUIVO: um erro em
+	// qualquer row exclui a entrada inteira — o restante importa normalmente.
+	Warnings []string `json:"warnings"`
+	// Errors lista os bloqueadores GLOBAIS — não atribuíveis a uma entrada,
+	// como o estouro do dicionário macro (binário único compartilhado).
+	// Não vazio desabilita o botão Importar.
+	Errors []string `json:"errors"`
 }
 
 // ImportBatch descreve uma importação em LOTE a partir de um diretório
@@ -57,6 +66,11 @@ type ImportBatch struct {
 	Files        []string `json:"files"`
 	EntryCount   int      `json:"entry_count"`
 	ChangedTexts int      `json:"changed_texts"`
-	// Errors agrega as falhas por arquivo; qualquer uma bloqueia o lote.
+	// Errors agrega os bloqueadores GLOBAIS por arquivo (estouro do
+	// dicionário macro): o arquivo inteiro é pulado e o lote segue.
 	Errors []string `json:"errors"`
+	// Warnings agrega as entradas ignoradas por arquivo (entrada
+	// inexistente, erro de medição, estouro do limite): só aquela entrada
+	// fica de fora — as demais entradas do arquivo são importadas.
+	Warnings []string `json:"warnings"`
 }

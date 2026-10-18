@@ -40,6 +40,46 @@ func TestObjectsWeaponNamesCarregaNoFluxoChunkmap(t *testing.T) {
 	_ = dto.RowKey(entry.Rows[0])
 }
 
+// TestObjectsWeaponNamesImportPreviewClean: o preview do import do artefato
+// de w_name (rows rotuladas pelo dono, "Tidus.Standard") sai LIMPO — sem
+// bloqueador global e sem aviso de entrada. Antes da correção do medidor, o
+// GenericApply rejeitava o naming de dono e o erro `campo "Tidus.Standard"
+// nao existe no chunk 0` bloqueava a importação inteira.
+func TestObjectsWeaponNamesImportPreviewClean(t *testing.T) {
+	seedFFXHelpRoot(t)
+	_ = ensureVersionReady(common.GameVersionFFX)
+
+	svc := NewMetadataService(nil)
+	paths, err := svc.ExportArtifactBatch(
+		[]ExportPlanItem{{Kind: KindObjects, IDs: []string{"w_name"}}},
+		common.GameVersionFFX, nil, "json",
+	)
+	if err != nil {
+		t.Fatalf("export w_name: %v", err)
+	}
+	if len(paths) != 1 {
+		t.Fatalf("export w_name: %d arquivo(s), queria 1 (%v)", len(paths), paths)
+	}
+
+	plan, err := svc.prepareImport(paths[0], common.GameVersionFFX)
+	if err != nil {
+		t.Fatalf("prepare import w_name: %v", err)
+	}
+	if len(plan.summary.Errors) != 0 {
+		t.Fatalf("erros globais no preview: %v", plan.summary.Errors)
+	}
+	if len(plan.summary.Warnings) != 0 {
+		t.Fatalf("avisos de entrada no preview: %v", plan.summary.Warnings)
+	}
+	if _, ok := plan.merged["w_name"]; !ok {
+		t.Fatal("w_name ausente do merge — a entrada deveria ser importável")
+	}
+	// A medida de capacidade rodou de verdade: há barra de limite no resumo.
+	if len(plan.summary.Usages) != 1 || plan.summary.Usages[0].ID != "w_name" {
+		t.Fatalf("usages=%+v, queria a medida de w_name", plan.summary.Usages)
+	}
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a

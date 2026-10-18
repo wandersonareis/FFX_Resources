@@ -12,8 +12,13 @@ package services
 // Divisão de erros:
 //   - arquivo (ilegível, extensão, key ausente/inválida, kind ou versão
 //     divergentes, kinds misturados) → error (toast no frontend);
-//   - entrada inexistente na versão e capacidade uint16 → summary.Errors
-//     (modal desabilita Importar).
+//   - entrada inexistente na versão, erro de medição e capacidade uint16
+//     → summary.Warnings: a ENTRADA é excluída do import (a granularidade
+//     é o arquivo — um erro em qualquer row exclui a entrada inteira) e o
+//     restante importa; o modal avisa o que será ignorado;
+//   - bloqueadores globais (estouro do dicionário macro, binário único
+//     compartilhado por todas as entradas) → summary.Errors (modal
+//     desabilita Importar).
 //
 // NÃO bloqueiam, e nem entram no resumo: hash não encontrado e tag de
 // controle divergente. A row é pulada, o resto importa, e o problema sai
@@ -174,7 +179,7 @@ func importLanguages(c dto.Collection) []string {
 
 // As três mensagens do import. Todas vão para o console colorido e para o
 // arquivo JSON de log (common/system.go). hash não encontrado e tag
-// divergente NUNCA entram em summary.Errors: a row é bloqueada, a
+// divergente NUNCA entram em summary.Warnings/Errors: a row é bloqueada, a
 // importação segue, e quem corrige é o revisor no artefato.
 const (
 	logImportUnmatched = "import %s: hash não encontrado — hash %q texto %q"
@@ -751,11 +756,46 @@ func importMacroUsage(version common.GameVersion, macroFull dto.Collection, matc
 	return usage, nil
 }
 
+// skipImportEntry exclui uma entrada do import por problema DELA: o motivo
+// vira aviso do resumo (a entrada será ignorada se o usuário confirmar), a
+// linha da tabela ganha o erro e a collection mesclada perde a entrada — o
+// apply nunca a vê. merged pode ser nil (entrada que nunca chegou à store).
+// A granularidade é o ARQUIVO: um erro em qualquer row exclui a entrada
+// inteira; o restante do arquivo importa normalmente.
+func skipImportEntry(summary *dto.ImportSummary, merged dto.Collection, id, reason string) {
+	summary.Warnings = append(summary.Warnings, fmt.Sprintf("%s: %s", id, reason))
+	for i := range summary.Entries {
+		if summary.Entries[i].ID != id {
+			continue
+		}
+		summary.Entries[i].Error = reason
+		// Os contadores do resumo refletem só o que vai de fato importar —
+		// a entrada ignorada some dos três (entradas, índices e alterados).
+		summary.ChangedTexts -= summary.Entries[i].ChangedTexts
+		if summary.ChangedTexts < 0 {
+			summary.ChangedTexts = 0
+		}
+		summary.TotalIndices -= summary.Entries[i].IndexCount
+		if summary.TotalIndices < 0 {
+			summary.TotalIndices = 0
+		}
+		summary.EntryCount--
+		if summary.EntryCount < 0 {
+			summary.EntryCount = 0
+		}
+		break
+	}
+	if merged != nil {
+		delete(merged, id)
+	}
+}
+
 // ---- pipeline -----------------------------------------------------------------
 
 // prepareImport executa o pipeline SEM aplicar: parse → detecção → store →
 // validação por entrada → merge do 'us' → capacidades. Erros de arquivo voltam
-// como error (toast); erros por entrada/capacidade ficam em summary.Errors.
+// como error (toast); problemas por entrada viram AVISO e excluem só a entrada
+// (summary.Warnings); bloqueadores globais ficam em summary.Errors.
 func (s *MetadataService) prepareImport(path string, version common.GameVersion) (*importPlan, error) {
 	path = strings.TrimSpace(path)
 	if path == "" {
@@ -827,6 +867,7 @@ func (s *MetadataService) prepareImport(path string, version common.GameVersion)
 		SavesBinary: true,
 		Entries:     make([]dto.ImportEntryInfo, 0, len(imported)),
 		Usages:      make([]dto.ImportUsage, 0, len(known)),
+		Warnings:    []string{},
 		Errors:      []string{},
 	}
 
@@ -844,10 +885,10 @@ func (s *MetadataService) prepareImport(path string, version common.GameVersion)
 
 		se, ok := store[id]
 		if !ok {
-			// Único erro por entrada — o resto do import segue.
-			info.Error = "entrada não existe nesta versão"
-			summary.Errors = append(summary.Errors, fmt.Sprintf("%s: entrada não existe nesta versão", id))
+			// Problema de uma entrada só: vira aviso, a entrada é ignorada
+			// e o resto do arquivo importa.
 			summary.Entries = append(summary.Entries, info)
+			skipImportEntry(&summary, nil, id, "entrada não existe nesta versão")
 			continue
 		}
 		info.StoreIndexCount = rowIndexCount(se.Rows)
@@ -879,7 +920,9 @@ func (s *MetadataService) prepareImport(path string, version common.GameVersion)
 
 	merged := mergeImportUs(valid, matched)
 
-	// Capacidades sobre as entradas que serão gravadas; estouro bloqueia.
+	// Capacidades sobre as entradas que serão gravadas: problema de uma
+	// entrada a exclui (aviso — o resto importa); o estouro do dicionário
+	// macro é global (binário único compartilhado) e bloqueia a importação.
 	switch kind {
 	case KindMacro:
 		if len(matched) > 0 && macroFull != nil {
@@ -914,15 +957,15 @@ func (s *MetadataService) prepareImport(path string, version common.GameVersion)
 				usage, uerr = importObjectsUsage(version, id, merged[id])
 			}
 			if uerr != nil {
-				summary.Errors = append(summary.Errors, fmt.Sprintf("%s: %s", id, uerr.Error()))
+				skipImportEntry(&summary, merged, id, uerr.Error())
+				continue
+			}
+			if usage.Over {
+				skipImportEntry(&summary, merged, id, fmt.Sprintf(
+					"texto excede o limite binário (%d > %d bytes)", usage.Used, usage.Limit))
 				continue
 			}
 			summary.Usages = append(summary.Usages, usage)
-			if usage.Over {
-				summary.Errors = append(summary.Errors, fmt.Sprintf(
-					"%s: texto excede o limite binário (%d > %d bytes)",
-					id, usage.Used, usage.Limit))
-			}
 		}
 	}
 
@@ -940,8 +983,10 @@ func (s *MetadataService) PreviewImport(path string, version common.GameVersion)
 }
 
 // ImportFile reexecuta o pipeline e aplica o 'us' mesclado no binário.
-// Qualquer erro de validação/capacidade bloqueia a importação inteira.
-// Devolve quantos textos em inglês mudaram em relação à store.
+// Entradas com problema ficam fora do merge (avisos do resumo) — só um
+// bloqueador GLOBAL (Errors não vazio, como o estouro do dicionário macro)
+// aborta a importação inteira. Devolve quantos textos em inglês mudaram em
+// relação à store.
 func (s *MetadataService) ImportFile(path string, version common.GameVersion) (int, error) {
 	plan, err := s.prepareImport(path, version)
 	if err != nil {

@@ -122,7 +122,8 @@ func TestHashMatchNotFoundLogsNotErrors(t *testing.T) {
 		t.Fatalf("inserted=%d changed=%d, queria 0 e 0", m.inserted, m.changed)
 	}
 	// e NÃO é erro de resumo: quem bloqueia é o revisor, não o modal.
-	// (a checagem do resumo está em TestPrepareImportSummaryErrorsOnly.)
+	// (a política de avisos/exclusão por entrada está em
+	// TestImportE2EUnknownEntry e TestImportE2EOverLimitEntrySkipped.)
 }
 
 func TestHashMatchDedupGroupTiebreak(t *testing.T) {

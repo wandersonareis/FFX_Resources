@@ -470,9 +470,17 @@ export class ImportBatch {
     "changed_texts": number;
 
     /**
-     * Errors agrega as falhas por arquivo; qualquer uma bloqueia o lote.
+     * Errors agrega os bloqueadores GLOBAIS por arquivo (estouro do
+     * dicionário macro): o arquivo inteiro é pulado e o lote segue.
      */
     "errors": string[];
+
+    /**
+     * Warnings agrega as entradas ignoradas por arquivo (entrada
+     * inexistente, erro de medição, estouro do limite): só aquela entrada
+     * fica de fora — as demais entradas do arquivo são importadas.
+     */
+    "warnings": string[];
 
     /** Creates a new ImportBatch instance. */
     constructor($$source: Partial<ImportBatch> = {}) {
@@ -494,6 +502,9 @@ export class ImportBatch {
         if (!("errors" in $$source)) {
             this["errors"] = [];
         }
+        if (!("warnings" in $$source)) {
+            this["warnings"] = [];
+        }
 
         Object.assign(this, $$source);
     }
@@ -505,6 +516,7 @@ export class ImportBatch {
         const $$createField1_0 = $$createType0;
         const $$createField2_0 = $$createType0;
         const $$createField5_0 = $$createType0;
+        const $$createField6_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("kinds" in $$parsedSource) {
             $$parsedSource["kinds"] = $$createField1_0($$parsedSource["kinds"]);
@@ -514,6 +526,9 @@ export class ImportBatch {
         }
         if ("errors" in $$parsedSource) {
             $$parsedSource["errors"] = $$createField5_0($$parsedSource["errors"]);
+        }
+        if ("warnings" in $$parsedSource) {
+            $$parsedSource["warnings"] = $$createField6_0($$parsedSource["warnings"]);
         }
         return new ImportBatch($$parsedSource as Partial<ImportBatch>);
     }
@@ -584,6 +599,20 @@ export class ImportSummary {
     "saves_binary": boolean;
     "entries": ImportEntryInfo[];
     "usages": ImportUsage[];
+
+    /**
+     * Warnings lista as entradas que têm problema e serão IGNORADAS se o
+     * usuário confirmar (entrada inexistente nesta versão, erro de medição,
+     * estouro do limite uint16). A granularidade é o ARQUIVO: um erro em
+     * qualquer row exclui a entrada inteira — o restante importa normalmente.
+     */
+    "warnings": string[];
+
+    /**
+     * Errors lista os bloqueadores GLOBAIS — não atribuíveis a uma entrada,
+     * como o estouro do dicionário macro (binário único compartilhado).
+     * Não vazio desabilita o botão Importar.
+     */
     "errors": string[];
 
     /** Creates a new ImportSummary instance. */
@@ -621,6 +650,9 @@ export class ImportSummary {
         if (!("usages" in $$source)) {
             this["usages"] = [];
         }
+        if (!("warnings" in $$source)) {
+            this["warnings"] = [];
+        }
         if (!("errors" in $$source)) {
             this["errors"] = [];
         }
@@ -636,6 +668,7 @@ export class ImportSummary {
         const $$createField9_0 = $$createType9;
         const $$createField10_0 = $$createType11;
         const $$createField11_0 = $$createType0;
+        const $$createField12_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("languages" in $$parsedSource) {
             $$parsedSource["languages"] = $$createField4_0($$parsedSource["languages"]);
@@ -646,8 +679,11 @@ export class ImportSummary {
         if ("usages" in $$parsedSource) {
             $$parsedSource["usages"] = $$createField10_0($$parsedSource["usages"]);
         }
+        if ("warnings" in $$parsedSource) {
+            $$parsedSource["warnings"] = $$createField11_0($$parsedSource["warnings"]);
+        }
         if ("errors" in $$parsedSource) {
-            $$parsedSource["errors"] = $$createField11_0($$parsedSource["errors"]);
+            $$parsedSource["errors"] = $$createField12_0($$parsedSource["errors"]);
         }
         return new ImportSummary($$parsedSource as Partial<ImportSummary>);
     }
@@ -655,7 +691,7 @@ export class ImportSummary {
 
 /**
  * ImportUsage reporta o uso pós-rebuild do limite uint16 de um binário
- * (Used em bytes; Over bloqueia a importação).
+ * (Used em bytes; Over exclui a entrada da importação — vira aviso).
  */
 export class ImportUsage {
     "id": string;

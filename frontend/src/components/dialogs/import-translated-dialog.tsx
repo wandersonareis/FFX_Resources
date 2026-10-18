@@ -32,6 +32,7 @@ export function ImportTranslatedDialog({
   const kinds = batch?.kinds ?? [];
   const files = batch?.files ?? [];
   const errors = batch?.errors ?? [];
+  const warnings = batch?.warnings ?? [];
   const nada = open && batch !== null && kinds.length === 0 && errors.length === 0;
   return (
     <Dialog
@@ -75,15 +76,36 @@ export function ImportTranslatedDialog({
             ) : null}
 
             {errors.length > 0 ? (
-              <div className="rounded-md border border-warning/50 bg-warning/10 p-2 text-sm text-warning">
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
                 <p className="font-semibold">
-                  {errors.length} arquivo(s) serão pulados:
+                  Arquivo(s) pulado(s) ({errors.length}):
                 </p>
                 <ScrollArea className="mt-1 max-h-40">
                   <ul className="list-disc pl-5">
                     {errors.map((e, i) => (
                       <li key={`${i}:${e}`} className="break-all wrap-break-word">
                         {e}
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
+              </div>
+            ) : null}
+
+            {warnings.length > 0 ? (
+              <div className="rounded-md border border-warning/50 bg-warning/10 p-2 text-sm text-warning">
+                <p className="font-semibold">
+                  Entrada(s) ignorada(s) ({warnings.length}):
+                </p>
+                <p className="mt-0.5">
+                  Só estas entradas ficam de fora — as demais entradas do
+                  arquivo importam normalmente.
+                </p>
+                <ScrollArea className="mt-1 max-h-40">
+                  <ul className="list-disc pl-5">
+                    {warnings.map((w, i) => (
+                      <li key={`${i}:${w}`} className="break-all wrap-break-word">
+                        {w}
                       </li>
                     ))}
                   </ul>

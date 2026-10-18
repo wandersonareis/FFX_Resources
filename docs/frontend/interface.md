@@ -245,8 +245,11 @@ e `divergent` aceitam edição.
 
 O modal de importação mostra o **resumo antes de aplicar**: estatísticas do
 arquivo, conferência por entrada (índices vs. o que está carregado), o uso
-do limite binário (`uint16` de offset) e os erros. Qualquer erro **bloqueia
-o botão Importar** — nada entra pela metade. Há duas origens no menu:
+do limite binário (`uint16` de offset), avisos e erros. Problema de uma
+**entrada** é aviso — a entrada problemática é **ignorada** e o restante do
+arquivo importa (um "events all" com 1 evento corrompido importa os outros
+300). Só um bloqueador **global** (estouro do dicionário macro, binário
+único compartilhado) **desabilita o botão Importar**. Há duas origens no menu:
 
 - **Importar** (`mods/translated`) — lote: importa os textos em inglês
   ("us") de todos os tipos encontrados na pasta de traduções;

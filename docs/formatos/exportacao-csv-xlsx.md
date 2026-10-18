@@ -117,7 +117,9 @@ mesmo escopo.
   re-export (célula vazia é tolerada: artefato feito à mão, o import
   recalcula pelo texto); resolve as refs `$hash`; o XLSX aceita
   colunas extras desde que as 8 primeiras existam.
-- O import SEMPRE mostra prévia antes de aplicar; qualquer erro bloqueia o
-  botão Importar, e nada é salvo no binário sem o "Salvar" explícito.
+- O import SEMPRE mostra prévia antes de aplicar; problema de entrada é
+  aviso (a entrada é ignorada, o resto importa) e só bloqueador global
+  desabilita o botão Importar, e nada é salvo no binário sem o "Salvar"
+  explícito.
 - Round-trip: export → import sem edição devolve a MESMA coleção (mesmos
   textos e metadados).

@@ -85,15 +85,16 @@ func (s *MetadataService) PreviewImportTranslated(version common.GameVersion, ki
 }
 
 // ImportTranslated reexecuta o lote aplicando arquivo a arquivo. Um arquivo
-// com erro é pulado individualmente (o dos demais segue) e as falhas voltam
-// agregadas em batch.Errors.
+// com erro global é pulado individualmente (o dos demais segue); um arquivo
+// com problema em uma ENTRADA aplica as demais entradas e a problemática é
+// ignorada. Falhas e avisos voltam agregados em batch.Errors.
 func (s *MetadataService) ImportTranslated(version common.GameVersion, kinds []string) (dto.ImportBatch, error) {
 	return s.importTranslatedBatch(version, kinds, true)
 }
 
 func (s *MetadataService) importTranslatedBatch(version common.GameVersion, kinds []string, apply bool) (dto.ImportBatch, error) {
 	root := TranslatedTextRoot()
-	batch := dto.ImportBatch{Root: root}
+	batch := dto.ImportBatch{Root: root, Errors: []string{}, Warnings: []string{}}
 
 	files, err := walkTranslatedCandidates(root)
 	if err != nil {
@@ -131,7 +132,14 @@ func (s *MetadataService) importTranslatedBatch(version common.GameVersion, kind
 		for _, e := range plan.summary.Errors {
 			batch.Errors = append(batch.Errors, fmt.Sprintf("%s: %s", name, e))
 		}
+		// Avisos de entrada (entrada inexistente/medida/limite): só aquela
+		// entrada fica de fora — as demais entradas do arquivo importam.
+		for _, w := range plan.summary.Warnings {
+			batch.Warnings = append(batch.Warnings, fmt.Sprintf("%s: %s", name, w))
+		}
 
+		// Erros globais (dicionário macro) pulam o arquivo inteiro; sem
+		// entrada mesclada não há o que aplicar.
 		if !apply || len(plan.summary.Errors) > 0 || len(plan.merged) == 0 {
 			continue
 		}

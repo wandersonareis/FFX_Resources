@@ -3,6 +3,7 @@ package services
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"ffxresources/backend/common"
@@ -186,8 +187,9 @@ func TestImportE2EStaleHash(t *testing.T) {
 	}
 }
 
-// TestImportE2EUnknownEntry: único erro por entrada é "entrada não existe
-// nesta versão" — e vem sozinho no resumo.
+// TestImportE2EUnknownEntry: problema de uma entrada é "entrada não existe
+// nesta versão" — vem como AVISO (a entrada será ignorada) e nunca bloqueia
+// o arquivo.
 func TestImportE2EUnknownEntry(t *testing.T) {
 	seedEventsTempRoot(t)
 	clearEventsForTest(t)
@@ -211,11 +213,121 @@ func TestImportE2EUnknownEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("preview: %v", err)
 	}
-	if len(summary.Errors) != 1 {
-		t.Fatalf("errors=%v, queria 1", summary.Errors)
+	if len(summary.Warnings) != 1 {
+		t.Fatalf("warnings=%v, queria 1", summary.Warnings)
 	}
-	if got := summary.Errors[0]; !contains(got, "entrada não existe nesta versão") {
-		t.Fatalf("erro %q, queria entrada inexistente", got)
+	if got := summary.Warnings[0]; !contains(got, "entrada não existe nesta versão") {
+		t.Fatalf("aviso %q, queria entrada inexistente", got)
+	}
+	if len(summary.Errors) != 0 {
+		t.Fatalf("entrada inexistente não pode bloquear a importação: %v", summary.Errors)
+	}
+}
+
+// TestImportE2EUnknownEntryDoesNotBlockBatch: artefato com uma entrada boa e
+// uma inexistente — a problemática é avisada/ignorada e a boa importa (o
+// "events all com 301, 1 corrompido" importa os 300 bons).
+func TestImportE2EUnknownEntryDoesNotBlockBatch(t *testing.T) {
+	seedEventsTempRoot(t)
+	clearEventsForTest(t)
+	seedEventsSynthetic(common.GameVersionFFX2, "zev001", []string{"Frase boa do evento"})
+
+	raw := collectionRawForTest(t)
+	good := raw["zev001"]
+	good.Rows[0].Text[common.DefaultLocalization] = "Frase traduzida"
+
+	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{
+		"zev001": good,
+		"zz_inexistente": dto.FileEntry{
+			Metadata: dto.Metadata{Key: "ffx-2/event/zz/zzinexistente.bin", ID: "zz_inexistente"},
+			Rows:     []dto.TextRow{hRow(0, "", "Texto solto")},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	impPath := filepath.Join(t.TempDir(), "unknown-plus-good.json")
+	if err := os.WriteFile(impPath, out, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	svc := NewMetadataService(nil)
+	summary, err := svc.PreviewImport(impPath, common.GameVersionFFX2)
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	if len(summary.Errors) != 0 {
+		t.Fatalf("erros globais inesperados: %v", summary.Errors)
+	}
+	if len(summary.Warnings) != 1 || !contains(summary.Warnings[0], "zz_inexistente") {
+		t.Fatalf("warnings=%v, queria só a entrada inexistente", summary.Warnings)
+	}
+	if summary.ChangedTexts != 1 {
+		t.Fatalf("changed=%d, queria 1 (a entrada boa, descontada a ruim)", summary.ChangedTexts)
+	}
+
+	// Confirmar aplica só a entrada boa: o aviso não bloqueia o arquivo.
+	changed, err := svc.ImportFile(impPath, common.GameVersionFFX2)
+	if err != nil {
+		t.Fatalf("ImportFile bloqueado por aviso de entrada: %v", err)
+	}
+	if changed != 1 {
+		t.Fatalf("ImportFile changed=%d, queria 1 (só a entrada boa)", changed)
+	}
+}
+
+// TestImportE2EOverLimitEntrySkipped: entrada cuja tradução estoura o limite
+// uint16 é avisada e EXCLUÍDA — a outra entrada do mesmo arquivo importa.
+// Granularidade é o arquivo: o estouro de uma row derruba a entrada inteira.
+func TestImportE2EOverLimitEntrySkipped(t *testing.T) {
+	seedEventsTempRoot(t)
+	clearEventsForTest(t)
+	seedEventsSynthetic(common.GameVersionFFX2, "zev001", []string{"Frase boa do evento"})
+	seedEventsSynthetic(common.GameVersionFFX2, "zevbig", []string{"Frase curta"})
+
+	raw := collectionRawForTest(t)
+	good := raw["zev001"]
+	good.Rows[0].Text[common.DefaultLocalization] = "Frase traduzida"
+	big := raw["zevbig"]
+	big.Rows[0].Text[common.DefaultLocalization] = strings.Repeat("A", 70000)
+
+	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{"zev001": good, "zevbig": big})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	impPath := filepath.Join(t.TempDir(), "overlimit.json")
+	if err := os.WriteFile(impPath, out, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	svc := NewMetadataService(nil)
+	summary, err := svc.PreviewImport(impPath, common.GameVersionFFX2)
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	if len(summary.Errors) != 0 {
+		t.Fatalf("erros globais inesperados: %v", summary.Errors)
+	}
+	if len(summary.Warnings) != 1 || !contains(summary.Warnings[0], "zevbig") ||
+		!contains(summary.Warnings[0], "limite binário") {
+		t.Fatalf("warnings=%v, queria o estouro da zevbig", summary.Warnings)
+	}
+	if summary.ChangedTexts != 1 {
+		t.Fatalf("changed=%d, queria 1 (zevbig descontada do resumo)", summary.ChangedTexts)
+	}
+	// Uso medido só do que será gravado: zevbig não tem barra de limite.
+	if len(summary.Usages) != 1 || summary.Usages[0].ID != "zev001" {
+		t.Fatalf("usages=%+v, queria só zev001", summary.Usages)
+	}
+	// A tabela de entradas marca a excluída para o modal.
+	var bigInfo *dto.ImportEntryInfo
+	for i := range summary.Entries {
+		if summary.Entries[i].ID == "zevbig" {
+			bigInfo = &summary.Entries[i]
+		}
+	}
+	if bigInfo == nil || bigInfo.Error == "" {
+		t.Fatalf("entrada zevbig devolve com erro: %+v", bigInfo)
 	}
 }
 

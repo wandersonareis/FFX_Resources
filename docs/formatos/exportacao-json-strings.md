@@ -169,7 +169,9 @@ do header, o frontend manda `[default, ...extras marcados]` — o default
   explícita na coluna `divergent`.
 - No .strings o header é informativo: a `key` ancora a metadata da
   entrada e o `row_count` é conferido via log (o import reconta).
-- O import SEMPRE mostra prévia antes de aplicar; qualquer erro bloqueia
-  o botão Importar, e nada é salvo no binário sem o "Salvar" explícito.
+- O import SEMPRE mostra prévia antes de aplicar; problema de entrada é
+  aviso (a entrada é ignorada, o resto importa) e só bloqueador global
+  desabilita o botão Importar, e nada é salvo no binário sem o "Salvar"
+  explícito.
 - Round-trip: export → import sem edição devolve a MESMA coleção (mesmos
   textos e metadados).
