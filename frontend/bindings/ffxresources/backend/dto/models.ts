@@ -6,6 +6,54 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * AppConfigSnapshot espelha o config.json inteiro em um objeto só: é o
+ * payload da consulta GetConfigSnapshot (carga inicial do store do
+ * frontend) e do evento AppConfigChanged (re-emitido após cada setter —
+ * o "eco" que o v2 fazia por campo, agora num evento único).
+ * 
+ * Com o snapshot completo o frontend espelha a VERDADE do backend:
+ * caminho normalizado (filepath.Abs), executável recusado em silêncio
+ * (o persistido continua) e translated derivado do gamefiles novo
+ * acompanham a mudança na mesma resposta.
+ */
+export class AppConfigSnapshot {
+    "game_files_location": string;
+    "translate_location": string;
+    "game_exe_location": string;
+    "enable_mods": boolean;
+    "game_version": string;
+
+    /** Creates a new AppConfigSnapshot instance. */
+    constructor($$source: Partial<AppConfigSnapshot> = {}) {
+        if (!("game_files_location" in $$source)) {
+            this["game_files_location"] = "";
+        }
+        if (!("translate_location" in $$source)) {
+            this["translate_location"] = "";
+        }
+        if (!("game_exe_location" in $$source)) {
+            this["game_exe_location"] = "";
+        }
+        if (!("enable_mods" in $$source)) {
+            this["enable_mods"] = false;
+        }
+        if (!("game_version" in $$source)) {
+            this["game_version"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new AppConfigSnapshot instance from a string or object.
+     */
+    static createFrom($$source: any = {}): AppConfigSnapshot {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new AppConfigSnapshot($$parsedSource as Partial<AppConfigSnapshot>);
+    }
+}
+
+/**
  * BatchResult é o resultado genérico de uma operação em lote sobre imagens
  * (extrair / replicar / deletar): o que deu certo, o que falhou (id:
  * motivo) e o total considerado.

@@ -12,6 +12,21 @@
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as dto$0 from "./backend/dto/models";
+
+/**
+ * GetConfigSnapshot devolve o config inteiro em UMA consulta: é a carga
+ * inicial do store do frontend — as atualizações vêm pelo evento
+ * AppConfigChanged, dispensando re-fetch ao reabrir o diálogo.
+ */
+export function GetConfigSnapshot(): $CancellablePromise<dto$0.AppConfigSnapshot> {
+    return $Call.ByID(470399063).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
 /**
  * GetEnableMods devolve a preferência mods-first da carga de binários
  * (config EnableMods). Consulta sob demanda para o checkbox de config.
@@ -98,3 +113,6 @@ export function SetGameVersion(version: string): $CancellablePromise<void> {
 export function SetTranslateLocation(path: string): $CancellablePromise<void> {
     return $Call.ByID(1228565642, path);
 }
+
+// Private type creation functions
+const $$createType0 = dto$0.AppConfigSnapshot.createFrom;

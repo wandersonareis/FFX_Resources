@@ -2,6 +2,7 @@ package main
 
 import (
 	"ffxresources/backend/common"
+	"ffxresources/backend/dto"
 	"ffxresources/backend/interactions"
 	"ffxresources/backend/loggingService"
 	"ffxresources/backend/services"
@@ -14,6 +15,36 @@ import (
 // toca. O equivalente vivia no App (o "god object" do v2).
 type ConfigService struct {
 	notifier services.INotificationService
+}
+
+// snapshot monta o espelho completo do config (locais resolvidos + toggle
+// + executável + versão) para o frontend.
+func (c *ConfigService) snapshot() dto.AppConfigSnapshot {
+	service := interactions.NewInteractionService()
+	config := service.FFXAppConfig()
+	return dto.AppConfigSnapshot{
+		GameFilesLocation: service.GameLocation.GetTargetDirectory(),
+		TranslateLocation: service.TranslateLocation.GetTargetDirectory(),
+		GameExeLocation:   config.GetGameExeLocation(),
+		EnableMods:        config.GetEnableMods(),
+		GameVersion:       config.GetGameVersion().String(),
+	}
+}
+
+// GetConfigSnapshot devolve o config inteiro em UMA consulta: é a carga
+// inicial do store do frontend — as atualizações vêm pelo evento
+// AppConfigChanged, dispensando re-fetch ao reabrir o diálogo.
+func (c *ConfigService) GetConfigSnapshot() dto.AppConfigSnapshot {
+	return c.snapshot()
+}
+
+// emitConfigChanged publica o snapshot pós-mudança no bus do Wails. É o
+// "eco" do config: o frontend mantém um único store espelhando o que o
+// backend realmente persistiu — o caminho Abs normalizado, o executável
+// recusado em silêncio (o persistido continua) e o translated derivado
+// do gamefiles novo chegam juntos, sem consulta extra.
+func (c *ConfigService) emitConfigChanged() {
+	services.EmitEvent("AppConfigChanged", c.snapshot())
 }
 
 func (c *ConfigService) SelectDirectory(title string) string {
@@ -42,6 +73,7 @@ func (c *ConfigService) GetEnableMods() bool {
 // SetEnableMods persiste e aplica o toggle mods-first imediatamente.
 func (c *ConfigService) SetEnableMods(enabled bool) error {
 	interactions.NewInteractionService().FFXAppConfig().SetEnableMods(enabled)
+	c.emitConfigChanged()
 	return nil
 }
 
@@ -58,6 +90,10 @@ func (c *ConfigService) GetGameExeLocation() string {
 func (c *ConfigService) SetGameExeLocation(path string) {
 	interactions.NewInteractionService().FFXAppConfig().SetGameExeLocation(path)
 	services.CloseVbfArchives()
+	// Eco SEMPRE (o backend recusa caminho fora de FFX.exe/FFX-2.exe em
+	// silêncio e mantém o anterior): o snapshot devolve a UI ao estado
+	// realmente persistido.
+	c.emitConfigChanged()
 }
 
 // SetGameVersion persiste a versão do jogo.
@@ -67,6 +103,7 @@ func (c *ConfigService) SetGameVersion(version string) error {
 		return err
 	}
 	interactions.NewInteractionService().FFXAppConfig().SetGameVersion(v)
+	c.emitConfigChanged()
 	return nil
 }
 
@@ -86,12 +123,18 @@ func (c *ConfigService) SetGameLocation(path string) error {
 		newDefaultTranslate := common.DefaultTranslatedDir(path)
 		_ = service.TranslateLocation.SetTargetDirectory(newDefaultTranslate)
 	}
+	// Eco DEPOIS da derivação: o translated acompanhado chega no mesmo
+	// snapshot, sem segunda consulta.
+	c.emitConfigChanged()
 	return nil
 }
 
 // SetTranslateLocation persiste o diretório de tradução.
 func (c *ConfigService) SetTranslateLocation(path string) error {
-	interactions.NewInteractionService().TranslateLocation.SetTargetDirectory(path)
+	if err := interactions.NewInteractionService().TranslateLocation.SetTargetDirectory(path); err != nil {
+		return err
+	}
+	c.emitConfigChanged()
 	return nil
 }
 

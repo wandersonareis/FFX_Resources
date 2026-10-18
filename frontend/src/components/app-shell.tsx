@@ -13,6 +13,7 @@ import { tabStorage } from '@/lib/ffx/tab-storage';
 import { useWailsEvent } from '@/lib/ffx/use-wails-event';
 import { saveAllDrafts } from '@/lib/ffx/save-all';
 import { exportSelection, EXPORT_FORMAT_LABELS } from '@/lib/ffx/export-selection';
+import { applyConfigSnapshot, loadConfigSnapshot } from '@/lib/ffx/config-store';
 import {
   Tooltip,
   TooltipContent,
@@ -41,6 +42,10 @@ export function AppShell() {
     // Hydration-safe: localStorage só existe no cliente.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(tabStorage.load(GAME_VERSIONS.length));
+    // Carga inicial do config no store — as mudanças vêm pelo eco
+    // AppConfigChanged abaixo (o dialog de config lê o store, sem
+    // fetch ao abrir).
+    void loadConfigSnapshot();
   }, []);
 
   const setVersion = useCallback(async (version: GameVersionId) => {
@@ -113,6 +118,11 @@ export function AppShell() {
   useWailsEvent('SaveRequested', () => {
     void saveAllDrafts(() => saving, setSaving).then(() => QuitApp());
   });
+
+  // Eco do config: cada setter do backend persiste e re-emite o snapshot
+  // completo — o store espelha a verdade (caminho Abs, exe recusado em
+  // silêncio, translated derivado) para todos os consumidores.
+  useWailsEvent('AppConfigChanged', (data) => applyConfigSnapshot(data));
 
   const onTabChange = (index: string) => {
     const idx = Number.parseInt(index, 10);
