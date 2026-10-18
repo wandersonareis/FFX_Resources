@@ -340,3 +340,29 @@ func TestWeaponNameExternalRoundTrip(t *testing.T) {
 		t.Fatalf("o JSON exportado não aplica byte-exato (%d vs %d bytes)", len(out), len(original))
 	}
 }
+
+// TestWeaponNameMeasureAcceptsOwnerRows: a medição de capacidade do import
+// aplica as rows com o MESMO Apply do fluxo real — rows rotuladas pelo dono
+// ("Tidus.Standard") medem sem erro. O medidor GENÉRICO não conhece o
+// naming de domínio: era ele quem bloqueava a importação do w_name com
+// `chunkmap: campo "Tidus.Standard" nao existe no chunk 0`.
+func TestWeaponNameMeasureAcceptsOwnerRows(t *testing.T) {
+	file := loadReference(t, readReference(t))
+	rows := rowsFor(t, file)
+
+	used, err := file.MeasureStringTableWith(rows, lang, weaponnames.Apply)
+	if err != nil {
+		t.Fatalf("MeasureStringTableWith: %v", err)
+	}
+	if used <= 0 {
+		t.Fatalf("string table medida = %d, queria > 0", used)
+	}
+
+	// Contraste: o applier genérico só entende caminhos de campo Go
+	// ("Names[0].Standard") — é o que justifica o Apply injetado.
+	if _, gerr := file.MeasureStringTable(rows, lang); gerr == nil {
+		t.Fatal("medidor genérico aceitou rows de dono — deveria exigir o Apply do domínio")
+	} else if !strings.Contains(gerr.Error(), "Tidus.Standard") {
+		t.Fatalf("erro genérico deveria citar a row de dono: %v", gerr)
+	}
+}

@@ -235,15 +235,17 @@ func (f *File[T]) encodeLanguage(languageCode string) ([]byte, error) {
 
 // rebuildEditedStringTable aplica as rows em um clone raso dos slots e
 // reconstrói a string table do idioma pedido. O File original permanece
-// intacto (medição não é edição).
-func (f *File[T]) rebuildEditedStringTable(rows []dto.TextRow, languageCode string) ([]byte, error) {
+// intacto (medição não é edição). O applier é injetado: schemas com
+// política de naming própria (w_name rotula rows pelo dono, "Tidus.Standard")
+// medem com o MESMO Apply do fluxo real em vez do genérico.
+func (f *File[T]) rebuildEditedStringTable(rows []dto.TextRow, languageCode string, apply func(*File[T], []dto.TextRow) error) ([]byte, error) {
 	// Clona o File trocando os slots por cópias: as edições ficam no clone.
 	clone := *f
 	clone.Objects = make([]*MappedTextObject[T], len(f.Objects))
 	for i, obj := range f.Objects {
 		clone.Objects[i] = obj.cloneSlots()
 	}
-	if err := GenericApply[T](&clone, rows); err != nil {
+	if err := apply(&clone, rows); err != nil {
 		return nil, err
 	}
 	var keyed []datastore.IGlobalKeyedString
@@ -259,14 +261,26 @@ func (f *File[T]) rebuildEditedStringTable(rows []dto.TextRow, languageCode stri
 	), nil
 }
 
-// MeasureStringTable aplica as rows em memória e devolve o tamanho da string
-// table reconstruída (dedup inclusive) no idioma pedido, sem gravar nada.
-// Espelha o encodeLanguage byte a byte — sem gerar os bytes, medindo apenas.
+// MeasureStringTable aplica as rows em memória via GenericApply e devolve o
+// tamanho da string table reconstruída (dedup inclusive) no idioma pedido,
+// sem gravar nada. Espelha o encodeLanguage byte a byte — sem gerar os
+// bytes, medindo apenas.
 func (f *File[T]) MeasureStringTable(rows []dto.TextRow, languageCode string) (int, error) {
+	return f.MeasureStringTableWith(rows, languageCode, GenericApply[T])
+}
+
+// MeasureStringTableWith é o MeasureStringTable com o applier injetado:
+// políticas de domínio com naming próprio aplicam com o mesmo Apply do
+// fluxo real, garantindo que a medição reflita exatamente o que seria
+// gravado.
+func (f *File[T]) MeasureStringTableWith(rows []dto.TextRow, languageCode string, apply func(*File[T], []dto.TextRow) error) (int, error) {
 	if err := validateLanguage(languageCode); err != nil {
 		return 0, err
 	}
-	strtab, err := f.rebuildEditedStringTable(rows, languageCode)
+	if apply == nil {
+		apply = GenericApply[T]
+	}
+	strtab, err := f.rebuildEditedStringTable(rows, languageCode, apply)
 	if err != nil {
 		return 0, err
 	}

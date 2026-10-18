@@ -103,7 +103,11 @@ func apply(version common.GameVersion, entry dto.FileEntry) error {
 }
 
 // measure aplica as rows em memória e devolve o tamanho da string table
-// reconstruída (dedup inclusive). Sem gravar nada.
+// reconstruída (dedup inclusive). Sem gravar nada. As rows de w_name são
+// rotuladas pelo dono ("Tidus.Standard") — o medidor genérico não as
+// entende, por isso o MESMO Apply do fluxo real é injetado: a medição
+// reflete exatamente o que seria gravado (inclusive a replicação do
+// Standard na leitura Simplified ausente).
 func measure(version common.GameVersion, _ string, rows []dto.TextRow) (int, error) {
 	if version != common.GameVersionFFX {
 		return 0, fmt.Errorf("w_name: versao %s nao suportada (FFX only)", version)
@@ -115,5 +119,5 @@ func measure(version common.GameVersion, _ string, rows []dto.TextRow) (int, err
 	if err != nil {
 		return 0, err
 	}
-	return file.MeasureStringTable(rows, common.DefaultLocalization)
+	return file.MeasureStringTableWith(rows, common.DefaultLocalization, Apply)
 }
