@@ -1,22 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { loggedToast as toast } from "@/lib/ffx/toast-logged";
 import { FolderOpen, X } from "lucide-react";
+import { SelectDirectory, SelectGameExeFile } from "@/bindings/ffxresources/configservice";
 import {
-  GetEnableMods,
-  GetGameExeLocation,
-  GetGameFilesLocation,
-  GetTranslateLocation,
-  SelectDirectory,
-  SelectGameExeFile,
-  SetEnableMods,
-  SetGameExeLocation,
-  SetGameLocation,
-  SetTranslateLocation,
-} from "@/bindings/ffxresources/configservice";
-import { Events } from "@wailsio/runtime";
-import { invalidateVbfCache } from "@/lib/ffx/vbf";
+  commitEnableMods,
+  commitGameExeLocation,
+  commitGameLocation,
+  commitTranslateLocation,
+  useAppConfig,
+} from "@/lib/ffx/config-store";
 import {
   Dialog,
   DialogContent,
@@ -30,23 +24,63 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-type LocationKey = "GameFilesLocation" | "TranslateLocation";
+type FieldKey = "gameExe" | "gameFiles" | "translate";
+type DirectoryKey = Extract<FieldKey, "gameFiles" | "translate">;
 
-interface DirectoryInput {
-  key: LocationKey;
+interface DirectoryField {
+  key: DirectoryKey;
   label: string;
   hint: string;
   dialogTitle: string;
-  value: string;
 }
+
+/** Commits por campo — actions do store (otimista + eco do backend). */
+const COMMIT: Record<DirectoryKey, (path: string) => Promise<void>> = {
+  gameFiles: commitGameLocation,
+  translate: commitTranslateLocation,
+};
+
+const DIRECTORY_FIELDS: DirectoryField[] = [
+  {
+    key: "gameFiles",
+    label: "Arquivos originais do jogo",
+    hint: "Padrão: <execução>/data",
+    dialogTitle: "Selecione a pasta dos arquivos originais do jogo",
+  },
+  {
+    key: "translate",
+    label: "Arquivos traduzidos (reimport)",
+    hint: "Padrão: <jogo>/mods/translated",
+    dialogTitle: "Selecione a pasta dos arquivos traduzidos",
+  },
+];
+
+/**
+ * Par LITERAL aceito pelo backend (NormalizeGameExe: FFX.exe/FFX-2.exe,
+ * sem curinga) — espelhado aqui só para feedback imediato na digitação;
+ * a decisão final é sempre do eco: o backend recusa em silêncio e o
+ * store devolve o input ao valor persistido.
+ */
+const GAME_EXE_NAMES = new Set(["ffx.exe", "ffx-2.exe"]);
+
+/** Nome do arquivo de um caminho (Windows ou POSIX). */
+const basename = (p: string): string => p.split(/[\\/]/).pop() ?? "";
 
 /**
  * Diálogo de diretórios: apenas gamefiles e translated (fonte do
  * reimport, <game>/mods/translated por padrão). Extract/reimport são
  * internos do backend e não aparecem aqui.
- * Toda mudança é aplicada imediatamente (ao confirmar o campo ou
- * escolher no seletor): o backend persiste no config.json e re-emite
- * o valor + Refresh_Tree.
+ *
+ * Os valores vêm do store de config (useAppConfig): o backend persiste
+ * cada mudança no config.json e re-emite o snapshot completo (evento
+ * AppConfigChanged), então o store — e os inputs com ele — refletem a
+ * verdade NA HORA, inclusive a escolha do seletor nativo, sem fechar e
+ * reabrir o modal.
+ *
+ * Os inputs são RASCUNHOS livres sobre o store: digitar, colar e apagar
+ * só editam o draft local (nunca o backend por tecla); o commit acontece
+ * no blur/Enter/seletor. Enquanto o campo tem foco o eco não o
+ * sobrescreve — o draft protege o texto em edição.
  */
 export function ConfigDialog({
   open,
@@ -55,106 +89,100 @@ export function ConfigDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [gameDirectory, setGameDirectory] = useState("");
-  const [translatedDirectory, setTranslatedDirectory] = useState("");
-  const [gameExe, setGameExe] = useState("");
-  const [enableMods, setEnableMods] = useState(true);
+  const config = useAppConfig();
 
-  useEffect(() => {
-    if (!open) return;
-    GetGameFilesLocation()
-      .then((v) => setGameDirectory(v ?? ""))
-      .catch(notify);
-    GetTranslateLocation()
-      .then((v) => setTranslatedDirectory(v ?? ""))
-      .catch(notify);
-    GetGameExeLocation()
-      .then((v) => setGameExe(v ?? ""))
-      .catch(notify);
-    GetEnableMods()
-      .then((v) => setEnableMods(Boolean(v)))
-      .catch(notify);
-  }, [open]);
+  // Draft do campo em edição — só existe a partir da primeira tecla/colar
+  // (o valor exibido é o draft quando há um, senão o valor do store).
+  const [editing, setEditing] = useState<{ key: FieldKey; text: string } | null>(null);
 
-  const applyEnableMods = async (checked: boolean) => {
-    const previous = enableMods;
-    setEnableMods(checked);
-    try {
-      await SetEnableMods(checked);
-    } catch (error) {
-      setEnableMods(previous);
-      notify(error);
-    }
+  // Commits em voo (Enter ainda não resolvido no blur seguinte: o mesmo
+  // caminho não é persistido duas vezes).
+  const pending = useRef(new Set<FieldKey>());
+
+  const storeValue: Record<FieldKey, string> = {
+    gameExe: config.gameExeLocation,
+    gameFiles: config.gameFilesLocation,
+    translate: config.translateLocation,
   };
 
-  const inputs: DirectoryInput[] = [
-    {
-      key: "GameFilesLocation",
-      label: "Arquivos originais do jogo",
-      hint: "Padrão: <execução>/data",
-      dialogTitle: "Selecione a pasta dos arquivos originais do jogo",
-      value: gameDirectory,
-    },
-    {
-      key: "TranslateLocation",
-      label: "Arquivos traduzidos (reimport)",
-      hint: "Padrão: <jogo>/mods/translated",
-      dialogTitle: "Selecione a pasta dos arquivos traduzidos",
-      value: translatedDirectory,
-    },
-  ];
+  const shownValue = (key: FieldKey): string =>
+    editing?.key === key ? editing.text : storeValue[key];
 
-  const apply = async (item: DirectoryInput, raw: string) => {
-    const path = (raw ?? "").trim();
-    if (!path) {
-      toast("Informe um diretório válido.", { duration: 3000 });
-      return;
-    }
-    if (path === item.value) return;
-    try {
-      if (item.key === "GameFilesLocation") {
-        await SetGameLocation(path);
-      } else {
-        await SetTranslateLocation(path);
-      }
-    } catch (error) {
-      notify(error);
-    }
-  };
-
-  const selectDirectory = async (item: DirectoryInput) => {
-    try {
-      const path = await SelectDirectory(item.dialogTitle);
-      if (path) apply(item, path);
-    } catch (error) {
-      notify(error);
-    }
+  const runCommit = (key: FieldKey, promise: Promise<void>): Promise<void> => {
+    pending.current.add(key);
+    return promise.finally(() => pending.current.delete(key));
   };
 
   /**
-   * O executável é um ARQUIVO (fica fora do map de Locations) e é dele que
-   * saem as raízes dos .vbf (pasta do exe e pasta data/). Commite só no
-   * Enter/blur/seletor: gravar a cada tecla fecharia os containers abertos
-   * a cada passo. O backend re-emite o valor e recarrega a árvore.
+   * Commit de campo: direto para os actions do store (otimista + eco).
+   * Regras por campo:
+   *  - executável vazio é commit VÁLIDO (limpar a config desliga as
+   *    raízes VBF da sidebar); caminho fora de FFX.exe/FFX-2.exe é
+   *    recusado com toast e o campo volta ao persistido;
+   *  - diretório vazio NÃO comita: no Enter avisa com toast, no blur
+   *    reverte em silêncio ao valor do store (apagar/colar seguem
+   *    livres durante a edição).
    */
-  const commitExe = async (raw: string) => {
+  const commitField = (key: FieldKey, raw: string, viaEnter: boolean): void => {
     const path = (raw ?? "").trim();
-    if (path === gameExe) return;
-    setGameExe(path);
-    // O executável mudou: o cache local de diretórios/entradas do .vbf
-    // aponta para containers que podem nem existir mais.
-    invalidateVbfCache();
+    if (key === "gameExe") {
+      if (path !== "" && !GAME_EXE_NAMES.has(basename(path).toLowerCase())) {
+        toast.error(
+          "Escolha um dos executáveis do jogo: FFX.exe ou FFX-2.exe.",
+          { duration: 4000 }
+        );
+        if (viaEnter) setEditing(null); // Enter: reverte ao persistido
+        return; // blur reverte sozinho (editing já saiu)
+      }
+      void runCommit(key, commitGameExeLocation(path));
+      return;
+    }
+    if (path === "") {
+      if (viaEnter) {
+        toast("Informe um diretório válido.", { duration: 3000 });
+        setEditing(null); // reverte o campo vazio ao valor do store
+      }
+      return;
+    }
+    if (path === storeValue[key]) return;
+    void runCommit(key, COMMIT[key](path));
+  };
+
+  const onFieldBlur = (key: FieldKey): void => {
+    const draft = editing?.key === key ? editing.text : null;
+    if (draft === null) return; // nunca foi editado: nada a commitar
+    setEditing(null);
+    if (pending.current.has(key)) return; // Enter ainda em voo
+    commitField(key, draft, false);
+  };
+
+  const onFieldEnter = (key: FieldKey): void => {
+    const draft = editing?.key === key ? editing.text : null;
+    if (draft === null) return; // sem edição não há o que confirmar
+    if (pending.current.has(key)) return;
+    commitField(key, draft, true);
+  };
+
+  const selectDirectory = async (field: DirectoryField): Promise<void> => {
     try {
-      await SetGameExeLocation(path);
+      const path = await SelectDirectory(field.dialogTitle);
+      if (!path) return; // cancelado
+      // A escolha substitui o rascunho digitado — o store assume o novo
+      // caminho na hora (commit otimista) e o eco confirma.
+      setEditing(null);
+      void runCommit(field.key, COMMIT[field.key](path));
     } catch (error) {
       notify(error);
     }
   };
 
-  const selectExe = async () => {
+  const selectExe = async (): Promise<void> => {
     try {
+      // "" = cancelado ou inválido (o seletor do backend já avisou).
       const path = await SelectGameExeFile();
-      if (path) commitExe(path);
+      if (!path) return;
+      setEditing(null);
+      void runCommit("gameExe", commitGameExeLocation(path));
     } catch (error) {
       notify(error);
     }
@@ -176,22 +204,27 @@ export function ConfigDialog({
               <Label htmlFor="GameExeLocation">Executável do jogo</Label>
               <Input
                 id="GameExeLocation"
-                value={gameExe}
+                value={shownValue("gameExe")}
                 placeholder="FFX.exe ou FFX-2.exe"
-                onChange={(e) => setGameExe(e.target.value)}
-                onBlur={() => commitExe(gameExe)}
+                onChange={(e) => setEditing({ key: "gameExe", text: e.target.value })}
+                onBlur={() => onFieldBlur("gameExe")}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") commitExe(gameExe);
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    onFieldEnter("gameExe");
+                  }
                 }}
               />
               <p className="text-xs text-muted-foreground">
                 Dele saem as raízes dos containers <code>.vbf</code> (pasta do
                 exe e pasta <code>data/</code>) exibidos no fim da árvore.
+                Vazio desliga as raízes VBF.
               </p>
             </div>
             <Button
               variant="ghost"
               size="icon"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => void selectExe()}
               aria-label="Selecionar o executável do jogo"
               title="Procurar arquivo"
@@ -199,26 +232,30 @@ export function ConfigDialog({
               <FolderOpen size={20} />
             </Button>
           </div>
-          {inputs.map((item) => (
-            <div key={item.key} className="flex items-center gap-2">
+          {DIRECTORY_FIELDS.map((field) => (
+            <div key={field.key} className="flex items-center gap-2">
               <div className="grid flex-1 gap-1.5">
-                <Label htmlFor={item.key}>{item.label}</Label>
+                <Label htmlFor={field.key}>{field.label}</Label>
                 <Input
-                  id={item.key}
-                  value={item.value}
-                  onChange={(e) => apply(item, e.target.value)}
+                  id={field.key}
+                  value={shownValue(field.key)}
+                  onChange={(e) => setEditing({ key: field.key, text: e.target.value })}
+                  onBlur={() => onFieldBlur(field.key)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter")
-                      apply(item, (e.target as HTMLInputElement).value);
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      onFieldEnter(field.key);
+                    }
                   }}
                 />
-                <p className="text-xs text-muted-foreground">{item.hint}</p>
+                <p className="text-xs text-muted-foreground">{field.hint}</p>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => void selectDirectory(item)}
-                aria-label={`Selecionar ${item.label}`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => void selectDirectory(field)}
+                aria-label={`Selecionar ${field.label}`}
                 title="Procurar pasta"
               >
                 <FolderOpen size={20} />
@@ -230,8 +267,8 @@ export function ConfigDialog({
         <div className="flex items-start gap-2 pt-2">
           <Checkbox
             id="EnableMods"
-            checked={enableMods}
-            onCheckedChange={(v) => void applyEnableMods(Boolean(v))}
+            checked={config.enableMods}
+            onCheckedChange={(v) => void commitEnableMods(Boolean(v))}
           />
           <div className="grid gap-1 leading-none">
             <Label htmlFor="EnableMods" className="cursor-pointer">
@@ -257,9 +294,13 @@ export function ConfigDialog({
   );
 }
 
+/**
+ * Erros do seletor nativo: toast com cópia para o log (loggedToast.error
+ * já escreve no log do backend via WriteLog — não emitir "Notify", que
+ * circularia de volta ao ProgressNotifier).
+ */
 function notify(error: unknown): void {
   const message =
     error instanceof Error ? error.message : String(error ?? "Erro");
   toast.error(message, { duration: 4000 });
-  Events.Emit("Notify", { severity: "error", message });
 }
