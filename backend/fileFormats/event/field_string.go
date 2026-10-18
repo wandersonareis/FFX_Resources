@@ -93,53 +93,38 @@ func FromFieldStringData(bytes []byte, charset string, version common.GameVersio
 	return strings, nil
 }
 
+// RebuildFieldStrings devolve o CONTEUDO da tabela (a payload depois dos
+// cabecalhos). O layout (field_layout.go) decide o que sai e em que ordem —
+// dedupe de armazenamento e linha vazia com terminador proprio — e a
+// conversao string para bytes fica so com o converter. Os offsets gravados
+// nas linhas sao os que a montagem do binario le para escrever cabecalhos.
 func RebuildFieldStrings(strings []*FieldString, charset string, version common.GameVersion) []byte {
 	count := len(strings)
 	contentOffset := count * 8
-	offsetMap := make(map[string]int)
-	var buf bytes.Buffer
 
-	for _, fieldString := range strings {
-		regularString := fieldString.GetRegularString()
-		fieldString.RegularChoices = converter.GetChoicesInString(regularString)
-
-		// Caminho unico do texto: o FillByteList grava conteudo E terminador
-		// (vazio = so o terminador, como no original). O dedupe por conteudo
-		// so emite bytes na PRIMEIRA ocorrencia — no hit o offset reaproveita
-		// a string ja gravada. Dedupe nao cobre o vazio: todas as linhas
-		// vazias apontariam para o MESMO terminador, e apontar para
-		// contentOffset aliasaria a primeira string.
-		if offset, exists := offsetMap[regularString]; regularString != "" && exists {
-			fieldString.RegularOffset = contentOffset + offset
-		} else {
-			fieldString.RegularOffset = contentOffset + buf.Len()
-			if regularString != "" {
-				offsetMap[regularString] = buf.Len()
-			}
-			converter.FillByteList(regularString, &buf, charset, version)
-		}
-
-		simplifiedString := fieldString.GetSimplifiedString()
-		fieldString.SimplifiedChoices = converter.GetChoicesInString(simplifiedString)
-
-		// Os dois lados vazios: um unico terminador serve os dois offsets (o
-		// original grava os dois iguais) — sem o FillByteList do simplified.
-		if regularString == "" && simplifiedString == "" {
-			fieldString.SimplifiedOffset = fieldString.RegularOffset
-			continue
-		}
-
-		if offset, exists := offsetMap[simplifiedString]; simplifiedString != "" && exists {
-			fieldString.SimplifiedOffset = contentOffset + offset
-		} else {
-			fieldString.SimplifiedOffset = contentOffset + buf.Len()
-			if simplifiedString != "" {
-				offsetMap[simplifiedString] = buf.Len()
-			}
-			converter.FillByteList(simplifiedString, &buf, charset, version)
-		}
+	regular := make([]string, len(strings))
+	simplified := make([]string, len(strings))
+	for i, fs := range strings {
+		regular[i] = fs.GetRegularString()
+		simplified[i] = fs.GetSimplifiedString()
+		fs.RegularChoices = converter.GetChoicesInString(regular[i])
+		fs.SimplifiedChoices = converter.GetChoicesInString(simplified[i])
 	}
 
+	// O tamanho em bytes so existe apos a gravacao: o layout devolve indices
+	// de emissao e os offsets nascem do inicio de cada emissao no buffer.
+	reg, simp, emit := fieldLayout(regular, simplified)
+
+	var buf bytes.Buffer
+	starts := make([]int, len(emit))
+	for i, t := range emit {
+		starts[i] = buf.Len()
+		converter.FillByteList(t, &buf, charset, version)
+	}
+	for i, fs := range strings {
+		fs.RegularOffset = contentOffset + starts[reg[i]]
+		fs.SimplifiedOffset = contentOffset + starts[simp[i]]
+	}
 	return buf.Bytes()
 }
 
