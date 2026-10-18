@@ -103,26 +103,39 @@ func RebuildFieldStrings(strings []*FieldString, charset string, version common.
 		regularString := fieldString.GetRegularString()
 		fieldString.RegularChoices = converter.GetChoicesInString(regularString)
 
-		if regularString == "" {
-			fieldString.RegularOffset = contentOffset
-		} else if offset, exists := offsetMap[regularString]; exists {
+		// Caminho unico do texto: o FillByteList grava conteudo E terminador
+		// (vazio = so o terminador, como no original). O dedupe por conteudo
+		// so emite bytes na PRIMEIRA ocorrencia — no hit o offset reaproveita
+		// a string ja gravada. Dedupe nao cobre o vazio: todas as linhas
+		// vazias apontariam para o MESMO terminador, e apontar para
+		// contentOffset aliasaria a primeira string.
+		if offset, exists := offsetMap[regularString]; regularString != "" && exists {
 			fieldString.RegularOffset = contentOffset + offset
 		} else {
 			fieldString.RegularOffset = contentOffset + buf.Len()
-			offsetMap[regularString] = buf.Len()
+			if regularString != "" {
+				offsetMap[regularString] = buf.Len()
+			}
 			converter.FillByteList(regularString, &buf, charset, version)
 		}
 
 		simplifiedString := fieldString.GetSimplifiedString()
 		fieldString.SimplifiedChoices = converter.GetChoicesInString(simplifiedString)
 
-		if simplifiedString == "" {
-			fieldString.SimplifiedOffset = contentOffset
-		} else if offset, exists := offsetMap[simplifiedString]; exists {
+		// Os dois lados vazios: um unico terminador serve os dois offsets (o
+		// original grava os dois iguais) — sem o FillByteList do simplified.
+		if regularString == "" && simplifiedString == "" {
+			fieldString.SimplifiedOffset = fieldString.RegularOffset
+			continue
+		}
+
+		if offset, exists := offsetMap[simplifiedString]; simplifiedString != "" && exists {
 			fieldString.SimplifiedOffset = contentOffset + offset
 		} else {
 			fieldString.SimplifiedOffset = contentOffset + buf.Len()
-			offsetMap[simplifiedString] = buf.Len()
+			if simplifiedString != "" {
+				offsetMap[simplifiedString] = buf.Len()
+			}
 			converter.FillByteList(simplifiedString, &buf, charset, version)
 		}
 	}
