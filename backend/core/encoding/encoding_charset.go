@@ -1,5 +1,7 @@
 package ffxencoding
 
+import "ffxresources/backend/common"
+
 // localizationMap mapeia só os idiomas com tabela de encoding dedicada.
 // O jogo tem jp, en, fr, sp, de, it, kr, ch (e cn carregado como charset),
 // mas as tabelas sjistbl existem apenas para ch/jp/kr/us: os idiomas
@@ -32,4 +34,21 @@ func GetCharsetForLanguage(languageCode string) string {
 		return "default"
 	}
 	return "us"
+}
+
+// ResolveCharset devolve o bucket de charset para o parâmetro que os codecs
+// de texto recebem: um NOME de charset válido (us, default, cn, ...) passa
+// direto; um código de idioma (sp, fr, de, it, en) é resolvido como sempre.
+//
+// Sem isso, "default" — o charset de sp/fr/de/it — decodificava pela tabela
+// us: o font desses idiomas tem o trema intacto (alemão usa ä/ö/ü de
+// verdade), e o texto decodificava com o til do font us. O encode já usava
+// o bucket direto; só o decode re-resolvia.
+func ResolveCharset(localization string) string {
+	for _, cs := range common.Charsets {
+		if localization == cs {
+			return localization
+		}
+	}
+	return GetCharsetForLanguage(localization)
 }

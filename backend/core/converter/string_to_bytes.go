@@ -213,10 +213,9 @@ func ParseCommand(runes []rune, startIndex int) []uint {
 	}
 
 	cmd := string(runes[startIndex+1 : end])
-	if strings.Contains(cmd, "??}") {
-		fmt.Printf("Invalid command format: %s\n", cmd)
-		return nil
-	}
+	// Sem o guard de "??}": o nome no {PC:xx:??} é display (o encode usa o
+	// índice), e os fallbacks ?? dos tokens de byte duplo re-codificam pelos
+	// bytes do token. Tag desconhecida continua nil no fall-through do switch.
 
 	switch {
 	case cmd == "PAUSE":
