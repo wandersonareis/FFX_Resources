@@ -186,8 +186,12 @@ const constsComment = `// Tabelas do encoding customizado do jogo ("sjistbl"). C
 `
 
 const selector = `// getTable seleciona a tabela embutida para a versão e charset indicados.
-// lastmiss usa as tabelas do ffx2 (mesma árvore de encoding).
+// eternalcalm usa as tabelas do ffx e lastmiss as do ffx2 (mesmas árvores
+// de encoding).
 func getTable(version common.GameVersion, charset string) (string, bool) {
+	if version == common.GameVersionEternalCalm {
+		version = common.GameVersionFFX
+	}
 	if version == common.GameVersionLastMiss {
 		version = common.GameVersionFFX2
 	}
