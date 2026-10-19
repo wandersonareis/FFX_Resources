@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -26,6 +27,10 @@ import (
 //	0xA6: o font não tem a com til; o glifo do slot do Ä é Ã (troca feita
 //	      no font do idioma us — cada idioma tem sua própria fonte).
 //	0xBD: idem, minúsculo (ä → ã).
+//	0xB4: idem para o O (Ö → Õ): o font us é a versão criada para o
+//	      português — as vogais com til vivem nos slots do trema, que não
+//	      existe em pt-BR. Complementa o par 0xA6/0xBD.
+//	0xCB: idem, minúsculo (ö → õ).
 //	0x3C: font desenha aspas RETAS; a tabela diz ” (curva). Com rune reto
 //	      aqui, ” fica só em 0x95 (glifo inclinado) — sem duplicata.
 //	0x41: font desenha apóstrofo reto; tabela diz ’ — mata duplicata com
@@ -40,13 +45,15 @@ var usSlotFixes = map[uint]rune{
 	0x97: 'œ',
 	0xA6: 'Ã',
 	0xBD: 'ã',
+	0xB4: 'Õ',
+	0xCB: 'õ',
 	0x3C: '"',
 	0x41: '\'',
 }
 
 // usDefaultSlotFixes devolve as correções da tabela default: as mesmas do us
-// EXCETO a troca a-trema→a-til (0xA6/0xBD) — os idiomas sp/fr/de/it têm fonts
-// próprios com o glifo do a-trema intacto.
+// EXCETO as trocas trema→til (0xA6/0xBD do A e 0xB4/0xCB do O) — os idiomas
+// sp/fr/de/it têm fonts próprios com o glifo do trema intacto.
 func usDefaultSlotFixes() map[uint]rune {
 	m := make(map[uint]rune, len(usSlotFixes))
 	for code, to := range usSlotFixes {
@@ -54,6 +61,8 @@ func usDefaultSlotFixes() map[uint]rune {
 	}
 	delete(m, 0xA6)
 	delete(m, 0xBD)
+	delete(m, 0xB4)
+	delete(m, 0xCB)
 	return m
 }
 
@@ -121,9 +130,15 @@ func main() {
 		runes := []rune(str)
 		fixed := fmt.Sprintf(" // sem correções (%d slots)", len(runes))
 		if s.fixes != nil {
+			codes := make([]int, 0, len(s.fixes))
+			for code := range s.fixes {
+				codes = append(codes, int(code))
+			}
+			sort.Ints(codes)
 			applied := ""
-			for code, to := range s.fixes {
-				i := int(code) - 0x30
+			for _, code := range codes {
+				to := s.fixes[uint(code)]
+				i := code - 0x30
 				if i < 0 || i >= len(runes) {
 					panic(fmt.Sprintf("%s: slot 0x%02X fora da tabela", s.name, code))
 				}
