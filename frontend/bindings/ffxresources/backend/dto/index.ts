@@ -12,6 +12,7 @@ export {
     ImageImportResult,
     ImportBatch,
     ImportEntryInfo,
+    ImportRowIssue,
     ImportSummary,
     ImportUsage,
     Metadata,

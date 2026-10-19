@@ -20,9 +20,10 @@ package services
 //     compartilhado por todas as entradas) → summary.Errors (modal
 //     desabilita Importar).
 //
-// NÃO bloqueiam, e nem entram no resumo: hash não encontrado e tag de
-// controle divergente. A row é pulada, o resto importa, e o problema sai
-// só no log (LogWarning com hash e texto) para o revisor corrigir.
+// NÃO bloqueiam: hash não encontrado e tag de controle divergente. A row é
+// pulada e o resto importa; o texto completo sai no log (LogWarning) e o
+// resumo carrega o espelho curto em Skipped — o modal de detalhes mostra
+// ao revisor o que ficou de fora (botão pulsante) sem poluir a confirmação.
 //
 // Capacidade uint16 SEMPRE após a conversão das tags de controle em bytes:
 //   - events: rebuild real em cópias (RebuildFieldStrings deduplica offsets);
@@ -185,7 +186,44 @@ const (
 	logImportUnmatched = "import %s: hash não encontrado — hash %q texto %q"
 	logImportTagLost   = "import %s: tag de controle divergente — hash %q texto %q %v"
 	logImportInserted  = "import %s: %d/%d linha(s) inserida(s)"
+
+	// Reasons do ImportRowIssue: rótulos curtos exibidos no modal de
+	// detalhes — o mesmo diagnóstico dos LogWarning, sem o texto longo.
+	reasonUnmatched = "hash não encontrado"
+	reasonTagLost   = "tag de controle divergente"
 )
+
+// truncateRowIssue encurta o texto da row para o resumo do modal: linhas de
+// tutorial passam fácil de 200 runes e o detalhe inteiro vive no log. Corte
+// por rune (nunca quebra UTF-8) com elipse explícita quando há mais.
+func truncateRowIssue(s string) string {
+	const max = 120
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return string(runes[:max]) + "…"
+}
+
+// importRowAlreadyApplied diz se a row não-casada já está satisfeita no
+// binário: aplicar o texto do artefato sobre a row atual seria um no-op. O
+// teste é o MESMO do merge — keepStorePadding(currente, artefato) == currente
+// — porque o import grava exatamente keepStorePadding(row vigente, texto do
+// artefato). O hash não casa porque ele aponta o INGLÊS do export e o binário
+// já carrega a tradução da row (re-import do mesmo artefato sobre si mesmo
+// cai aqui). Não é revisável (nada ficou de fora), então não entra em
+// Skipped: o botão de detalhes só pulsa quando há algo para fazer.
+func importRowAlreadyApplied(se dto.FileEntry, r dto.TextRow) bool {
+	if r.Index < 0 || r.Index >= len(se.Rows) {
+		return false
+	}
+	cur := se.Rows[r.Index]
+	if cur.Name != r.Name {
+		return false
+	}
+	t := usText(r)
+	return t != "" && keepStorePadding(usText(cur), t) == usText(cur)
+}
 
 // rowPair é o casamento entre uma row do artefato e a row da store. A
 // posição vem SEMPRE da store; o texto novo vem do artefato.
@@ -868,6 +906,7 @@ func (s *MetadataService) prepareImport(path string, version common.GameVersion)
 		Entries:     make([]dto.ImportEntryInfo, 0, len(imported)),
 		Usages:      make([]dto.ImportUsage, 0, len(known)),
 		Warnings:    []string{},
+		Skipped:     make([]dto.ImportRowIssue, 0),
 		Errors:      []string{},
 	}
 
@@ -901,13 +940,40 @@ func (s *MetadataService) prepareImport(path string, version common.GameVersion)
 		info.ChangedTexts = m.changed
 		totalChanged += m.changed
 
-		// hash não encontrado e tag divergente: log só, nunca resumo.
+		// hash não encontrado e tag divergente: LogWarning mantém o texto
+		// COMPLETO no log; Skipped espelha a row no resumo do modal (texto
+		// truncado) para o revisor ver o que ficou fora sem abrir o log.
+		// Row JÁ APLICADA (re-import: o binário já carrega o texto que ela
+		// pede) é no-op — não entra em Skipped para o pulse não gritar por
+		// nada quando o arquivo é importado de novo sobre si mesmo.
+		skippedRows := 0
 		for _, r := range m.unmatched {
+			if importRowAlreadyApplied(se, r) {
+				common.LogVerbose("import %s: row já aplicada — hash %q", id, usHash(r))
+				continue
+			}
 			common.LogWarning(logImportUnmatched, id, usHash(r), usText(r))
+			skippedRows++
+			summary.Skipped = append(summary.Skipped, dto.ImportRowIssue{
+				ID:     id,
+				Index:  r.Index,
+				Hash:   usHash(r),
+				Text:   truncateRowIssue(usText(r)),
+				Reason: reasonUnmatched,
+			})
 		}
 		for _, v := range m.tagLost {
 			common.LogWarning(logImportTagLost, id, usHash(v.row), usText(v.row), v.issues)
+			skippedRows++
+			summary.Skipped = append(summary.Skipped, dto.ImportRowIssue{
+				ID:     id,
+				Index:  v.row.Index,
+				Hash:   usHash(v.row),
+				Text:   truncateRowIssue(usText(v.row)),
+				Reason: reasonTagLost + fmt.Sprint(v.issues),
+			})
 		}
+		info.SkippedRows = skippedRows
 		common.LogInfo(logImportInserted, id, m.inserted, m.candidates)
 
 		valid[id] = se

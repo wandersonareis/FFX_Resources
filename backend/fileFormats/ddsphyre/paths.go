@@ -150,6 +150,9 @@ type Resolved struct {
 	// DDSPath/PNGPath apontam para as cópias já extraídas ("" se não há).
 	DDSPath string
 	PNGPath string
+	// AssetPath é o caminho interno embutido no container (info de
+	// exibição; vem do .dds.phyre, nunca de disco).
+	AssetPath string
 	// InMods indica que o .dds.phyre servido veio de mods/.
 	InMods bool
 }
@@ -199,6 +202,7 @@ func ResolveFrom(version common.GameVersion, id string, originalSrc common.FileS
 		Height:       t.Height,
 		MipmapCount:  t.MipmapCount,
 		MaxMipmapLvl: t.MaxMipmapLevel,
+		AssetPath:    t.AssetPath,
 		Texture:      t,
 		InMods:       inMods,
 	}

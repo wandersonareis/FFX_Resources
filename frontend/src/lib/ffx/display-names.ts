@@ -99,6 +99,85 @@ export const HELP_ENTRY_LABELS: Record<string, string> = {
 /** Prefixo da raiz da árvore de texturas (o resto vira a categoria). */
 export const IMAGE_TREE_PREFIX = 'gamedata/ps3data/';
 
+/**
+ * Códigos de idioma que as pastas da árvore de texturas usam (ps3data):
+ * `event/es`, `help_es`, `btl_ch`, `map_2d_ui_us`… `inter` (internacional)
+ * não é idioma e fica de fora por não estar na lista.
+ */
+const IMAGE_LANG_CODES = new Set([
+  'ch',
+  'cn',
+  'de',
+  'es',
+  'fr',
+  'it',
+  'jp',
+  'kr',
+  'sp',
+  'us',
+]);
+
+/** Código de idioma → nome de exibição (PT-BR). */
+export const LANGUAGE_LABELS: Record<string, string> = {
+  ch: 'Chinês',
+  cn: 'Chinês',
+  de: 'Alemão',
+  es: 'Espanhol',
+  fr: 'Francês',
+  it: 'Italiano',
+  jp: 'Japonês',
+  kr: 'Coreano',
+  sp: 'Espanhol',
+  us: 'Inglês',
+};
+
+/**
+ * Idioma da PASTA onde a textura está — só para a linha "Idioma" do painel
+ * de informações (cosmético: o valor nunca volta para o backend nem para o
+ * encode).
+ *
+ * Fonte preferida é o caminho interno embutido no container
+ * (`ImageEntry.assetPath`, ex.: `PS3Data/help_es/helpgra/help10.dds`), que
+ * é o caminho que o jogo lê na leitura e vale até para um .dds.phyre
+ * avulso, aberto sem árvore de diretórios; sem ele (container raro, que
+ * só traz o basename), cai no id da árvore.
+ *
+ * Em qualquer das fontes: ignora o arquivo (último segmento — o `d3d11` do
+ * id tem 5 letras e nunca casa) e aceita o código quando a pasta É o
+ * código (`event/es`) ou termina com `_XX` (`help_es`, `btl_ch`). O `_`
+ * que separa deixa de fora nomes só parecidos: `azit`, `newkit`,
+ * `images`, `mon_boku`, `help_inter`.
+ *
+ * Devolve o código ("es") ou null quando o caminho não declara idioma —
+ * aí a linha nem aparece.
+ */
+export function imageLanguage(
+  assetPath?: string | null,
+  id?: string | null
+): string | null {
+  for (const source of [assetPath, id]) {
+    if (!source) continue;
+    const found = languageOfPath(source);
+    if (found) return found;
+  }
+  return null;
+}
+
+/** Varre as PASTAS de um caminho (assetPath ou id) atrás do código. */
+function languageOfPath(path: string): string | null {
+  const segments = path.split(/[\\/]/);
+  for (const segment of segments.slice(0, -1)) {
+    if (segment.length === 2 && IMAGE_LANG_CODES.has(segment)) {
+      return segment;
+    }
+    const tail = segment.slice(-2);
+    if (segment.endsWith(`_${tail}`) && IMAGE_LANG_CODES.has(tail)) {
+      return tail;
+    }
+  }
+  return null;
+}
+
 export function resolveEntryLabel(kind: EntryKind, id: string): string {
   if (kind === 'objects') {
     return OBJECTS_LABELS[id] ?? id;

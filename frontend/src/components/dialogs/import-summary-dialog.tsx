@@ -1,9 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { ScrollText } from 'lucide-react';
 import * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { EntryKind, KIND_LABELS, resolveEntryLabel } from '@/lib/ffx/display-names';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { cn } from 'cn';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +16,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Table,
   TableBody,
@@ -22,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { ImportSummaryDetailsDialog } from '@/components/dialogs/import-summary-details-dialog';
 
 interface ImportSummaryDialogProps {
   summary: dto.ImportSummary | null;
@@ -36,6 +39,10 @@ interface ImportSummaryDialogProps {
  * por entrada (índices vs store), uso do limite binário (uint16), avisos e
  * erros. Entradas com problema são ignoradas (aviso) e o import segue com as
  * demais; só um bloqueador global desabilita o botão Importar.
+ *
+ * Rows puladas (hash não encontrado / tag divergente) não bloqueiam nada e
+ * ficam no modal de DETALHES — o botão que o abre pulsa quando há algo para
+ * ver; num import limpo ele fica quieto.
  */
 export function ImportSummaryDialog({
   summary,
@@ -44,10 +51,20 @@ export function ImportSummaryDialog({
   onOpenChange,
   onConfirm,
 }: ImportSummaryDialogProps) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  // O componente fica montado (open é prop) — sem isto o detalhe reabriria
+  // sozinho na PRÓXIMA importação depois de ficar aberto numa sessão anterior.
+  useEffect(() => {
+    if (!open) setDetailsOpen(false);
+  }, [open]);
   const entries = summary?.entries ?? [];
   const usages = summary?.usages ?? [];
   const errors = summary?.errors ?? [];
   const warnings = summary?.warnings ?? [];
+  const skipped = summary?.skipped ?? [];
+  // Atenção do revisor: rows fora do import OU entradas ignoradas — o
+  // "183 atualizados" do toast esconde isso; o pulse é o único sinal.
+  const needsAttention = skipped.length > 0 || warnings.length > 0;
   // Bloqueadores globais (dicionário macro): a importação inteira para.
   const blocked = errors.length > 0;
   // Entradas com problema são ignoradas — o import segue com as demais;
@@ -57,6 +74,7 @@ export function ImportSummaryDialog({
   const kindLabel = KIND_LABELS[kind] ?? summary?.kind ?? '';
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => { if (!o || !importing) onOpenChange(o); }}>
       <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-3xl">
         <DialogHeader>
@@ -89,6 +107,33 @@ export function ImportSummaryDialog({
               ) : null}
             </div>
             <p className="text-xs break-all text-muted-foreground">{summary.path}</p>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setDetailsOpen(true)}
+              className={cn(
+                'gap-1.5',
+                needsAttention &&
+                  // Chamada para o revisor: só pulsa quando há rows fora do
+                  // import ou entradas ignoradas. motion-safe respeita o
+                  // prefers-reduced-motion (o Tailwind v4 embute o keyframe).
+                  'motion-safe:animate-pulse border-warning bg-warning/10 text-warning hover:bg-warning/20 hover:text-warning'
+              )}
+              title={
+                needsAttention
+                  ? 'Há rows/entradas que ficaram fora do import — abra para ver'
+                  : 'Resumo detalhado (rows ignoradas, entradas ignoradas)'
+              }
+            >
+              <ScrollText size={14} />
+              Detalhes do resumo
+              {needsAttention ? (
+                <Badge className="ml-1 border-warning/50 bg-warning/10 text-warning">
+                  {skipped.length + warnings.length}
+                </Badge>
+              ) : null}
+            </Button>
 
             {summary.saves_binary ? (
               <div className="rounded-md border border-warning/50 bg-warning/10 p-2 text-sm text-warning">
@@ -128,36 +173,53 @@ export function ImportSummaryDialog({
               </div>
             ) : null}
 
-            <ScrollArea className="h-64 rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Entrada</TableHead>
-                    <TableHead>Índices</TableHead>
-                    <TableHead>Store</TableHead>
-                    <TableHead>Alterados</TableHead>
-                    <TableHead>Erro</TableHead>
+            {/* Mesma régua do modal de detalhes: container único rolando nos
+                dois eixos, header sticky (thead E th) para o topo travar
+                enquanto o corpo rola. */}
+            <Table containerClassName="max-h-64 overflow-auto rounded-md border">
+              <TableHeader className="sticky top-0 z-[5]">
+                <TableRow>
+                  <TableHead className="sticky top-0 z-[5] bg-popover">Entrada</TableHead>
+                  <TableHead className="sticky top-0 z-[5] bg-popover">Índices</TableHead>
+                  <TableHead className="sticky top-0 z-[5] bg-popover">Store</TableHead>
+                  <TableHead className="sticky top-0 z-[5] bg-popover">Alterados</TableHead>
+                  <TableHead
+                    className={cn(
+                      'sticky top-0 z-[5] bg-popover',
+                      skipped.length > 0 && 'text-warning'
+                    )}
+                  >
+                    Ignoradas
+                  </TableHead>
+                  <TableHead className="sticky top-0 z-[5] bg-popover">Erro</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entries.map((entry) => (
+                  <TableRow key={entry.id}>
+                    <TableCell className="font-medium">
+                      {resolveEntryLabel(kind, entry.id)}
+                    </TableCell>
+                    <TableCell>{entry.index_count}</TableCell>
+                    <TableCell>{entry.store_index_count}</TableCell>
+                    <TableCell>{entry.changed_texts}</TableCell>
+                    <TableCell
+                      className={cn(
+                        entry.skipped_rows > 0 && 'font-semibold text-warning'
+                      )}
+                    >
+                      {entry.skipped_rows > 0 ? entry.skipped_rows : '—'}
+                    </TableCell>
+                    <TableCell
+                      className={entry.error ? 'text-destructive' : undefined}
+                      title={entry.error || undefined}
+                    >
+                      {entry.error || '—'}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {entries.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="font-medium">
-                        {resolveEntryLabel(kind, entry.id)}
-                      </TableCell>
-                      <TableCell>{entry.index_count}</TableCell>
-                      <TableCell>{entry.store_index_count}</TableCell>
-                      <TableCell>{entry.changed_texts}</TableCell>
-                      <TableCell
-                        className={entry.error ? 'text-destructive' : undefined}
-                      >
-                        {entry.error || '—'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                ))}
+              </TableBody>
+            </Table>
 
             {usages.length > 0 ? (
               <div className="space-y-2">
@@ -213,5 +275,13 @@ export function ImportSummaryDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {/* Detalhe aninhado: abre por cima sem fechar a confirmação — o
+        revisor vê o que ficou fora e decide Importar/Cancelar ali. */}
+    <ImportSummaryDetailsDialog
+      summary={summary}
+      open={detailsOpen}
+      onOpenChange={setDetailsOpen}
+    />
+    </>
   );
 }

@@ -13,6 +13,12 @@ export type PreviewZoomLevel = 'fit' | number;
  * slider. A altura do contêiner muda com o zoom: no ajuste ele ocupa o
  * disponível, em zoom fixo cresce e rola em ambas as direções
  * (comportamento de visualizador de imagem), por escolha do usuário.
+ *
+ * O menu flutuante só aparece com hover sobre a área da imagem (ou ao
+ * focar um dos botões via teclado): fora disso ele some e a textura fica
+ * limpa. As opacidades mudam, nunca `hidden`/`display` — os controles
+ * continuam no DOM, acessíveis e revelados por `group-hover`/
+ * `group-focus-within`.
  */
 export function ImagePreview({
   src,
@@ -40,7 +46,9 @@ export function ImagePreview({
   onTogglePixelated: () => void;
 }) {
   return (
-    <div className="relative">
+    // `group` na área da imagem: é o hover aqui (ou o focus em qualquer
+    // controle, via focus-within) que revela o menu flutuante.
+    <div className="group relative">
       {/* Área de exibição com altura fixa: no zoom a imagem cresce
           além do container e rola em ambas as direções (comportamento
           de visualizador de imagem na web), por escolha do usuário. */}
@@ -86,8 +94,10 @@ export function ImagePreview({
         )}
       </div>
       {/* Controles de zoom flutuando sobre a imagem: a lupa anda no
-          ciclo 1× (tamanho real) → 4× e volta; ajuste fino no slider. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-end gap-1 p-2">
+          ciclo 1× (tamanho real) → 4× e volta; ajuste fino no slider.
+          Ocultos por opacidade até o hover na área (ou o focus em um dos
+          botões) — a imagem fica sem menu quando o mouse está longe. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-end gap-1 p-2 opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none">
         <div className="pointer-events-auto flex items-center gap-1 rounded-md border bg-background/85 p-1 shadow-sm backdrop-blur">
           <Button
             size="icon"

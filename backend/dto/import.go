@@ -5,7 +5,9 @@ package dto
 // voltam como error (toast no frontend); problemas por entrada ficam em
 // Warnings (a entrada é ignorada e o resto do arquivo importa) e
 // bloqueadores globais em Errors (não vazio desabilita o botão Importar).
-// Todos os slices são inicializados não-nil no backend (nil → JSON null).
+// Skipped é o detalhe por ROW (hash não casado / tag divergente): não
+// bloqueia nada, mas diz ao revisor o que ficou de fora. Todos os slices
+// são inicializados não-nil no backend (nil → JSON null).
 
 // ImportEntryInfo compara uma entrada do arquivo importado com a store.
 type ImportEntryInfo struct {
@@ -14,7 +16,23 @@ type ImportEntryInfo struct {
 	IndexCount      int    `json:"index_count"`
 	StoreIndexCount int    `json:"store_index_count"`
 	ChangedTexts    int    `json:"changed_texts"`
-	Error           string `json:"error,omitempty"`
+	// SkippedRows conta as rows do artefato que ficaram FORA do import
+	// (hash sem par na store ou tag de controle divergente) — o detalhe
+	// de cada uma está em ImportSummary.Skipped.
+	SkippedRows int    `json:"skipped_rows"`
+	Error       string `json:"error,omitempty"`
+}
+
+// ImportRowIssue é uma row do artefato que ficou fora do import: o hash
+// não casa com nada na store (o binário mudou desde o export — tradução
+// velha no lugar do inglês esperado) ou a tradução divergiu das tags de
+// controle do original. Era log-only; agora espelha no resumo do modal.
+type ImportRowIssue struct {
+	ID     string `json:"id"`     // entrada (ex.: menumain_btl)
+	Index  int    `json:"index"`  // índice da row no artefato
+	Hash   string `json:"hash"`   // hash 'us' da row ($hash do arquivo)
+	Text   string `json:"text"`  // truncado para o modal (inteiro no log)
+	Reason string `json:"reason"` // "hash não encontrado" | "tag de controle divergente"
 }
 
 // ImportUsage reporta o uso pós-rebuild do limite uint16 de um binário
@@ -47,6 +65,11 @@ type ImportSummary struct {
 	// estouro do limite uint16). A granularidade é o ARQUIVO: um erro em
 	// qualquer row exclui a entrada inteira — o restante importa normalmente.
 	Warnings []string `json:"warnings"`
+	// Skipped lista as ROWS do artefato que ficaram fora do import sem
+	// bloquear nada: hash sem par na store ou tag de controle divergente.
+	// Silenciosas por design até aqui (só LogWarning) — o modal as mostra
+	// no detalhe para o revisor saber o que NÃO entrou.
+	Skipped []ImportRowIssue `json:"skipped"`
 	// Errors lista os bloqueadores GLOBAIS — não atribuíveis a uma entrada,
 	// como o estouro do dicionário macro (binário único compartilhado).
 	// Não vazio desabilita o botão Importar.

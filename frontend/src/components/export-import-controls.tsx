@@ -195,7 +195,14 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
       const changed = await importFile(current.path, version);
       setImportSummary(null);
       const ignored = current.warnings?.length ?? 0;
-      const suffix = ignored > 0 ? ` (${ignored} entrada(s) ignorada(s))` : '';
+      const skippedRows = current.skipped?.length ?? 0;
+      // Sucesso com asterisco: entrada ignorada (aviso) e/ou row pulada
+      // (hash stale / tag divergente) continuam existindo depois que o
+      // modal fecha — o toast carrega o mesmo número que o botão pulsante.
+      const parts: string[] = [];
+      if (ignored > 0) parts.push(`${ignored} entrada(s) ignorada(s)`);
+      if (skippedRows > 0) parts.push(`${skippedRows} row(s) ignorada(s)`);
+      const suffix = parts.length > 0 ? ` (${parts.join(', ')})` : '';
       toast.success(
         `Importação concluída — ${changed} texto(s) atualizado(s) e salvos em binário (mods/).${suffix}`,
         { id: toastId }

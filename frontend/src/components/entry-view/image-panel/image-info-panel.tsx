@@ -6,16 +6,19 @@ import * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { Badge } from '@/components/ui/badge';
 import {
   copyState,
+  imageLanguage,
   IMAGE_SOURCE_LABELS,
+  LANGUAGE_LABELS,
   resolveEntryLabel,
 } from '@/lib/ffx/display-names';
 import { formatBytes } from '@/lib/ffx/bytes';
 
 /**
  * Coluna de informações da textura aberta: metadados do container, estado
- * (pristine / importada), a linha "Repetidas" (grupo de cópias de mesma
- * imagem — otimização do DVD) com atalho de navegação para cada uma, e os
- * caminhos dos derivados já extraídos.
+ * (pristine / importada), a linha "Idioma" (cosmético — código da pasta,
+ * lido do caminho interno embutido quando existe), a linha "Repetidas"
+ * (grupo de cópias de mesma imagem — otimização do DVD) com atalho de
+ * navegação para cada uma, e os caminhos dos derivados já extraídos.
  */
 export function ImageInfoPanel({
   image,
@@ -74,6 +77,21 @@ export function ImageInfoPanel({
           </span>,
         ];
 
+  // Linha "Idioma" (cosmético): o código da pasta em que a textura está,
+  // lido do caminho interno embutido no container (assetPath) com fallback
+  // para o id da árvore. Sem idioma no caminho, a linha NÃO existe.
+  const lang = imageLanguage(image.assetPath, image.metadata.id);
+  const langRows: Array<[label: string, value: ReactNode]> = lang
+    ? [
+        [
+          'Idioma',
+          <Badge key="lang" variant="outline">
+            {lang} — {LANGUAGE_LABELS[lang] ?? lang}
+          </Badge>,
+        ],
+      ]
+    : [];
+
   const meta: Array<[label: string, value: ReactNode]> = [
     ['Formato', image.format],
     ['Dimensões', `${image.width}×${image.height}`],
@@ -99,6 +117,7 @@ export function ImageInfoPanel({
         </Badge>
       ),
     ],
+    ...langRows,
     repeatsRow,
     [
       'Cópias extraídas',

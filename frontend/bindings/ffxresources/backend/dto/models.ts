@@ -347,6 +347,15 @@ export class ImageEntry {
     "maxMipmapLevel": number;
 
     /**
+     * AssetPath é o caminho interno embutido no namespace do container
+     * (ex.: "PS3Data/help_es/helpgra/help10.dds") — o caminho que o jogo
+     * usa na leitura, útil inclusive para um .dds.phyre avulso, sem árvore.
+     * Só INFO de exibição (a UI tira o idioma dele) e descartado em
+     * seguida: Import/Save/encode nunca leem este campo.
+     */
+    "assetPath"?: string;
+
+    /**
      * PNGData é a pré-visualização (data:image/png;base64,...) — sempre
      * preenchida, é o que o frontend exibe no lugar da tabela.
      */
@@ -440,13 +449,13 @@ export class ImageEntry {
      */
     static createFrom($$source: any = {}): ImageEntry {
         const $$createField0_0 = $$createType1;
-        const $$createField13_0 = $$createType7;
+        const $$createField14_0 = $$createType7;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("metadata" in $$parsedSource) {
             $$parsedSource["metadata"] = $$createField0_0($$parsedSource["metadata"]);
         }
         if ("duplicates" in $$parsedSource) {
-            $$parsedSource["duplicates"] = $$createField13_0($$parsedSource["duplicates"]);
+            $$parsedSource["duplicates"] = $$createField14_0($$parsedSource["duplicates"]);
         }
         return new ImageEntry($$parsedSource as Partial<ImageEntry>);
     }
@@ -591,6 +600,13 @@ export class ImportEntryInfo {
     "index_count": number;
     "store_index_count": number;
     "changed_texts": number;
+
+    /**
+     * SkippedRows conta as rows do artefato que ficaram FORA do import
+     * (hash sem par na store ou tag de controle divergente) — o detalhe
+     * de cada uma está em ImportSummary.Skipped.
+     */
+    "skipped_rows": number;
     "error"?: string;
 
     /** Creates a new ImportEntryInfo instance. */
@@ -610,6 +626,9 @@ export class ImportEntryInfo {
         if (!("changed_texts" in $$source)) {
             this["changed_texts"] = 0;
         }
+        if (!("skipped_rows" in $$source)) {
+            this["skipped_rows"] = 0;
+        }
 
         Object.assign(this, $$source);
     }
@@ -620,6 +639,68 @@ export class ImportEntryInfo {
     static createFrom($$source: any = {}): ImportEntryInfo {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new ImportEntryInfo($$parsedSource as Partial<ImportEntryInfo>);
+    }
+}
+
+/**
+ * ImportRowIssue é uma row do artefato que ficou fora do import: o hash
+ * não casa com nada na store (o binário mudou desde o export — tradução
+ * velha no lugar do inglês esperado) ou a tradução divergiu das tags de
+ * controle do original. Era log-only; agora espelha no resumo do modal.
+ */
+export class ImportRowIssue {
+    /**
+     * entrada (ex.: menumain_btl)
+     */
+    "id": string;
+
+    /**
+     * índice da row no artefato
+     */
+    "index": number;
+
+    /**
+     * hash 'us' da row ($hash do arquivo)
+     */
+    "hash": string;
+
+    /**
+     * truncado para o modal (inteiro no log)
+     */
+    "text": string;
+
+    /**
+     * "hash não encontrado" | "tag de controle divergente"
+     */
+    "reason": string;
+
+    /** Creates a new ImportRowIssue instance. */
+    constructor($$source: Partial<ImportRowIssue> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("index" in $$source)) {
+            this["index"] = 0;
+        }
+        if (!("hash" in $$source)) {
+            this["hash"] = "";
+        }
+        if (!("text" in $$source)) {
+            this["text"] = "";
+        }
+        if (!("reason" in $$source)) {
+            this["reason"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ImportRowIssue instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ImportRowIssue {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ImportRowIssue($$parsedSource as Partial<ImportRowIssue>);
     }
 }
 
@@ -655,6 +736,14 @@ export class ImportSummary {
      * qualquer row exclui a entrada inteira — o restante importa normalmente.
      */
     "warnings": string[];
+
+    /**
+     * Skipped lista as ROWS do artefato que ficaram fora do import sem
+     * bloquear nada: hash sem par na store ou tag de controle divergente.
+     * Silenciosas por design até aqui (só LogWarning) — o modal as mostra
+     * no detalhe para o revisor saber o que NÃO entrou.
+     */
+    "skipped": ImportRowIssue[];
 
     /**
      * Errors lista os bloqueadores GLOBAIS — não atribuíveis a uma entrada,
@@ -701,6 +790,9 @@ export class ImportSummary {
         if (!("warnings" in $$source)) {
             this["warnings"] = [];
         }
+        if (!("skipped" in $$source)) {
+            this["skipped"] = [];
+        }
         if (!("errors" in $$source)) {
             this["errors"] = [];
         }
@@ -716,7 +808,8 @@ export class ImportSummary {
         const $$createField9_0 = $$createType9;
         const $$createField10_0 = $$createType11;
         const $$createField11_0 = $$createType0;
-        const $$createField12_0 = $$createType0;
+        const $$createField12_0 = $$createType13;
+        const $$createField13_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("languages" in $$parsedSource) {
             $$parsedSource["languages"] = $$createField4_0($$parsedSource["languages"]);
@@ -730,8 +823,11 @@ export class ImportSummary {
         if ("warnings" in $$parsedSource) {
             $$parsedSource["warnings"] = $$createField11_0($$parsedSource["warnings"]);
         }
+        if ("skipped" in $$parsedSource) {
+            $$parsedSource["skipped"] = $$createField12_0($$parsedSource["skipped"]);
+        }
         if ("errors" in $$parsedSource) {
-            $$parsedSource["errors"] = $$createField12_0($$parsedSource["errors"]);
+            $$parsedSource["errors"] = $$createField13_0($$parsedSource["errors"]);
         }
         return new ImportSummary($$parsedSource as Partial<ImportSummary>);
     }
@@ -857,7 +953,7 @@ export class RefLink {
      * Creates a new RefLink instance from a string or object.
      */
     static createFrom($$source: any = {}): RefLink {
-        const $$createField2_0 = $$createType12;
+        const $$createField2_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("originals" in $$parsedSource) {
             $$parsedSource["originals"] = $$createField2_0($$parsedSource["originals"]);
@@ -958,9 +1054,9 @@ export class TextRow {
      * Creates a new TextRow instance from a string or object.
      */
     static createFrom($$source: any = {}): TextRow {
-        const $$createField4_0 = $$createType12;
-        const $$createField5_0 = $$createType12;
-        const $$createField6_0 = $$createType12;
+        const $$createField4_0 = $$createType14;
+        const $$createField5_0 = $$createType14;
+        const $$createField6_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hash" in $$parsedSource) {
             $$parsedSource["hash"] = $$createField4_0($$parsedSource["hash"]);
@@ -1141,4 +1237,6 @@ const $$createType8 = ImportEntryInfo.createFrom;
 const $$createType9 = $Create.Array($$createType8);
 const $$createType10 = ImportUsage.createFrom;
 const $$createType11 = $Create.Array($$createType10);
-const $$createType12 = $Create.Map($Create.Any, $Create.Any);
+const $$createType12 = ImportRowIssue.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = $Create.Map($Create.Any, $Create.Any);

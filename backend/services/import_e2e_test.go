@@ -370,3 +370,172 @@ func TestImportE2EStringsFormatRoundtrip(t *testing.T) {
 		t.Fatalf("changed=%d, queria 1", summary.ChangedTexts)
 	}
 }
+
+// TestImportE2ESkippedRowsInSummary: a row de hash stale que antes era só
+// log agora aparece no resumo (Skipped) com id/índice/hash/reason e o
+// contador por entrada (SkippedRows) — o botão de detalhes do modal pulsa
+// a partir disso. Não vira erro nem warning: a importação segue.
+func TestImportE2ESkippedRowsInSummary(t *testing.T) {
+	seedEventsTempRoot(t)
+	clearEventsForTest(t)
+	seedEventsSynthetic(common.GameVersionFFX2, "zev001", []string{
+		"Primeira frase do evento",
+		"Segunda frase do evento",
+	})
+	raw := collectionRawForTest(t)
+	entry := raw["zev001"]
+	entry.Rows[0].Text[common.DefaultLocalization] = "Tradução anterior"
+	entry.Rows[1].Text[common.DefaultLocalization] = "Segunda traduzida"
+	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{"zev001": entry})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	// A store evolui: o hash da row 0 do artefato não existe mais.
+	ev := event.GetEvent(common.GameVersionFFX2, "zev001")
+	if ev == nil {
+		t.Fatal("pré-condição: zev001 no store")
+	}
+	ev.Strings[0].GetLocalizedContent(common.DefaultLocalization).SetRegularString("Tradução refeita")
+
+	impPath := filepath.Join(t.TempDir(), "skipped.json")
+	if err := os.WriteFile(impPath, out, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	summary, err := NewMetadataService(nil).PreviewImport(impPath, common.GameVersionFFX2)
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+
+	if len(summary.Errors) != 0 || len(summary.Warnings) != 0 {
+		t.Fatalf("rows puladas não são erro nem aviso: %v / %v", summary.Errors, summary.Warnings)
+	}
+	if len(summary.Skipped) != 1 {
+		t.Fatalf("skipped=%+v, queria 1 row (a de hash stale)", summary.Skipped)
+	}
+	issue := summary.Skipped[0]
+	if issue.ID != "zev001" || issue.Index != 0 {
+		t.Fatalf("issue id=%q index=%d, queria zev001/0", issue.ID, issue.Index)
+	}
+	if issue.Reason != reasonUnmatched {
+		t.Fatalf("reason=%q, queria %q", issue.Reason, reasonUnmatched)
+	}
+	if issue.Text != "Tradução anterior" {
+		t.Fatalf("text=%q, queria o texto da row do artefato", issue.Text)
+	}
+	if issue.Hash == "" {
+		t.Fatal("hash vazio no issue — o revisor precisa dele para localizar a row")
+	}
+	if len(summary.Entries) != 1 || summary.Entries[0].SkippedRows != 1 {
+		t.Fatalf("entries=%+v, queria zev001 com SkippedRows=1", summary.Entries)
+	}
+	if summary.ChangedTexts != 1 {
+		t.Fatalf("changed=%d, queria 1 (só a row que casa)", summary.ChangedTexts)
+	}
+}
+
+// TestImportE2ESkippedRowsReimportIsNoOp: re-import do MESMO artefato depois
+// de aplicado — o hash (inglês do export) não casa mais, mas o binário já
+// carrega exatamente o texto que cada row pede. Sem o filtro de no-op o
+// Skipped explodiria com todas as rows e o botão de detalhes pulsa por nada;
+// com ele, o re-import fica limpo (Skipped vazio, nada a revisar).
+func TestImportE2ESkippedRowsReimportIsNoOp(t *testing.T) {
+	seedEventsTempRoot(t)
+	clearEventsForTest(t)
+	seedEventsSynthetic(common.GameVersionFFX2, "zev001", []string{
+		"Primeira frase do evento",
+		"Segunda frase do evento",
+	})
+
+	entry := dto.FileEntry{
+		Metadata: dto.Metadata{Key: "ffx-2/event/ze/zev001.bin", ID: "zev001"},
+		Rows: []dto.TextRow{
+			hEditRow(0, "", "Primeira frase do evento", "Primeira traduzida"),
+			hEditRow(1, "", "Segunda frase do evento", "Segunda traduzida"),
+		},
+	}
+	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{"zev001": entry})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	impPath := filepath.Join(t.TempDir(), "reimport.json")
+	if err := os.WriteFile(impPath, out, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	svc := NewMetadataService(nil)
+	if _, err := svc.ImportFile(impPath, common.GameVersionFFX2); err != nil {
+		t.Fatalf("primeiro import: %v", err)
+	}
+
+	// Segundo import do mesmo arquivo: tudo já aplicado.
+	summary, err := svc.PreviewImport(impPath, common.GameVersionFFX2)
+	if err != nil {
+		t.Fatalf("re-import preview: %v", err)
+	}
+	if len(summary.Skipped) != 0 {
+		t.Fatalf("skipped=%+v, queria vazio — row já aplicada é no-op, não revisável", summary.Skipped)
+	}
+	for _, e := range summary.Entries {
+		if e.SkippedRows != 0 {
+			t.Fatalf("entrada %s com SkippedRows=%d no re-import", e.ID, e.SkippedRows)
+		}
+	}
+	if summary.ChangedTexts != 0 {
+		t.Fatalf("changed=%d, queria 0 (nada muda no re-import)", summary.ChangedTexts)
+	}
+}
+
+// TestImportE2ESkippedRowsCleanImport: tudo casa — Skipped é vazio e NÃO-nil
+// (regra do DTO: slice nil vira JSON null e quebraria o frontend).
+func TestImportE2ESkippedRowsCleanImport(t *testing.T) {
+	seedEventsTempRoot(t)
+	clearEventsForTest(t)
+	seedEventsSynthetic(common.GameVersionFFX2, "zev001", []string{
+		"Primeira frase do evento",
+		"Segunda frase do evento",
+	})
+
+	// Mesma semente do importE2EPrepare: row com hash do texto do export.
+	entry := dto.FileEntry{
+		Metadata: dto.Metadata{Key: "ffx-2/event/ze/zev001.bin", ID: "zev001"},
+		Rows:     []dto.TextRow{hEditRow(0, "", "Primeira frase do evento", "Primeira traduzida")},
+	}
+	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{"zev001": entry})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	summary := importE2EPrepare(t, out, "clean.json")
+	if summary.Skipped == nil {
+		t.Fatal("Skipped nil: o contrato do DTO pede slices não-nil (JSON null quebra o frontend)")
+	}
+	if len(summary.Skipped) != 0 {
+		t.Fatalf("skipped=%+v, queria vazio no import limpo", summary.Skipped)
+	}
+	for _, e := range summary.Entries {
+		if e.SkippedRows != 0 {
+			t.Fatalf("entrada %s com SkippedRows=%d no import limpo", e.ID, e.SkippedRows)
+		}
+	}
+	if summary.ChangedTexts != 1 {
+		t.Fatalf("changed=%d, queria 1", summary.ChangedTexts)
+	}
+}
+
+// TestImportE2ESkippedRowsTruncatesText: texto longo demais no artefato é
+// truncado por rune com elipse — o modal continua legível, o log continua
+// completo.
+func TestImportE2ESkippedRowsTruncatesText(t *testing.T) {
+	long := strings.Repeat("Frase longa com acentuação. ", 10) // 290 runes
+	want := truncateRowIssue(long)
+	runes := []rune(want)
+	if len(runes) != 121 || !strings.HasSuffix(want, "…") {
+		t.Fatalf("truncate devolve %d runes sem elipse: %q", len(runes), want)
+	}
+	if got := truncateRowIssue("curta"); got != "curta" {
+		t.Fatalf("texto curto não pode ser alterado: %q", got)
+	}
+	if got := truncateRowIssue(""); got != "" {
+		t.Fatalf("vazio deve continuar vazio: %q", got)
+	}
+}

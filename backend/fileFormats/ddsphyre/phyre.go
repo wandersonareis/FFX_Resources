@@ -112,6 +112,13 @@ type Texture struct {
 	// Raw é o arquivo completo; Payload é Raw[DataOffset:] — o DDS puro.
 	Raw     []byte
 	Payload []byte
+
+	// AssetPath é o caminho interno do asset embutido na string table
+	// (ex.: "PS3Data/help_es/helpgra/help10.dds"). Só INFO de exibição:
+	// o prefixo "PS3Data/" é o caminho que o jogo lê dentro da árvore e
+	// nunca participa do encode (Import/Save trabalham pelo id da árvore).
+	// "" quando o container não declara nenhum.
+	AssetPath string
 }
 
 // le32 lê um uint32 little-endian com checagem de faixa.
@@ -146,6 +153,59 @@ func cstr(b []byte, off uint64) (string, bool) {
 		}
 	}
 	return string(rest), true
+}
+
+// assetPathOf devolve o caminho interno do asset gravado no container
+// (ex.: "PS3Data/help_es/helpgra/help10.dds") — é o caminho que o próprio
+// jogo usa na leitura, independente de onde o arquivo está agora: serve
+// inclusive para um .dds.phyre avulso, aberto sem árvore de diretórios.
+//
+// A string mora DEPOIS da string table, no bloco de instância/dados, então
+// a varredura é pelo container inteiro até o payload — nunca pelos pixels,
+// que vêm depois de DataOffset. Um container declara UMA string ".dds"
+// (verificado em toda a árvore das duas versões); havendo mais de uma,
+// prefere a que tem pasta (caminho completo) e cai no basename. Só
+// ASCII imprimível conta: lixo binário que termine em ".dds" por acaso é
+// descartado. Container que traz apenas o basename (caso raro, ex.:
+// "AutoSaving.dds") volta igual — sem pasta não há idioma a tirar dali e
+// o chamador recorre ao id da árvore. "" = sem candidato.
+func assetPathOf(container []byte) string {
+	only := ""
+	start := 0
+	for i := 0; i <= len(container); i++ {
+		if i < len(container) && container[i] != 0 {
+			continue
+		}
+		chunk := container[start:i]
+		start = i + 1
+
+		if !isPrintASCII(chunk) || len(chunk) < len(".dds") ||
+			!strings.EqualFold(string(chunk[len(chunk)-len(".dds"):]), ".dds") {
+			continue
+		}
+		s := string(chunk)
+		if strings.ContainsRune(s, '/') {
+			return s
+		}
+		if only == "" {
+			only = s
+		}
+	}
+	return only
+}
+
+// isPrintASCII diz se a região é toda ASCII imprimível (0x20–0x7E) — o que
+// separa as strings de verdade do lixo binário que ocupa os mesmos bytes.
+func isPrintASCII(b []byte) bool {
+	if len(b) == 0 {
+		return false
+	}
+	for _, c := range b {
+		if c < 0x20 || c > 0x7e {
+			return false
+		}
+	}
+	return true
 }
 
 // IsPhyre é a checagem rápida (equivalente a isFormatSupported): magic,
@@ -316,6 +376,9 @@ func Parse(data []byte) (*Texture, error) {
 	}
 	t.DataOffset = dataOffset
 	t.Payload = data[int(dataOffset):]
+	// Caminho interno do asset (info de exibição): mora no bloco do
+	// container, antes dos pixels — por isso a varredura é até o payload.
+	t.AssetPath = assetPathOf(data[:int(dataOffset)])
 
 	return t, nil
 }

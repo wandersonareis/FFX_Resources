@@ -23,6 +23,13 @@ type ImageEntry struct {
 	MipmapCount    uint32 `json:"mipmapCount"`
 	MaxMipmapLevel uint32 `json:"maxMipmapLevel"`
 
+	// AssetPath é o caminho interno embutido no namespace do container
+	// (ex.: "PS3Data/help_es/helpgra/help10.dds") — o caminho que o jogo
+	// usa na leitura, útil inclusive para um .dds.phyre avulso, sem árvore.
+	// Só INFO de exibição (a UI tira o idioma dele) e descartado em
+	// seguida: Import/Save/encode nunca leem este campo.
+	AssetPath string `json:"assetPath,omitempty"`
+
 	// PNGData é a pré-visualização (data:image/png;base64,...) — sempre
 	// preenchida, é o que o frontend exibe no lugar da tabela.
 	PNGData string `json:"pngData"`
