@@ -24,6 +24,8 @@ export function buildOriginalColumn(textLoc: string) {
           // precisa do wrap/quebra é o conteúdo — o <td> tem
           // whitespace-nowrap (camada utilities) que venceria o pre-wrap.
           className={`text-cell${missing ? ` ${MISSING_SIDE}` : ''}`}
+          // Chip de quebra real: só a tabela marca LF (o resto da UI não).
+          newlineChip
         />
       );
     },

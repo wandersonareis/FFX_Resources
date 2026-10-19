@@ -15,6 +15,11 @@ interface GameTextViewProps {
    * Vazio/ausente = HTML byte-idêntico ao de sempre (sem <mark>).
    */
   marks?: readonly GameTextMark[];
+  /**
+   * Só a TABELA: chip `LF` no fim de cada quebra real de linha — separa a
+   * quebra do texto (jogo) do wrap de palavra feito pelo CSS.
+   */
+  newlineChip?: boolean;
 }
 
 /**
@@ -31,10 +36,11 @@ export function GameTextView({
   fallback = '',
   className,
   marks,
+  newlineChip,
 }: GameTextViewProps) {
   const { paddingSummary, html } = useMemo(
-    () => formatGameTextForDisplay(text, marks),
-    [text, marks]
+    () => formatGameTextForDisplay(text, marks, { newlineChip }),
+    [text, marks, newlineChip]
   );
 
   if (!text) {

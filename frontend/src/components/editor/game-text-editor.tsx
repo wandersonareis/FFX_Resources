@@ -230,10 +230,10 @@ export function GameTextEditor({
   return (
     <div
       ref={popupContainerRef}
-      className="relative flex flex-col gap-2"
+      className="relative flex min-h-0 flex-1 flex-col gap-2"
     >
       <div
-        className="flex flex-wrap items-center justify-between gap-1 rounded border border-border px-2 py-1"
+        className="flex shrink-0 flex-wrap items-center justify-between gap-1 rounded border border-border px-2 py-1"
         role="toolbar"
         aria-label="Formatação do texto do jogo"
       >
@@ -370,7 +370,7 @@ export function GameTextEditor({
 
       {splitLeadingPadding(value).padding !== '' && (
         <div
-          className="flex items-center gap-1 text-xs text-muted-foreground"
+          className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
           title="Espaços/quebras intencionais do jogo, preservados automaticamente"
         >
           <span>␍ padding de tela:</span>
@@ -381,7 +381,13 @@ export function GameTextEditor({
       )}
       <div
         ref={hostRef}
-        className="min-h-40 rounded border border-border p-3 outline-none [&_.tiptap_p]:mb-2 [&_.tiptap_p:last-child]:mb-0"
+        // Host é flex coluna + rolagem interna: o contenteditable (.tiptap)
+        // estica com flex-1 e o ring azul de foco sai com a ALTURA DA CAIXA
+        // (não mais a do texto); texto maior que a caixa rola aqui dentro.
+        // Respiro do texto: host p-3 (12px até a borda da caixa) + p-1 DENTRO
+        // do .tiptap — afasta o texto da borda externa e do ring de foco,
+        // que é desenhado na borda do próprio .tiptap.
+        className="flex min-h-40 flex-1 flex-col overflow-y-auto rounded border border-border p-3 outline-none [&_.tiptap]:flex-1 [&_.tiptap]:p-1 [&_.tiptap_p]:mb-2 [&_.tiptap_p:last-child]:mb-0"
       />
     </div>
   );

@@ -37,7 +37,7 @@ export function LinkedCell({
         }
         onClick={onOpen}
       >
-        <GameTextView text={defText} fallback="—" className={LINKED_SIDE} marks={marks} />
+        <GameTextView text={defText} fallback="—" className={LINKED_SIDE} marks={marks} newlineChip />
       </div>
       {!readOnly ? (
         <button

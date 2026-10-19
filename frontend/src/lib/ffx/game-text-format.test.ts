@@ -131,3 +131,59 @@ describe('formatGameTextSnippetForSearch', () => {
     expect(html).not.toContain('\\n');
   });
 });
+
+describe('formatGameTextForDisplay · chip de quebra (só a tabela)', () => {
+  const CHIP = '<span class="newline-chip">LF</span>';
+
+  it('sem a opção o HTML continua sem chip (editor/busca/refs intactos)', () => {
+    expect(formatGameTextForDisplay('A{TEXT_NEWLINE}B').html).toBe(
+      '<p>A</p><p>B</p>'
+    );
+  });
+
+  it('com newlineChip a quebra real vira chip LF no FIM da linha', () => {
+    expect(
+      formatGameTextForDisplay('A{TEXT_NEWLINE}B', undefined, {
+        newlineChip: true,
+      }).html
+    ).toBe(`<p>A${CHIP}</p><p>B</p>`);
+  });
+
+  it('CRLF e \\n do dado contam como quebra igual à tag do jogo', () => {
+    expect(
+      formatGameTextForDisplay('A\r\nB\nC', undefined, { newlineChip: true })
+        .html
+    ).toBe(`<p>A${CHIP}</p><p>B${CHIP}</p><p>C</p>`);
+  });
+
+  it('um chip por quebra — a linha vazia entre duas ganha o dela', () => {
+    expect(
+      formatGameTextForDisplay('A\n\nB', undefined, { newlineChip: true }).html
+    ).toBe(`<p>A${CHIP}</p><p>${CHIP}</p><p>B</p>`);
+  });
+
+  it('quebra no FIM do texto marca a última linha (o <p> vazio de antes segue)', () => {
+    expect(
+      formatGameTextForDisplay('Oi\n', undefined, { newlineChip: true }).html
+    ).toBe(`<p>Oi${CHIP}</p><p></p>`);
+    // Sem a opção continua exatamente como era (regressão).
+    expect(formatGameTextForDisplay('Oi\n').html).toBe('<p>Oi</p><p></p>');
+  });
+
+  it('padding de tela continua só no resumo (não ganha chip)', () => {
+    const formatted = formatGameTextForDisplay('  \nOi', undefined, {
+      newlineChip: true,
+    });
+    expect(formatted.html).toBe('<p>Oi</p>');
+    expect(formatted.paddingSummary).toBe('{TEXT_NEWLINE} ×1 · ␣ ×2');
+  });
+
+  it('marks[] convivem com o chip (a busca continua destacando)', () => {
+    const html = formatGameTextForDisplay(
+      'A{TEXT_NEWLINE}B',
+      [{ start: 15, end: 16 }],
+      { newlineChip: true }
+    ).html;
+    expect(html).toBe(`<p>A${CHIP}</p><p><mark>B</mark></p>`);
+  });
+});

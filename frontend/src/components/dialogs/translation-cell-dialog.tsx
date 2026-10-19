@@ -158,7 +158,11 @@ export function TranslationCellDialog({
       }}
     >
       <DialogContent
-        className="sm:max-w-180 max-h-[90vh] flex flex-col pt-10"
+        // Altura DEFINIDA (não só max-h): sem ela os flex-1 de dentro não
+        // têm espaço livre e a caixa de edição fica colada na altura do
+        // texto. O teto continua 90vh; 46rem evita caixa gigante em tela
+        // larga/curta.
+        className="sm:max-w-180 h-[min(90vh,46rem)] flex flex-col pt-10"
         // O popup do autocomplete agora monta DENTRO deste conteúdo (container
         // da extensão); cliques/Escape nele são internos ao Radix. A guarda
         // abaixo fica como rede de segurança para qualquer elemento que nem
@@ -224,8 +228,12 @@ export function TranslationCellDialog({
           </label>
         ) : null}
 
-        <div className="flex flex-col gap-4 overflow-hidden">
-          <div className="grid gap-2.5 overflow-y-auto flex-1 min-h-30 max-h-[42vh] pr-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+          {/* Referências: NÃO competem por altura com a caixa de edição
+              (sem flex-1, teto menor e min-h-0 = encolhe primeiro quando
+              falta espaço — a caixa de edição tem piso próprio e nunca é
+              espremida para fora do wrapper). */}
+          <div className="grid gap-2.5 overflow-y-auto min-h-0 max-h-[26vh] shrink pr-1">
             {referenceLangs.length === 0 ? (
               <p className="opacity-70">Sem outros idiomas nesta linha.</p>
             ) : (
@@ -244,7 +252,11 @@ export function TranslationCellDialog({
             )}
           </div>
 
-          <div className="grid gap-1.5">
+          {/* Piso da edição (label + toolbar + caixa min-h-40), com teto
+              relativo à viewport p/ janela baixa: com piso explícito o flex
+              encolhe as REFERÊNCIAS antes, e a caixa clicável nunca sai
+              cortada pelo overflow-hidden do wrapper. */}
+          <div className="flex min-h-[min(18rem,45vh)] flex-1 flex-col gap-1.5">
             <span className="text-xs font-semibold opacity-75">
               Tradução ({SOURCE_LANG}) — rascunho até salvar em binário
             </span>
@@ -260,7 +272,7 @@ export function TranslationCellDialog({
 
           {gate ? (
             <div
-              className="rounded-lg border border-destructive/45 bg-destructive/10 p-3"
+              className="shrink-0 rounded-lg border border-destructive/45 bg-destructive/10 p-3"
               role="alert"
             >
               <p className="flex items-center gap-2 text-sm font-semibold">

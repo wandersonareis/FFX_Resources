@@ -128,6 +128,30 @@
     border-color: color-mix(in srgb, var(--destructive) 65%, transparent);
   }
 
+  /* ── Chip de quebra de linha REAL (só a tabela) ──
+     {TEXT_NEWLINE}/\n vira parágrafo, e no celular/JPEG o wrap de palavra
+     do CSS (.text-cell usa pre-wrap) imita uma quebra — o chip marca ONDE
+     o texto quebra de verdade. Fundo preto + letra branca FIXOS nos dois
+     temas (valor literal, nunca token do tema). O fio branco 45% some no
+     tema claro (branco sobre o fundo branco) e contorna o chip no escuro
+     (preto sobre o fundo quase preto). user-select:none: selecionar e
+     copiar a célula não leva "LF" junto. */
+  .newline-chip {
+    display: inline-block;
+    margin-left: 0.2em;
+    padding: 0 0.3em;
+    border: 1px solid rgb(255 255 255 / 0.45);
+    border-radius: 3px;
+    background: #000;
+    color: #fff;
+    font-size: 0.7em;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
+    vertical-align: baseline;
+    user-select: none;
+  }
+
   /* Decoracão do `{query` enquanto o autocomplete está ativo. */
   .tag-suggestion-active {
     background: color-mix(in srgb, var(--primary) 18%, transparent);

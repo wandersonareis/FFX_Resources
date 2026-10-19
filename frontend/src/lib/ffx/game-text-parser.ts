@@ -27,6 +27,20 @@ export interface GameTextMarkOptions {
   marks?: readonly GameTextMark[];
 }
 
+export interface GameTextRenderOptions extends GameTextMarkOptions {
+  /**
+   * Tabela: cada quebra REAL de linha (\n / {TEXT_NEWLINE}) ganha um chip
+   * `LF` no FIM da linha quebrada. Sem ele a quebra do jogo se confunde com
+   * o wrap de palavra do CSS (`.text-cell { white-space: pre-wrap }`) e dá
+   * para saber onde o texto quebra de verdade só contando linhas.
+   * Só o GameTextView da tabela liga isto — editor e busca ficam idênticos.
+   */
+  newlineChip?: boolean;
+}
+
+/** Chip de quebra real (fundo preto/letra branca nos 2 temas — globals.css). */
+const NEWLINE_CHIP_HTML = '<span class="newline-chip">LF</span>';
+
 /** Intervalo já resolvido em UTF-16 (a varredura trabalha em offsets absolutos). */
 interface ResolvedMark {
   start: number;
@@ -67,11 +81,14 @@ export const gameTextParser = {
    * da busca geral usa o par legado markStart/markEnd; a busca local da
    * tabela passa `marks[]` (o atual ganha a classe find-current). Sem
    * nenhum dos dois, a saída é byte-idêntica à de sempre.
+   *
+   * `options.newlineChip` (só a TABELA) marca cada quebra real com o chip
+   * `LF` — fora disso nada muda: editor, snippets e refs continuam sem.
    */
   parseGameTextToHTML(
     rawText: string,
     validate?: ChipValidator,
-    options?: GameTextMarkOptions
+    options?: GameTextRenderOptions
   ): string {
     if (!rawText) return '<p></p>';
 
@@ -94,8 +111,18 @@ export const gameTextParser = {
       cursor +=
         para.length + (s + 1 < segments.length ? segments[s + 1].length : 0);
 
+      // Quebra real DEPOIS deste parágrafo (s+1 = separador \n ou
+      // {TEXT_NEWLINE}): o chip entra no FIM da linha — junto do ponto onde
+      // o texto quebra de verdade, sem mexer na indentação da linha
+      // seguinte. Contagem: 1 chip por quebra (linha vazia entre duas
+      // quebras também ganha o seu).
+      const lineChip =
+        options?.newlineChip === true && s + 1 < segments.length
+          ? NEWLINE_CHIP_HTML
+          : '';
+
       if (para.trim() === '') {
-        htmlParagraphs.push('<p></p>');
+        htmlParagraphs.push(lineChip ? `<p>${lineChip}</p>` : '<p></p>');
         continue;
       }
 
@@ -201,7 +228,7 @@ export const gameTextParser = {
         }
       }
 
-      htmlParagraphs.push(`<p>${resultHTML || '<br>'}</p>`);
+      htmlParagraphs.push(`<p>${resultHTML || '<br>'}${lineChip}</p>`);
     }
 
     return htmlParagraphs.join('');

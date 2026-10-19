@@ -28,7 +28,7 @@ export function EditableCell({
         className={`text-cell translated-cell min-w-0 px-2 flex-1${edited || canRevert ? ' edited' : ''}`}
         onClick={onOpen}
       >
-        <GameTextView text={displayed} marks={marks} />
+        <GameTextView text={displayed} marks={marks} newlineChip />
       </div>
       {canRevert ? (
         <button

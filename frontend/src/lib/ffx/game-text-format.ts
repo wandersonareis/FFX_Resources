@@ -21,6 +21,15 @@ export interface FormattedGameText {
   html: string;
 }
 
+export interface DisplayFormatOptions {
+  /**
+   * Só a TABELA: chip `LF` no fim de cada quebra real de linha, para não
+   * confundir com o wrap de palavra do CSS. Desligado (default) = HTML
+   * byte-idêntico ao de sempre (refs do diálogo, editor, busca).
+   */
+  newlineChip?: boolean;
+}
+
 /**
  * Exibição completa de um texto canônico, com destaque opcional da busca
  * local (`marks` em code points do texto COM padding — o prefixo é removido
@@ -28,7 +37,8 @@ export interface FormattedGameText {
  */
 export function formatGameTextForDisplay(
   text?: string,
-  marks?: readonly GameTextMark[]
+  marks?: readonly GameTextMark[],
+  options?: DisplayFormatOptions
 ): FormattedGameText {
   const { padding, body } = splitLeadingPadding(text ?? '');
   const shift = [...padding].length;
@@ -42,11 +52,12 @@ export function formatGameTextForDisplay(
       : marks;
   return {
     paddingSummary: summarizePadding(padding),
-    html: gameTextParser.parseGameTextToHTML(
-      body,
-      undefined,
-      shifted && shifted.length > 0 ? { marks: shifted } : undefined
-    ),
+    // {} (sem marks e sem chip) resolve para o MESMO resultado de passar
+    // undefined — resolveMarks vazio e newlineChip false não tocam no HTML.
+    html: gameTextParser.parseGameTextToHTML(body, undefined, {
+      marks: shifted && shifted.length > 0 ? shifted : undefined,
+      newlineChip: options?.newlineChip === true,
+    }),
   };
 }
 
