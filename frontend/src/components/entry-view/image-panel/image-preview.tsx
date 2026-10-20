@@ -10,9 +10,10 @@ export type PreviewZoomLevel = 'fit' | number;
  * Área de exibição da textura + os controles flutuando sobre ela.
  *
  * A lupa anda no ciclo 1× (tamanho real) → 4× e volta; ajuste fino no
- * slider. A altura do contêiner muda com o zoom: no ajuste ele ocupa o
- * disponível, em zoom fixo cresce e rola em ambas as direções
- * (comportamento de visualizador de imagem), por escolha do usuário.
+ * slider. O container ocupa SEMPRE a altura disponível da aba: no ajuste
+ * a textura é contida (encaixa com letterbox se preciso); em zoom fixo
+ * ela cresce além do container e rola DENTRO dele, nas duas direções —
+ * a página nunca ganha rolagem por causa da textura.
  *
  * O menu flutuante só aparece com hover sobre a área da imagem (ou ao
  * focar um dos botões via teclado): fora disso ele some e a textura fica
@@ -47,16 +48,18 @@ export function ImagePreview({
 }) {
   return (
     // `group` na área da imagem: é o hover aqui (ou o focus em qualquer
-    // controle, via focus-within) que revela o menu flutuante.
-    <div className="group relative">
-      {/* Área de exibição com altura fixa: no zoom a imagem cresce
-          além do container e rola em ambas as direções (comportamento
-          de visualizador de imagem na web), por escolha do usuário. */}
+    // controle, via focus-within) que revela o menu flutuante. O h-full
+    // fecha a cadeia de alturas: wrapper do painel (estica) → aqui → box.
+    <div className="group relative h-full">
+      {/* Área de exibição com a ALTURA DISPONÍVEL do painel (não mede mais
+          pela textura): no ajuste a imagem é contida (max-w/max-h); em zoom
+          fixo ela ultrapassa o box e rola DENTRO dele, horizontal e
+          vertical — a página não rola por causa da textura. */}
       <div
         className={
           zoomLevel === 'fit'
-            ? 'flex min-h-40 items-center justify-center overflow-auto rounded-md border bg-muted/40 p-4'
-            : 'flex h-[65vh] overflow-auto rounded-md border bg-muted/40 p-4'
+            ? 'flex h-full items-center justify-center overflow-auto rounded-md border bg-muted/40 p-4'
+            : 'flex h-full overflow-auto rounded-md border bg-muted/40 p-4'
         }
       >
         {src ? (
@@ -82,7 +85,7 @@ export function ImagePreview({
             }}
             className={
               zoomLevel === 'fit'
-                ? 'max-h-[65vh] max-w-full object-contain'
+                ? 'max-h-full max-w-full object-contain'
                 : // m-auto centraliza quando cabe e zera quando estoura —
                   // sem isso o flex centrado cortaria a rolagem; shrink-0
                   // impede o flex de encolher a imagem de volta.

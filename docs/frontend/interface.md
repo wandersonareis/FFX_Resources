@@ -29,7 +29,9 @@ WebView nativo pelo Wails v3, consumindo os bindings Go
 
 Cada versão do jogo (FFX, FFX-2, Last Mission...) é uma aba — trocar de
 aba (`Ctrl+1..4`) troca a árvore inteira. O layout (largura das colunas,
-árvore/painéis) é persistido entre sessões.
+árvore/painéis) é persistido entre sessões. Exceção: a coluna de
+informações do painel de imagens, quando oculta pelo botão **Info**, é
+preferência só da sessão (ver [Imagens / texturas](#imagens--texturas)).
 
 ### Cabeçalho (topo)
 
@@ -281,11 +283,22 @@ importado. Nada é salvo no binário até o "Salvar" explícito.
 Selecionando um nó de imagem, a tabela é substituída pelo painel de
 texturas:
 
-- **ImagePanel (prévia)** — zoom (`Ctrl+=`/`‑`/`0`), espelho
+- **ImagePanel (prévia)** — o container ocupa a altura disponível da aba:
+  no ajuste a textura é contida (encaixa, com letterbox); em zoom maior que
+  o container ela rola **horizontal e vertical só dentro do container** — a
+  página nunca rola por causa da textura. Zoom (`Ctrl+=`/`‑`/`0`), espelho
   (`Ctrl+Alt+V`), alternância suave/pixelado e lupa (tamanho real).
-- **ImageInfoPanel (metadados)** — formato DDS, dimensões, mipmaps,
-  origem (em disco / decodificado do `.dds.phyre`) e estado
-  (**importada (mods/)** ou **pristine (data/)**).
+- **ImageInfoPanel (metadados)** — card da altura da coluna: formato DDS,
+  dimensões, mipmaps, origem (em disco / decodificado do `.dds.phyre`) e
+  estado (**importada (mods/)** ou **pristine (data/)**). Conteúdo mais
+  alto que a coluna rola DENTRO dela (janela baixa, lista de repetidas
+  longa) — a página continua sem rolagem.
+- **Info (ocultar/exibir a coluna de metadados)** — botão sempre visível
+  na barra do painel: oculta a coluna e dá toda a largura à prévia
+  (clicar de novo exibe). É preferência da **sessão** — permanece ao
+  navegar entre texto↔imagem e entre abas, mas nada é salvo: ao reabrir
+  o app a coluna volta aberta. A **largura** ajustada da coluna (quando
+  exibida) continua persistida como o resto do layout.
 
 ### Réplicas (cópias idênticas)
 

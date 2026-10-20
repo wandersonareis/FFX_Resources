@@ -6,6 +6,7 @@ import type { EntryRow } from '@/lib/ffx/tree-data';
 import { resolveEntryLabel } from '@/lib/ffx/display-names';
 import { usePersistedLayout } from '@/lib/ffx/use-persisted-layout';
 import { LAYOUT_DEFAULTS_PX } from '@/lib/ffx/layout-storage';
+import { imageInfoStore, toggleImageInfo } from '@/lib/ffx/image-info-store';
 import {
   ResizableHandle,
   ResizablePanel,
@@ -55,6 +56,12 @@ export function ImagePanel({ view }: { view: EntryView }) {
    * idempotente e já no cliente (sem SSR).
    */
   const { defaultLayout, onLayoutChanged } = usePersistedLayout('imageInfo');
+  /**
+   * Coluna de informações OCULTA (sessão): sobrevive à troca imagem↔texto e
+   * entre abas de versão, mas não ao fechamento do app (padrão = aberta).
+   * Vive no store de módulo, fora daqui — o ImagePanel desmonta.
+   */
+  const infoHidden = useSelector(imageInfoStore, (s) => s.hidden);
 
   const {
     busy,
@@ -140,7 +147,7 @@ export function ImagePanel({ view }: { view: EntryView }) {
       initialDuplicates={duplicates}
     >
       <div
-        className="mt-4 flex flex-col gap-4"
+        className="flex h-full flex-col gap-4 pt-4"
         onContextMenuCapture={() =>
           setMenuTarget(readOnly ? null : panelTarget)
         }
@@ -150,20 +157,24 @@ export function ImagePanel({ view }: { view: EntryView }) {
           readOnly={readOnly}
           flipped={preview.flipped}
           duplicateCount={duplicates.length}
+          infoHidden={infoHidden}
           onExtract={() => openAction('extract')}
           onSave={(format) => void onSave(format)}
           onImport={() => void onImport()}
           onImportTranslated={() => void openImportImages()}
           onReplicate={() => openAction('replicate')}
           onToggleFlip={preview.toggleFlip}
+          onToggleInfo={toggleImageInfo}
           onRefresh={() => void onRefresh()}
         />
 
-        {/* O react-resizable-panels fixa height/width:100% no grupo por style
-            inline; dentro do <main> que rola, um wrapper SEM altura faz a
-            porcentagem colapsar para auto — o grupo então mede pelo conteúdo,
-            como o grid anterior fazia. */}
-        <div>
+        {/* O grupo preenche a altura DISPONÍVEL da aba — não mede mais pelo
+            conteúdo. O wrapper tem flex-1/min-h-0 (altura definida dentro do
+            flex-col do painel), o height:100% inline do grupo resolve contra
+            ele, e a página deixa de crescer/rolar por causa de textura alta:
+            a rolagem mora DENTRO do box da prévia (imagem maior que o
+            container) e do wrapper da coluna de info (metadados altos). */}
+        <div className="min-h-0 flex-1">
           <ResizablePanelGroup
             orientation="horizontal"
             defaultLayout={defaultLayout}
@@ -184,20 +195,36 @@ export function ImagePanel({ view }: { view: EntryView }) {
                 onTogglePixelated={preview.togglePixelated}
               />
             </ResizablePanel>
-            <ResizableHandle withHandle />
-
-            <ResizablePanel
-              id="info"
-              defaultSize={LAYOUT_DEFAULTS_PX.imageInfo}
-              minSize={180}
-              maxSize={480}
-            >
-              <ImageInfoPanel
-                image={image}
-                duplicates={duplicates}
-                onGoToCopy={(id, key, vbfPath) => void goToCopy(id, key, vbfPath)}
-              />
-            </ResizablePanel>
+            {/*
+                Coluna oculta (botão Info da barra): handle e painel saem do
+                grupo juntos e a prévia fica com 100% da largura. Ocultar não
+                polui a largura PERSISTIDA — o re-layout programático chega no
+                onLayoutChanged com isUserInteraction=false e não grava; ao
+                reexibir, o painel volta pela defaultLayout/defaultSize (a
+                largura salva, ou 320px pelo padrão).
+            */}
+            {!infoHidden ? (
+              <>
+                <ResizableHandle withHandle />
+                <ResizablePanel
+                  id="info"
+                  // relative: containing block do card absoluto da coluna
+                  // (o visual full-height). A v4 aplica o className no
+                  // wrapper interno do painel — exatamente quem precisa
+                  // posicionar o card.
+                  className="relative"
+                  defaultSize={LAYOUT_DEFAULTS_PX.imageInfo}
+                  minSize={180}
+                  maxSize={480}
+                >
+                  <ImageInfoPanel
+                    image={image}
+                    duplicates={duplicates}
+                    onGoToCopy={(id, key, vbfPath) => void goToCopy(id, key, vbfPath)}
+                  />
+                </ResizablePanel>
+              </>
+            ) : null}
           </ResizablePanelGroup>
         </div>
 

@@ -133,15 +133,38 @@ export function ImageInfoPanel({
   ];
 
   return (
-    <dl className="space-y-2 text-sm">
-      {meta.map(([label, value]) => (
-        <div key={label} className="flex flex-col gap-1">
-          <dt className="text-xs uppercase tracking-wide opacity-60">
-            {label}
-          </dt>
-          <dd className="min-w-0">{value}</dd>
-        </div>
-      ))}
-    </dl>
+    // O card da coluna é um RETRATO VISUAL absoluto (inset-0), não um wrapper:
+    // em flow ele somaria borda e padding na altura medida do painel. Absoluto,
+    // ele não participa da medição e ainda assim preenche a coluna INTEIRA
+    // (a margem do p-1 visível por toda a altura). O containing block é o
+    // wrapper do painel — o ResizablePanel id="info" recebe
+    // className="relative" no index. O wrapper NUNCA rola (o dl mede exatamente
+    // a altura dele): quem rola é o próprio dl — se o card rolasse junto do
+    // conteúdo (o que acontecia com o wrapper como container de rolagem), o
+    // conteúdo aparecia POR FORA do card ao rolar uma coluna alta.
+    <>
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 rounded-md border bg-muted/40"
+      />
+      {/*
+          O dl É o container de rolagem da coluna: h-full (a altura do
+          painel) + overflow-y-auto. Conteúdo mais alto (repetidas +
+          caminhos extraídos em tela baixa) rola DENTRO dele — o card fica
+          parado, cobrindo sempre a parte visível. O p-1 afasta o conteúdo
+          da borda do card nos quatro lados; o dl fica por cima do card
+          (relative pinta depois do absoluto anterior).
+      */}
+      <dl className="relative h-full space-y-2 overflow-y-auto p-1 text-sm">
+        {meta.map(([label, value]) => (
+          <div key={label} className="flex flex-col gap-1">
+            <dt className="text-xs uppercase tracking-wide opacity-60">
+              {label}
+            </dt>
+            <dd className="min-w-0">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </>
   );
 }
