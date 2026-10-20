@@ -42,6 +42,8 @@ github.com/tiendc/go-deepcopy v1.7.2 h1:Ut2yYR7W9tWjTQitganoIue4UGxZwCcJy3orjrrI
 github.com/tiendc/go-deepcopy v1.7.2/go.mod h1:4bKjNC2r7boYOkD2IOuZpYjmlDdzjbpTRyCx+goBCJQ=
 github.com/wailsapp/wails/v3 v3.0.0-beta.30 h1:uMf8QlaESexqKKQISwXowS4/RiYeXDfB8Ttzb1UC1tQ=
 github.com/wailsapp/wails/v3 v3.0.0-beta.30/go.mod h1:5DR/EG5FHU8+BNV7tQYQ/rJMjoFsVlYpM+0gp1+gcTI=
+github.com/wailsapp/wails/v3 v3.0.0-beta.33 h1:ykavx44Mry481AyezWGqDsQPCm/0Ab5GLGYMsaCQlKE=
+github.com/wailsapp/wails/v3 v3.0.0-beta.33/go.mod h1:Tk3i8pyehpIdV4aS9GfpgGjk7eOjuSpCrpyJXpS6y64=
 github.com/woozymasta/bcn v0.7.0 h1:C3LYmzOs2dvOnmRZ3Jswq7qYnZYYOyR1zouIpL0hZVk=
 github.com/woozymasta/bcn v0.7.0/go.mod h1:DdgpNKTz4D7tnL1gfX91xUSbgvkrZoBLoXzB5U3DlUw=
 github.com/xuri/efp v0.0.2 h1:74yhBh0nfIWLOrN76wtShYVse94pADGYS0/c86jOp8Q=
