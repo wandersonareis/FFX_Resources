@@ -1,0 +1,16 @@
+{
+  "name": "ffx-resources-e2e",
+  "private": true,
+  "description": "Playwright E2E contra o app servido em modo servidor (wails3 task run:server)",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "@types/node": "^26.6.5",
+    "typescript": "^5.9.3"
+  }
+}

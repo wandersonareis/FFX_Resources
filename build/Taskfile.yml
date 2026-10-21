@@ -288,6 +288,25 @@ tasks:
     cmds:
       - '"./{{.BIN_DIR}}/{{.APP_NAME}}-server{{exeExt}}"'
 
+  install:e2e:
+    summary: Installs Playwright dependencies (e2e/) and the Chromium browser
+    dir: e2e
+    cmds:
+      - npm install
+      - npx playwright install chromium
+
+  test:e2e:
+    summary: Runs the Playwright E2E suite against the prebuilt server binary
+    desc: |
+      The suite expects build/bin/spira-server.exe already built (the root
+      `test:e2e` task builds it first). Playwright starts the binary itself
+      via webServer and reuses one already listening on the ServerOptions
+      port (a manual `wails3 task run:server`).
+    dir: e2e
+    cmds:
+      - npm install
+      - npx playwright test
+
   build:docker:
     summary: Builds a Docker image for server mode deployment
     desc: |
@@ -325,18 +344,18 @@ tasks:
   run:docker:
     summary: Builds and runs the Docker image
     desc: |
-      Builds the Docker image and runs it, exposing port 8080.
-      Usage: task run:docker [TAG=myapp:latest] [PORT=8080]
-      Note: The internal container port is always 8080. The PORT variable
-      only changes the host port mapping. Ensure your app uses port 8080
-      or modify the Dockerfile to match your ServerOptions.Port setting.
+      Builds the Docker image and runs it, exposing the server port.
+      Usage: task run:docker [TAG=myapp:latest] [PORT=9246]
+      Note: The internal container port follows ServerOptions.Port (9246 in
+      main.go — 8080 é a default do Wails e a mais batida em dev web). The
+      PORT variable only changes the host port mapping.
     deps:
       - task: build:docker
         vars:
           TAG:
             ref: .TAG
     cmds:
-      - docker run --rm -p {{.PORT | default "8080"}}:8080 {{.TAG | default (printf "%s:latest" .APP_NAME)}}
+      - docker run --rm -p {{.PORT | default "9246"}}:9246 {{.TAG | default (printf "%s:latest" .APP_NAME)}}
     vars:
       TAG: "{{.TAG}}"
       PORT: "{{.PORT}}"

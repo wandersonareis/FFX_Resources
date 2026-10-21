@@ -44,6 +44,7 @@ export function ContentTree({ view }: { view: EntryView }) {
   const { version, store, actions } = view;
   const roots = useSelector(store, (s) => s.roots);
   const vbfRoots = useSelector(store, (s) => s.vbfRoots);
+  const vbfStatus = useSelector(store, (s) => s.vbfStatus);
   const expanded = useSelector(store, (s) => s.expanded);
   const selectedEntry = useSelector(store, (s) => s.selectedEntry);
   const image = useSelector(store, (s) => s.image);
@@ -186,7 +187,9 @@ export function ContentTree({ view }: { view: EntryView }) {
           <ContentTreeProvider value={treeValue}>
             <TreeList
               treeRef={treeRef}
+              version={version}
               vbfRoots={vbfRoots}
+              vbfStatus={vbfStatus}
               roots={contentRoots}
               onNodeContextMenu={treeActions.onNodeContextMenu}
             />

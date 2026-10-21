@@ -44,6 +44,20 @@ func main() {
 	app := application.New(application.Options{
 		Name: "FINAL FANTASY X and X-2 HD Remaster Resources Editor",
 		Icon: icon,
+		// Modo servidor (`wails3 task build:server` com -tags server): o
+		// mesmo binário sobe como HTTP puro, sem janela nativa, servindo o
+		// frontend em http://localhost:9246 — bindings e eventos atravessam
+		// o /wails/runtime do Wails no mesmo origem. No build desktop
+		// (sem a tag) estas opções são ignoradas.
+		//
+		// 8080 é o default do Wails e a porta mais batida do dev web
+		// (proxies, dev servers, Docker de exemplo): a 9246 segue a faixa
+		// do dev server do projeto (a 9245 do `wails3 dev`). WAILS_SERVER_
+		// HOST/PORT sobrepõem em runtime (Docker/CI) sem rebuild.
+		Server: application.ServerOptions{
+			Host: "localhost",
+			Port: 9246,
+		},
 		// App (sessão/ciclo de vida) + serviços por domínio.
 		Services: appServices(appInstance),
 		Assets: application.AssetOptions{

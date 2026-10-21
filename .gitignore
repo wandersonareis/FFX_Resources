@@ -67,6 +67,13 @@ testData/config.json
 /.angular/
 .angular/
 
+# Playwright E2E (e2e/): dependências, relatório, artefatos de falha e os
+# backups de fixture que os specs criam/restauram durante a corrida.
+/e2e/node_modules/
+/e2e/.tmp/
+/e2e/playwright-report/
+.e2e-artifacts/
+
 # Node modules and dependency files
 /node_modules/
 /package-lock.json

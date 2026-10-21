@@ -107,6 +107,12 @@ export interface EntryViewState {
    * carregamento deles é independente desta lista.
    */
   vbfRoots: SideNode[];
+  /**
+   * Carga das raízes .vbf: 'loading' = a descoberta ainda não respondeu (a
+   * lista vazia NÃO significa nada — o aviso "aponte o executável" só vale
+   * depois de 'ready').
+   */
+  vbfStatus: 'loading' | 'ready';
   expanded: Set<string>;
   activeKind: EntryKind;
   selectedEntry: EntryRow | null;
@@ -295,6 +301,7 @@ function createEntryStore(version: GameVersionId) {
   return createStore<EntryViewState>({
     roots: kinds.map((kind) => loadingRootNode(kind)),
     vbfRoots: [],
+    vbfStatus: 'loading' as const,
     // Mantem os kinds de texto visiveis dentro do grupo de apresentacao.
     expanded: new Set([TEXT_ROOT_NODE_ID]),
     activeKind: 'events',
@@ -715,6 +722,7 @@ export function createEntryView(version: GameVersionId): EntryView {
       // já diz que é .vbf.
       const list = all.filter((root) => root.version === version);
       patch({
+        vbfStatus: 'ready',
         vbfRoots: list.map((root) => ({
           // Mesmo formato de vbfNodeId com path/id vazios = a RAIZ do
           // container (é o que a expansão usa como diretório inicial).
@@ -728,7 +736,9 @@ export function createEntryView(version: GameVersionId): EntryView {
       });
     } catch (error) {
       if (gen !== generationCounter.current) return;
-      patch({ vbfRoots: [] });
+      // A lista é final mesmo no erro (vazia): o aviso da árvore pode ser
+      // exibido — a falha em si já foi notificada ao usuário.
+      patch({ vbfStatus: 'ready', vbfRoots: [] });
       sendErrorNotification(error);
     }
   };
@@ -764,6 +774,7 @@ export function createEntryView(version: GameVersionId): EntryView {
     patch({
       roots: kinds.map((kind) => loadingRootNode(kind)),
       vbfRoots: [],
+      vbfStatus: 'loading' as const,
       // Mantem os kinds de texto visiveis apos reload frio.
       expanded: new Set([TEXT_ROOT_NODE_ID]),
       selectedEntry: null,

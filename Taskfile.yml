@@ -64,6 +64,19 @@ tasks:
     cmds:
       - task: common:run:server
 
+  install:e2e:
+    summary: Instala o Playwright (deps do e2e/ e o navegador Chromium)
+    cmds:
+      - task: common:install:e2e
+
+  test:e2e:
+    summary: Playwright E2E no app servido (builda o spira-server antes)
+    cmds:
+      - task: common:build:server
+        vars:
+          DEV: "true"
+      - task: common:test:e2e
+
   build:docker:
     summary: Builds a Docker image for server mode deployment
     cmds:

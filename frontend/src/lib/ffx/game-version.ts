@@ -7,6 +7,16 @@ export const GAME_VERSIONS = [
 
 export type GameVersionId = (typeof GAME_VERSIONS)[number]['id'];
 
+/**
+ * Versões com container .vbf PRÓPRIO na sidebar: eternalcalm e lastmiss
+ * dividem a árvore do jogo-pai SEM container (vbfVersionOf do backend só
+ * mapeia FFX_Data.vbf/FFX2_Data.vbf) — nessas abas a seção .vbf vazia é
+ * por design e o aviso "aponte o executável" não pode aparecer.
+ */
+export function hasOwnVbfContainer(version: GameVersionId): boolean {
+  return version === 'ffx' || version === 'ffx2';
+}
+
 export function isGameVersionId(value: unknown): value is GameVersionId {
   return (
     typeof value === 'string' &&

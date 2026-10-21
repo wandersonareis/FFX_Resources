@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, startTransition, useState } from 'react';
+import { useSelector } from '@tanstack/react-store';
 import { useHotkey, useHotkeys } from '@tanstack/react-hotkeys';
 import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { SHORTCUTS, shortcutTip } from '@/lib/ffx/shortcuts';
@@ -14,6 +15,11 @@ import { useWailsEvent } from '@/lib/ffx/use-wails-event';
 import { saveAllDrafts } from '@/lib/ffx/save-all';
 import { exportSelection, EXPORT_FORMAT_LABELS } from '@/lib/ffx/export-selection';
 import { applyConfigSnapshot, loadConfigSnapshot } from '@/lib/ffx/config-store';
+import {
+  configDialogStore,
+  setConfigDialogOpen,
+  openConfigDialog,
+} from '@/lib/ffx/config-dialog-store';
 import {
   Tooltip,
   TooltipContent,
@@ -36,7 +42,9 @@ import { ProgressModal } from '@/components/progress/progress-modal';
 export function AppShell() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [configOpen, setConfigOpen] = useState(false);
+  // Diálogo de Configurações: estado no store de módulo — a árvore de
+  // containers também o abre (aviso "aponte o executável").
+  const configOpen = useSelector(configDialogStore, (s) => s.open);
 
   useEffect(() => {
     // Hydration-safe: localStorage só existe no cliente.
@@ -94,8 +102,9 @@ export function AppShell() {
     () => openFileFind(GAME_VERSIONS[selectedIndex].id),
     { meta: { name: SHORTCUTS.findInFile.label, group: 'Global' } }
   );
-  // Ctrl+, : abrir Configurações (convenção de settings).
-  useHotkey(SHORTCUTS.config.keys, () => setConfigOpen(true), {
+  // Ctrl+, : abrir Configurações (convenção de settings) — janela no
+  // desktop, modal no browser (openConfigDialog decide).
+  useHotkey(SHORTCUTS.config.keys, () => openConfigDialog(), {
     meta: { name: SHORTCUTS.config.label, group: 'Global' },
   });
   // Ctrl+Alt+F: alterna formato JSON ↔ Strings direto (popover não abre).
@@ -133,7 +142,7 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen flex-col">
-      <AppHeader onOpenConfig={() => setConfigOpen(true)} />
+      <AppHeader onOpenConfig={openConfigDialog} />
 
       <Tabs value={String(selectedIndex)} onValueChange={onTabChange} className="flex-1 min-h-0 flex flex-col">
         <div className="mx-4 mt-2 flex items-center justify-between gap-1">
@@ -173,7 +182,7 @@ export function AppShell() {
 
       <StatusBar />
 
-      <ConfigDialog open={configOpen} onOpenChange={setConfigOpen} />
+      <ConfigDialog open={configOpen} onOpenChange={setConfigDialogOpen} />
       <ProgressNotifier />
       <ProgressModal />
     </div>

@@ -6,6 +6,35 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * AboutLinks são os links exibidos no rodapé da janela Sobre — o backend é a
+ * fonte única (o OpenExternal valida contra os mesmos valores).
+ */
+export class AboutLinks {
+    "source": string;
+    "releases": string;
+
+    /** Creates a new AboutLinks instance. */
+    constructor($$source: Partial<AboutLinks> = {}) {
+        if (!("source" in $$source)) {
+            this["source"] = "";
+        }
+        if (!("releases" in $$source)) {
+            this["releases"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new AboutLinks instance from a string or object.
+     */
+    static createFrom($$source: any = {}): AboutLinks {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new AboutLinks($$parsedSource as Partial<AboutLinks>);
+    }
+}
+
+/**
  * AppConfigSnapshot espelha o config.json inteiro em um objeto só: é o
  * payload da consulta GetConfigSnapshot (carga inicial do store do
  * frontend) e do evento AppConfigChanged (re-emitido após cada setter —
