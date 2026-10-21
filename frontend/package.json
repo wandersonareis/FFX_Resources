@@ -1,6 +1,6 @@
 {
   "name": "ffx_ffx2_hd_remaster_resources_editor_frontend",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
