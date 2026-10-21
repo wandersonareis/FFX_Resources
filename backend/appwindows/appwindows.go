@@ -9,11 +9,18 @@
 //   - URL "/w#<nome>": a rota /w é o host React (frontend/src/app/w) e o
 //     hash escolhe o conteúdo montado ali dentro.
 //   - Singleton por nome: GetByName → Show/Focus. O Wails remove a janela do
-//     registry quando ela fecha, então a próxima abertura recria limpo — sem
-//     mapa próprio e sem vazamento de referência.
+//     registry quando ela é DESTRUÍDA (listener built-in no WindowClosing),
+//     então a reabertura das modais recria limpo — sem mapa próprio e sem
+//     vazamento de referência.
 //   - Spec sidebar (logs): janela companheira NÃO-MODAL na lateral direita
 //     da principal — o app segue usável com ela aberta, e o fechamento dela
 //     é anunciado (LogWindowClosed) para o checkbox da principal desmarcar.
+//   - Reuso da sidebar (doc: Multiple Windows ▸ "Reuse windows"): o X/Esc da
+//     janela de logs vira Hide, não destruição — o webview (scroll, tema,
+//     assinaturas UILog) e a geometria sobrevivem ao toggle; destruição de
+//     verdade só na saída do app (appClosing). As modais (config/about)
+//     NÃO reusam: AttachModal desabilita a principal e o re-enable só
+//     acontece no destroy — Hide congelaria o app.
 package appwindows
 
 import (
@@ -22,6 +29,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -35,6 +43,21 @@ const MainWindowName = "main"
 // todas as filhas abertas — cobre Linux (AttachModal é no-op lá) e o caso de
 // o SO destruir a principal sem passar pelo fluxo de owner do Windows.
 var closeChildrenHook sync.Once
+
+// windowMu serializa Open/Close: sem ele, duas chamadas simultâneas (menu +
+// checkbox) que não acham a janela criariam DUAS janelas com o mesmo Name —
+// a registry é por ID, não por nome — deixando uma órfã visível.
+var windowMu sync.Mutex
+
+// appClosing marca que a PRINCIPAL está fechando (saída do app). Enquanto
+// verdadeiro, as filhas são destruídas DE VERDADE no hook em bloco: o
+// Cancel() do reuso da sidebar ficaria segurando a janela oculta e o app
+// jamais sairia (o Windows só manda PostQuitMessage quando o windowMap
+// esvazia — application_windows.go, "DisableQuitOnLastWindowClosed").
+// Não há risco de flag preso num quit cancelado: ShouldQuit (QuitApp/menu)
+// é consultado por destroy() ANTES de qualquer WindowClosing, e fechar a
+// principal no Windows não tem etapa de cancelamento depois destes hooks.
+var appClosing atomic.Bool
 
 // URLs do repositório — fonte ÚNICA (o About exibe e o OpenExternal valida
 // contra estes valores; renomear o remote é mudar aqui).
@@ -51,9 +74,10 @@ const (
 	aboutOpenReleases = "about:open-releases"
 )
 
-// logsClosedEvent é emitido quando a janela de LOGS fecha (X/Esc/Alt+F4):
-// o checkbox da janela principal escuta e desmarca — o estado dos dois
-// lados da ponte fica sincronizado nos dois sentidos.
+// logsClosedEvent é emitido quando a janela de LOGS fecha (X/Esc/Alt+F4 —
+// que no reuso VIRAM Hide, sem destruir; e no fecho em bloco da saída do
+// app, destruindo): o checkbox da janela principal escuta e desmarca, o
+// estado dos dois lados da ponte fica sincronizado nos dois sentidos.
 const logsClosedEvent = "LogWindowClosed"
 
 //go:embed about.html
@@ -80,19 +104,27 @@ type spec struct {
 	// sidebar: janela COMPANHEIRA na lateral direita da principal (logs).
 	// Diferente das modal: NÃO AttachModal (o app segue usável com ela
 	// aberta), nasce posicionada à direita da principal COM A ALTURA DELA
-	// (a altura do spec é só o tamanho de criação) e avisa o próprio
-	// fechamento (logsClosedEvent) para o checkbox da principal desmarcar.
+	// (a altura do spec é só o tamanho de criação) e o fecho (X/Esc) vira
+	// Hide com reuso — a geometria persiste e o evento logsClosedEvent
+	// desmarca o checkbox da principal.
 	sidebar bool
 }
 
 var specs = map[string]spec{
+	// MODAIS (config/about): criar/destruir por abertura — NÃO reusar com
+	// Hide. attachModal desabilita a principal (EnableWindow(parent, false))
+	// e o re-enable só acontece no destroy (webview_window_windows.go):
+	// esconder em vez de destruir deixaria a principal travada para sempre.
+	//
 	// Altura do config = titlebar do WindowChrome (h-9 = 36px) + conteúdo
 	// (~389px): sem espaço morto embaixo. Abaixo disso o overflow-auto do
 	// chrome rola (hints quebram mais linhas na largura mínima).
 	"config": {title: "Configurações", width: 720, height: 425, minWidth: 560, minHght: 420},
 	"about":  {title: "Sobre", width: 580, height: 480, minWidth: 480, minHght: 420, html: true},
 	// logs: a altura 600 é provisória — positionRightOfMain sobrescreve com
-	// a altura da principal no momento da abertura.
+	// a altura da principal no momento da PRIMEIRA abertura; nas reaberturas
+	// (reuso) a geometria persiste e restoreSidebar só valida se ela ainda
+	// está em alguma tela.
 	"logs": {title: "Logs", width: 480, height: 600, minWidth: 360, minHght: 280, sidebar: true},
 }
 
@@ -106,8 +138,16 @@ func Open(name string) error {
 	if a == nil {
 		return fmt.Errorf("app não inicializado")
 	}
+	windowMu.Lock()
+	defer windowMu.Unlock()
 	registerAboutEvents(a)
 	if w, found := a.Window.GetByName(name); found {
+		if s.sidebar {
+			// Reuso: a sidebar sobrevive oculta (Hide no X), então a
+			// geometria persiste — valida a posição salva ANTES de mostrar
+			// (o monitor onde ela viveu pode ter saído do caminho).
+			restoreSidebar(a, w, s.width)
+		}
 		w.Show()
 		w.Focus()
 		return nil
@@ -138,11 +178,23 @@ func Open(name string) error {
 	w := a.Window.NewWithOptions(opts)
 	if s.sidebar {
 		// Janela companheira: sem modal, sem Center — nasce à direita da
-		// principal, com a altura dela (positionRightOfMain), e avisa o
-		// próprio fechamento (checkbox desmarca).
+		// principal, com a altura dela (positionRightOfMain).
 		ensureCloseChildrenHook(a)
 		positionRightOfMain(a, w, s.width)
-		w.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) {
+		// Reuso (doc: Multiple Windows ▸ "Reuse windows"): o X/Esc/Alt+F4
+		// vira Hide, não destruição — Cancel() impede o fecho nativo (WM_CLOSE
+		// → emit → HandleWindowEvent roda os HOOKS antes dos listeners), o
+		// webview e a geometria sobrevivem ao toggle e a próxima Open só
+		// Show/Focus. O fecho é anunciado nos DOIS sentidos: X desmarca o
+		// checkbox da principal; desmarcar chama CloseWindow e o mesmo evento
+		// volta (idempotente no store). Na saída do app (appClosing) o Cancel
+		// é pulado para a janela morrer de verdade — oculta, ela seguraria o
+		// windowMap e o quit jamais esvaziaria a contagem de janelas.
+		w.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+			if !appClosing.Load() {
+				e.Cancel()
+				w.Hide()
+			}
 			a.Event.Emit(logsClosedEvent)
 		})
 		return nil
@@ -152,9 +204,11 @@ func Open(name string) error {
 	return nil
 }
 
-// Close fecha a janela filha nomeada. Janela ausente (nunca aberta, ou já
-// fechada pelo X) não é erro: quem chama está sincronizando estado de UI
-// (o checkbox de logs desmarcando), não gerenciando ciclo de vida.
+// Close fecha a janela filha nomeada. Para a sidebar (logs), "fechar" é
+// Hide — o reuso mantém o webview e a geometria; a destruição de verdade
+// acontece só na saída do app (hook em bloco com appClosing setado). Janela
+// ausente (nunca aberta) não é erro: quem chama está sincronizando estado de
+// UI (o checkbox de logs desmarcando), não gerenciando ciclo de vida.
 func Close(name string) error {
 	if _, ok := specs[name]; !ok {
 		return fmt.Errorf("janela desconhecida: %q", name)
@@ -163,6 +217,8 @@ func Close(name string) error {
 	if a == nil {
 		return fmt.Errorf("app não inicializado")
 	}
+	windowMu.Lock()
+	defer windowMu.Unlock()
 	if w, found := a.Window.GetByName(name); found {
 		w.Close()
 	}
@@ -184,7 +240,7 @@ const sidebarGap = 8
 // maximizada tem a workarea inteira como altura) — cobre a margem morta do
 // conteúdo (layout limitado a 1440px), não a faixa da caption da principal
 // (senão as duas barras de controles de janela empilham uma sobre a outra).
-func positionRightOfMain(a *application.App, w *application.WebviewWindow, width int) {
+func positionRightOfMain(a *application.App, w application.Window, width int) {
 	main, ok := a.Window.GetByName(MainWindowName)
 	if !ok {
 		w.Center()
@@ -242,6 +298,65 @@ func workAreaAt(a *application.App, x, y int) application.Rect {
 		wa = target.Bounds
 	}
 	return wa
+}
+
+// allWorkAreas devolve as áreas úteis (DIPs) de TODAS as telas conhecidas
+// — vazio quando nenhuma. WorkArea zerada cai para Bounds (tela sem área
+// útil definida), mesmo critério do workAreaAt.
+func allWorkAreas(a *application.App) []application.Rect {
+	screens := a.Screen.GetAll()
+	areas := make([]application.Rect, 0, len(screens))
+	for _, s := range screens {
+		wa := s.WorkArea
+		if wa.Width == 0 || wa.Height == 0 {
+			wa = s.Bounds
+		}
+		areas = append(areas, wa)
+	}
+	return areas
+}
+
+// Medidas da titlebar do WindowChrome usadas no teste de utilizabilidade da
+// sidebar: a faixa h-9 (36px) é o que o arrasto usa; 80px de largura e a
+// metade da altura (18px) são o mínimo para agarrar/redimensionar.
+const (
+	sidebarTitlebar  = 36
+	sidebarMinWidth  = 80
+	sidebarMinHeight = 18
+)
+
+// sidebarUsable confere se o retângulo salvo da sidebar ainda é utilizável:
+// a FAIXA DA TITLEBAR (r.X, r.Y, largura × 36) precisa ter no mínimo
+// 80×18 px dentro de ALGUMA área útil. Preserva janelas estacionadas
+// rente à borda (a titlebar segue à mostra); janela sem tela (monitor
+// desconectado) ou com só um fio à mostra cai fora → o chamador reancora.
+// Sem telas conhecidas (áreas vazias) devolve false: sem como julgar, reancora.
+func sidebarUsable(r application.Rect, areas []application.Rect) bool {
+	if r.Width <= 0 || r.Height <= 0 {
+		return false
+	}
+	strip := application.Rect{X: r.X, Y: r.Y, Width: r.Width, Height: min(sidebarTitlebar, r.Height)}
+	for _, wa := range areas {
+		inter := strip.Intersect(wa)
+		if inter.Width >= sidebarMinWidth && inter.Height >= sidebarMinHeight {
+			return true
+		}
+	}
+	return false
+}
+
+// restoreSidebar mantém a sidebar ONDE o usuário deixou (a geometria
+// sobrevive ao Hide do reuso) e só reancora na principal quando a posição se
+// perdeu — tela que sumiu, janela sem área agarrável. Valida ANTES do Show
+// para a janela não reaparecer em lugar errado.
+func restoreSidebar(a *application.App, w application.Window, width int) {
+	x, y := w.Position()
+	ww, wh := w.Size()
+	saved := application.Rect{X: x, Y: y, Width: ww, Height: wh}
+	if sidebarUsable(saved, allWorkAreas(a)) {
+		return
+	}
+	positionRightOfMain(a, w, width)
 }
 
 // registerAboutEvents liga os eventos da janela Sobre às URLs da
@@ -321,6 +436,10 @@ func ensureCloseChildrenHook(a *application.App) {
 	}
 	closeChildrenHook.Do(func() {
 		parent.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) {
+			// Saída do app: desarma o Cancel() do reuso (appClosing) para a
+			// sidebar morrer de verdade aqui — oculta, ela sobreviveria ao
+			// fluxo e o quit não esvaziaria o windowMap.
+			appClosing.Store(true)
 			for name := range specs {
 				if child, found := a.Window.GetByName(name); found {
 					child.Close()
