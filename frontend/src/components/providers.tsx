@@ -3,6 +3,7 @@
 import { ThemeProvider } from 'next-themes';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
+import { UpdateBanner } from '@/components/update-banner';
 
 /**
  * Providers globais. O ThemeProvider do next-themes é o dono do tema:
@@ -22,6 +23,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <TooltipProvider delayDuration={300}>
         {children}
         <Toaster position="bottom-center" />
+        {/* Estado do auto-update: acorda só com eventos wails:updater:* */}
+        <UpdateBanner />
       </TooltipProvider>
     </ThemeProvider>
   );

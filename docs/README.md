@@ -36,3 +36,9 @@ do texto geram o valor dos ponteiros. Documentado em
   leem/escrevem binário; os builders (`backend/builders`) montam/aplicam o
   DTO; os formatters (`backend/formatters`) serializam JSON/.strings/CSV/XLSX.
 - Edits são sempre salvos em `mods/<localização>/...`, nunca em `data/`.
+
+## Outros guias
+
+- [Auto-update (Wails v3)](updater.md) — contrato de release/build do
+  updater (asset, `SHA256SUMS`, versão), eventos `wails:updater:*`, janela de
+  update e checklist para **agentes de IA** mexerem no assunto.

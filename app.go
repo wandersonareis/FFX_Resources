@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"ffxresources/backend/appupdater"
 	"ffxresources/backend/common"
 	"ffxresources/backend/interactions"
 	"ffxresources/backend/loggingService"
@@ -89,6 +90,7 @@ func appServices(a *App) []application.Service {
 		application.NewService(a.text),
 		application.NewService(a.image),
 		application.NewService(&WindowService{}),
+		application.NewService(&UpdateService{}),
 	}
 }
 
@@ -134,6 +136,16 @@ func (a *App) shouldQuit() bool {
 		return false
 	}
 
+	// Atualização já baixada e em stage: o app está no meio de um restart
+	// para aplicar a nova versão (updater.Restart → Quit) ou o usuário vai
+	// aplicá-la em seguida. O diálogo de baixo CANCELARIA o restart — o
+	// helper espera o pai sair e desiste após HelperReadyTimeout, deixando a
+	// atualização parada — e uma saída em silêncio perderia edição sem
+	// avisar. A pergunta muda, mantendo as mesmas três saídas.
+	if appupdater.ReadyToApply() {
+		return a.confirmUpdateRestart(app)
+	}
+
 	// Há edições não salvas: o texto mora no frontend, então "Salvar" emite
 	// o evento SaveRequested (o frontend salva e chama QuitApp para fechar).
 	// Sem confirmação explícita, a saída fica bloqueada (default false).
@@ -160,6 +172,47 @@ func (a *App) shouldQuit() bool {
 	})
 	cancel.OnClick(func() {
 		fmt.Println("Close answer: Cancelar")
+		allowQuit = false
+	})
+
+	dlg.Show()
+	return allowQuit
+}
+
+// confirmUpdateRestart é a pergunta de saída quando existe atualização em
+// stage: o reinício vai trocar o binário, então as edições não salvas pedem
+// decisão explícita. "Salvar e reiniciar" segue o mesmo circuito do diálogo
+// normal (SaveRequested → frontend salva → QuitApp → segunda passada por
+// shouldQuit não acha edição pendente e libera a saída); "Descartar"
+// libera direto; "Cancelar" aborta o reinício — a atualização continua em
+// stage e pode ser aplicada depois (banner "Reiniciar agora" ou menu).
+func (a *App) confirmUpdateRestart(app *application.App) bool {
+	msg := "O aplicativo vai reiniciar para concluir a atualização."
+	if v := appupdater.ReadyVersion(); v != "" {
+		msg = "O aplicativo vai reiniciar para aplicar a versão " + v + "."
+	}
+	msg += "\n\nAs alterações não salvas serão descartadas. O que fazer?"
+
+	allowQuit := false
+	dlg := app.Dialog.Question().
+		SetTitle("Atualização pronta para aplicar").
+		SetMessage(msg)
+	save := dlg.AddButton("Salvar e reiniciar")
+	discard := dlg.AddButton("Descartar e reiniciar")
+	cancel := dlg.AddButton("Cancelar")
+	dlg.SetDefaultButton(save)
+	dlg.SetCancelButton(cancel)
+
+	save.OnClick(func() {
+		allowQuit = false
+		app.Event.Emit("SaveRequested")
+	})
+	discard.OnClick(func() {
+		a.SetUnsavedEdits(false)
+		allowQuit = true
+	})
+	cancel.OnClick(func() {
+		loggingService.Warn("update: reinício cancelado pelo usuário (versão %s segue em stage)", appupdater.ReadyVersion())
 		allowQuit = false
 	})
 

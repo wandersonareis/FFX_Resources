@@ -16,6 +16,20 @@ vars:
   # by `wails3 build GOOS=...` (or the GOOS env var) for cross-compilation. The
   # tasks below dispatch to the matching platform Taskfile via this variable.
   GOOS: '{{.GOOS | default OS}}'
+  # Versão de release: fonte única no arquivo VERSION da raiz. Lida com node
+  # (e não `cat`) porque o shell do Task no Windows (mvdan/sh) executa
+  # binários diretos e não existe `cat` no PowerShell — node já é
+  # pré-requisito do build (e2e e scripts/fix-wails-bindings.mjs).
+  # Injeta -ldflags "-X main.currentVersion=…" nos builds de release; sem
+  # ldflags o binário nasce como "dev" e o check de startup fica desligado.
+  VERSION:
+    sh: 'node -e "process.stdout.write(require(''fs'').readFileSync(''VERSION'',''utf8'').trim())"'
+  # Binário que as tasks de build produzem (build/bin/spira[.exe]).
+  BIN: '{{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}}'
+  # Nome do asset publicado — fonte única (release:assets e gh release create
+  # leem daqui; precisa conter <goos> e <goarch> para o DefaultAssetMatcher
+  # do updater achar o binário certo). Ver docs/updater.md.
+  RELEASE_ASSET: 'spira-{{.VERSION}}-portable-{{OS}}-{{ARCH}}.zip'
 
 includes:
   common: ./build/Taskfile.yml
@@ -26,8 +40,74 @@ includes:
 tasks:
   build:
     summary: Builds the application
+    deps:
+      # Grava a versão do VERSION em build/windows/info.json e
+      # frontend/package.json ANTES do .syso e do next build nascerem.
+      - task: version:sync
     cmds:
       - task: "{{.GOOS}}:build"
+
+  version:sync:
+    summary: Sincroniza o arquivo VERSION em info.json e frontend/package.json
+    desc: |
+      Fonte única de versão: o arquivo VERSION na raiz. Este script grava
+      build/windows/info.json (file_version/ProductVersion) e
+      frontend/package.json. Idempotente. A versão que o updater enxerga vem
+      dos -ldflags do build (Taskfile), não daqui. Ver docs/updater.md.
+    cmds:
+      - node scripts/version-sync.mjs
+
+  release:
+    summary: Publica a release vX.Y.Z no GitHub (build + zip portátil + SHA256SUMS)
+    desc: |
+      Fluxo (Windows — o asset portátil é <goos>-<goarch> da máquina):
+        1. edite o arquivo VERSION (ex.: 2.2.0) e commite;
+        2. (opcional) escreva docs/releases/2.2.0.md com o changelog — é o
+           texto que a janela de atualização mostra (mesmo corpo da release
+           no GitHub); sem ele a task usa --generate-notes;
+        3. wails3 task release
+      Exige `gh auth status` ok. Publica a tag v<VERSION> com o zip portátil
+      de dist/ (um único entry de topo) e o sidecar SHA256SUMS — os dois são
+      obrigatórios para o updater instalar. Contrato completo: docs/updater.md.
+    deps:
+      - task: version:sync
+    preconditions:
+      - sh: gh auth status > /dev/null 2>&1
+        msg: "gh CLI não autenticado — rode: gh auth login"
+      - sh: test -f VERSION
+        msg: "arquivo VERSION ausente na raiz"
+    env:
+      VERSION: '{{.VERSION}}'
+    cmds:
+      - task: build
+      - task: release:assets
+      - cmd: |
+          set -e
+          if git status --porcelain | grep -q .; then
+            echo "AVISO: há alterações não commitadas — a release não sai de um commit limpo."
+          fi
+          NOTES="docs/releases/${VERSION}.md"
+          if [ -f "$NOTES" ]; then
+            gh release create "v${VERSION}" --title "v${VERSION}" --notes-file "$NOTES" "dist/{{.RELEASE_ASSET}}" "dist/SHA256SUMS"
+          else
+            echo "nota: ${NOTES} não existe — usando --generate-notes (commits desde a tag anterior)"
+            gh release create "v${VERSION}" --title "v${VERSION}" --generate-notes "dist/{{.RELEASE_ASSET}}" "dist/SHA256SUMS"
+          fi
+          echo "release: https://github.com/wandersonareis/FFX_Resources/releases/tag/v${VERSION}"
+
+  release:assets:
+    summary: Gera dist/<asset>.zip (spira.exe) e dist/SHA256SUMS
+    desc: |
+      Zip com UM ÚNICO entry de topo (regra do maybeExtractInto do updater) e
+      sidecar no formato sha256sum ("<hex>  <nome>"). Ver docs/updater.md.
+    internal: true
+    cmds:
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-assets.ps1 -Exe "{{.BIN}}" -Asset "{{.RELEASE_ASSET}}"
+        platforms: [windows]
+      - cmd: 'rm -rf dist && mkdir -p dist && zip -j -q "dist/{{.RELEASE_ASSET}}" "{{.BIN}}" && (cd dist && sha256sum "{{.RELEASE_ASSET}}" > SHA256SUMS)'
+        platforms: [linux, darwin]
+      - cmd: cat dist/SHA256SUMS
+        platforms: [linux, darwin]
 
   package:
     summary: Packages a production build of the application

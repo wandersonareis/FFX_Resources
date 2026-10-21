@@ -77,6 +77,13 @@ func Build(a *application.App, c *Controller) *application.Menu {
 	helpMenu := menu.AddSubmenu("Ajuda")
 	helpMenu.Add("Sobre").
 		OnClick(func(*application.Context) { c.onAbout() })
+	helpMenu.AddSeparator()
+	// Auto-update (backend/appupdater): abre a janela nativa de atualização
+	// e roda check → download → verificação → restart. O Wails despacha
+	// OnClick fora da thread de UI, então o bloqueio do fluxo não congela
+	// a janela.
+	helpMenu.Add("Procurar atualizações…").
+		OnClick(func(*application.Context) { c.onCheckUpdates() })
 
 	return menu
 }

@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"ffxresources/backend/appcore"
+	"ffxresources/backend/appupdater"
 	"ffxresources/backend/common"
 	"ffxresources/backend/loggingService"
 
@@ -410,6 +411,17 @@ func (c *Controller) onImportText(kind string, format appcore.ArtifactFormat) {
 func (c *Controller) emitImportDone() {
 	if a := app(); a != nil {
 		a.Event.Emit("ImportDone")
+	}
+}
+
+// onCheckUpdates é Ajuda ▸ Procurar atualizações…: abre a janela nativa do
+// updater e percorre check → download → verificação → stage. Sem release nova
+// a janela permanece aberta no estado "Você está atualizado" e o usuário a
+// fecha; quando há erro, a própria janela mostra o estado de falha (daí o log
+// e não um dialog duplo).
+func (c *Controller) onCheckUpdates() {
+	if err := appupdater.CheckNow(); err != nil {
+		loggingService.Error("menu: checagem de atualização falhou: %s", err)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"ffxresources/backend/appmenu"
+	"ffxresources/backend/appupdater"
 	"ffxresources/backend/appwindows"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -24,6 +25,12 @@ var icon []byte
 //
 //go:embed docs/imagens/logo_us.png
 var logoUS []byte
+
+// currentVersion é a versão em execução. Builds de release a injetam por
+// -ldflags "-X main.currentVersion=<VERSION>" (Taskfile, fonte única no
+// arquivo VERSION da raiz); sem isso o valor é "dev", que desliga o check
+// silencioso de startup do updater (backend/appupdater).
+var currentVersion = "dev"
 
 func main() {
 	// Create an instance of the app structure
@@ -76,6 +83,15 @@ func main() {
 		},
 	})
 
+	// Auto-update (backend/appupdater): provider de releases do GitHub +
+	// janela de update em pt-BR. Depois de application.New — é dentro dele
+	// que o updater entra em modo helper (WAILS_UPDATER_HELPER=1), troca o
+	// binário e encerra antes de qualquer código daqui rodar — e antes do
+	// event loop. Falhar aqui é erro de configuração, não de rede.
+	if err := appupdater.Init(app, currentVersion); err != nil {
+		log.Fatalf("updater: %v", err)
+	}
+
 	// Menu nativo do app (backend puro, zero JS): os handlers moram em
 	// backend/appmenu e as operações em backend/appcore — o mesmo núcleo
 	// que um CLI futuro usaria. Instalado após o app existir e antes do
@@ -119,6 +135,10 @@ func main() {
 			Appearance: application.NSAppearanceNameDarkAqua,
 		},
 	})
+
+	// Check silencioso de atualização (~5s depois): só encontra release mais
+	// nova e, nesse caso, abre a janela de update. No-op em build "dev".
+	appupdater.StartupCheck(app)
 
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
