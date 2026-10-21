@@ -6,25 +6,16 @@
  * frontend: no desktop o diálogo vira JANELA frameless (arrastável, com
  * botões de janela); no browser/server mode o mesmo fluxo cai no modal —
  * quem decide é o isDesktop() do frontend, não o backend.
+ * 
+ * O Sobre NÃO passa por aqui: é janela de HTML embutido no appwindows
+ * (pinta no primeiro quadro, sem Next no caminho) e os links do rodapé
+ * viajam como eventos nomeados, mapeados na whitelist do Go.
  * @module
  */
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore: Unused imports
-import * as dto$0 from "./backend/dto/models";
-
-/**
- * GetAboutLinks devolve os links do rodapé da janela Sobre.
- */
-export function GetAboutLinks(): $CancellablePromise<dto$0.AboutLinks> {
-    return $Call.ByID(358091833).then(($result: any) => {
-        return $$createType0($result);
-    });
-}
 
 /**
  * OpenExternal abre uma URL no navegador padrão (whitelist: repo/releases).
@@ -40,6 +31,3 @@ export function OpenExternal(url: string): $CancellablePromise<void> {
 export function OpenWindow(name: string): $CancellablePromise<void> {
     return $Call.ByID(3846923477, name);
 }
-
-// Private type creation functions
-const $$createType0 = dto$0.AboutLinks.createFrom;

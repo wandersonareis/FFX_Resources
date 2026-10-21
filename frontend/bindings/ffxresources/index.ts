@@ -6,10 +6,12 @@ import * as ConfigService from "./configservice";
 import * as ImageService from "./imageservice";
 import * as TextService from "./textservice";
 import * as VbfService from "./vbfservice";
+import * as WindowService from "./windowservice";
 export {
     App,
     ConfigService,
     ImageService,
     TextService,
-    VbfService
+    VbfService,
+    WindowService
 };

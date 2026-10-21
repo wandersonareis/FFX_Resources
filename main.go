@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"ffxresources/backend/appmenu"
+	"ffxresources/backend/appwindows"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -18,8 +19,8 @@ var assets embed.FS
 var icon []byte
 
 // logoUS é o logo usado na documentação (docs/imagens/logo_us.png) —
-// embutido no package main (go:embed não aceita "..") e entregue à janela
-// Sobre do menu.
+// embutido no package main (go:embed não aceita "..") e injetado no
+// appwindows, que o serve em base64 na janela Sobre de HTML puro.
 //
 //go:embed docs/imagens/logo_us.png
 var logoUS []byte
@@ -79,8 +80,13 @@ func main() {
 	// backend/appmenu e as operações em backend/appcore — o mesmo núcleo
 	// que um CLI futuro usaria. Instalado após o app existir e antes do
 	// event loop.
-	menuController := appmenu.NewController(logoUS)
+	menuController := appmenu.NewController()
 	app.Menu.Set(appmenu.Build(app, menuController))
+
+	// Logo da janela Sobre: o go:embed do appwindows não alcança docs/,
+	// então quem embute é o main e injeta aqui (o Sobre é HTML puro — o
+	// logo entra em base64 no documento).
+	appwindows.SetAboutLogo(logoUS)
 
 	// v2: Title/Width/Height/MinWidth/MinHeight/BackgroundColour/WindowStartState
 	// moravam em options.App; no v3 viraram opções da janela. O menu e o menu
@@ -91,6 +97,9 @@ func main() {
 	// cada janela precisa ACEITAR o menu do app (o default é false, por
 	// compatibilidade). No macOS não há efeito: lá o menu é sempre global.
 	_ = app.Window.NewWithOptions(application.WebviewWindowOptions{
+		// Name identifica a principal no registry (appwindows): as janelas
+		// filhas nascem ligadas a ela (AttachModal) e fecham junto com ela.
+		Name:               "main",
 		Title:              "FINAL FANTASY X and X-2 HD Remaster Resources Editor",
 		Width:              1280,
 		Height:             800,

@@ -52,13 +52,20 @@ export const configStore = createStore<AppConfig>({
 export function applyConfigSnapshot(raw: unknown): void {
   if (!raw || typeof raw !== 'object') return;
   const s = raw as AppConfigWire;
+  const prevExe = configStore.state.gameExeLocation;
+  const nextExe = s.game_exe_location ?? '';
   configStore.setState(() => ({
     gameFilesLocation: s.game_files_location ?? '',
     translateLocation: s.translate_location ?? '',
-    gameExeLocation: s.game_exe_location ?? '',
+    gameExeLocation: nextExe,
     enableMods: Boolean(s.enable_mods),
     gameVersion: s.game_version ?? '',
   }));
+  // Troca de executável muda as raízes .vbf. Este store é POR JANELA (cada
+  // WebviewWindow tem sua instância), então quem recebe o eco invalida o
+  // PRÓPRIO cache — é assim que a janela principal descobre a troca feita na
+  // janela de config (e vice-versa), sem acoplamento entre janelas.
+  if (nextExe !== prevExe) invalidateVbfCache();
 }
 
 /** Carga inicial (mount do AppShell); atualizações vêm pelo evento. */

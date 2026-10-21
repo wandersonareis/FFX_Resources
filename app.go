@@ -88,6 +88,7 @@ func appServices(a *App) []application.Service {
 		application.NewService(a.vbf),
 		application.NewService(a.text),
 		application.NewService(a.image),
+		application.NewService(&WindowService{}),
 	}
 }
 

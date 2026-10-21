@@ -27,27 +27,22 @@ var textKinds = []struct {
 	{"menumain", "Texto menu principal"},
 }
 
-// repositoryURL é o link do código-fonte exibido no Sobre e aberto pelo
-// item de menu Ajuda ▸ Código-fonte.
-const repositoryURL = "https://github.com/wandersonareis/FFX_Resources_test"
+// repositoryURL agora mora em backend/appwindows (fonte única ao lado do
+// releasesURL, validado pelo OpenExternal).
 
 // Controller conecta o menu aos dialogs nativos e às operações do appcore.
 // Os handlers rodam em goroutine (o Wails v3 despacha OnClick assim), então
 // dialogs e I/O são seguros sem bloquear a UI.
 type Controller struct {
-	// LogoUS são os bytes de docs/imagens/logo_us.png (embed no main),
-	// usados pela janela Sobre.
-	LogoUS []byte
-
 	// macrodicPath guarda o dicionário APONTADO sob demanda (sessão): a
 	// preparação do runtime re-aproveita nas chamadas seguintes sem
 	// perguntar de novo. Vazio = ainda usa a pasta padrão.
 	macrodicPath string
 }
 
-// NewController cria o controller com o logo embutido.
-func NewController(logo []byte) *Controller {
-	return &Controller{LogoUS: logo}
+// NewController cria o controller do menu.
+func NewController() *Controller {
+	return &Controller{}
 }
 
 // appcoreFormat converte o formato do submenu para o tipo do appcore.

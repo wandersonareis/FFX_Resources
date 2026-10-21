@@ -89,6 +89,30 @@ export function ConfigDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-160">
+        {/* Header fica AQUI (radix DialogTitle exige o root Dialog); na
+            janela filha o mesmo papel é do titlebar do WindowChrome. */}
+        <DialogHeader>
+          <DialogTitle>Configurações</DialogTitle>
+          <DialogDescription className="sr-only">
+            Diretórios usados pelo app
+          </DialogDescription>
+        </DialogHeader>
+        <ConfigDialogContent onClose={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Corpo do diálogo — compartilhado pelo modal (web/desktop legado) e pela
+ * janela filha /w#config: mesmos drafts, commits e validação, só o invólucro
+ * muda (Portal do Radix vs WindowChrome). `onClose` fecha o invólucro atual
+ * (o modal desmonta; a janela fecha a própria janela).
+ */
+export function ConfigDialogContent({ onClose }: { onClose: () => void }) {
   const config = useAppConfig();
 
   // Draft do campo em edição — só existe a partir da primeira tecla/colar
@@ -189,15 +213,7 @@ export function ConfigDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-160">
-        <DialogHeader>
-          <DialogTitle>Configurações</DialogTitle>
-          <DialogDescription className="sr-only">
-            Diretórios usados pelo app
-          </DialogDescription>
-        </DialogHeader>
-
+    <>
         <div className="flex flex-col gap-3 pt-2 min-w-0">
           <div className="flex items-center gap-2 pt-2">
             <div className="grid flex-1 gap-1.5">
@@ -284,13 +300,12 @@ export function ConfigDialog({
         </div>
 
         <DialogFooter>
-          <Button onClick={() => onOpenChange(false)}>
+          <Button onClick={onClose}>
             <X size={18} />
             Fechar
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }
 

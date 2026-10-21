@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sobre</title>
+<style>
+  /* Janela Sobre em HTML puro (WebviewWindowOptions.HTML): o conteúdo
+     inteiro pinta no primeiro quadro — sem Next, bundle ou hidratação no
+     caminho. Mesmo tema escuro do app (ver o aboutCSS do antigo about.go).
+     Moldura NATIVA: X/arrasto/resize vêm do SO — sem o runtime JS não
+     existe --wails-draggable (lição do window.html do updater). */
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+    background: #15161a;
+    color: #e8e8ec;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* min-height (não height): o conteúdo pode passar da janela — os
+       botões do rodapé precisam ser alcançáveis. Quando cabe,
+       margin-top:auto cola o rodapé no fundo; quando estoura, o main
+       cresce e a página rola (color-scheme:dark já escurece a barra). */
+    min-height: 100%;
+    padding: 24px 28px;
+    text-align: center;
+  }
+  .logo { display: block; max-width: 420px; width: 100%; height: auto; }
+  h1 { margin: 16px 0 0; font-size: 20px; line-height: 1.3; font-weight: 600; }
+  h1 small {
+    display: block;
+    margin-top: 4px;
+    font-size: 14px;
+    font-weight: 400;
+    color: #a9a9b8;
+  }
+  p { margin: 12px 0 0; font-size: 13.5px; line-height: 1.55; color: #c9c9d4; }
+  .goal strong { color: #e8e8ec; font-weight: 500; }
+  footer {
+    margin-top: auto;
+    padding-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn {
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: 1px solid #3a3a42;
+    background: transparent;
+    color: #e8e8ec;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: background 120ms ease, transform 80ms ease;
+  }
+  .btn:hover { background: #232430; }
+  .btn:active { transform: scale(0.98); }
+  .note { margin-top: 14px; font-size: 11.5px; color: #7c7c8a; }
+</style>
+</head>
+<body>
+<main>
+  {{LOGO_IMG}}
+  <h1>FINAL FANTASY X and X-2 HD Remaster<small>Resources Editor</small></h1>
+  <p>
+    Editor de recursos (texto e textura) dos binários de FINAL FANTASY X /
+    X-2 HD Remaster: exporta os textos do jogo para artefatos editáveis
+    (JSON e .strings), reaplica traduções nos binários e extrai / importa
+    texturas do container .dds.phyre — sempre preservando o original.
+  </p>
+  <p class="goal">
+    <strong>Objetivo:</strong>
+    dar ao projeto de tradução uma ferramenta local, offline e de código
+    aberto, com validação de formato antes de qualquer processamento
+    (headers, ponteiros e lista de skip).
+  </p>
+  <footer>
+    <button type="button" class="btn" id="btn-source">Código-fonte</button>
+    <button type="button" class="btn" id="btn-releases">Releases</button>
+  </footer>
+  <p class="note">Construído em Go + Wails v3.</p>
+</main>
+<script>
+/* Botões → eventos de NOME SECO, sem payload (o postMessage do shim não
+   carrega dados — ver inline_event_shim.go do framework): o mapeamento
+   nome→URL fica no Go, na whitelist do OpenExternal (fonte única). */
+(function () {
+  var Events = window.wails && window.wails.Events;
+  if (!Events) return; /* sem shim os botões ficam inertes; a janela continua legível */
+  document.getElementById("btn-source").addEventListener("click", function () {
+    Events.Emit("about:open-source");
+  });
+  document.getElementById("btn-releases").addEventListener("click", function () {
+    Events.Emit("about:open-releases");
+  });
+})();
+</script>
+</body>
+</html>
