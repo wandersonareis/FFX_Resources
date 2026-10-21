@@ -1,4 +1,4 @@
-# Gera o asset de release e o SHA256SUMS a partir do binário já buildado.
+﻿# Gera o asset de release e o SHA256SUMS a partir do binário já buildado.
 #
 #   powershell -File scripts/release-assets.ps1 -Exe build/bin/spira.exe `
 #               -Asset spira-2.2.0-portable-windows-amd64.zip
@@ -37,7 +37,16 @@ $zip = Join-Path $OutDir $Asset
 
 Compress-Archive -Force -Path $Exe -DestinationPath $zip
 
-$hash = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLower()
+# SHA-256 via .NET, não Get-FileHash: há máquinas (incl. esta) em que o
+# módulo Microsoft.PowerShell.Utility não carrega e o cmdlet não existe.
+$sha = [System.Security.Cryptography.SHA256]::Create()
+$stream = [System.IO.File]::OpenRead($zip)
+try {
+    $hash = [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '').ToLower()
+} finally {
+    $stream.Dispose()
+    $sha.Dispose()
+}
 # -NoNewline: uma linha só, sem o CRLF final que quebraria o parser.
 Set-Content -NoNewline -Encoding ascii -Path (Join-Path $OutDir "SHA256SUMS") `
     -Value ("{0}  {1}" -f $hash, $Asset)
