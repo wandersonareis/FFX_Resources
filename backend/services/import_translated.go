@@ -11,6 +11,7 @@ import (
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/interactions"
+	"ffxresources/backend/uilog"
 )
 
 // Subpastas sob a raiz de tradução (TranslateLocation): textos em text/,
@@ -98,6 +99,9 @@ func (s *MetadataService) importTranslatedBatch(version common.GameVersion, kind
 
 	files, err := walkTranslatedCandidates(root)
 	if err != nil {
+		if apply {
+			uilog.Error("Import", "lote translated/ falhou ao varrer %s: %v", root, err)
+		}
 		return batch, err
 	}
 
@@ -111,6 +115,11 @@ func (s *MetadataService) importTranslatedBatch(version common.GameVersion, kind
 		return batch, fmt.Errorf("nenhum kind pedido")
 	}
 
+	if apply {
+		uilog.Info("Import", "lote translated/ — %d arquivo(s) candidato(s), kinds: %s",
+			len(files), strings.Join(kinds, ", "))
+	}
+
 	found := make(map[string]bool, len(want))
 	for _, name := range files {
 		// O plano é montado AQUI, arquivo a arquivo: prepareImport mede
@@ -120,6 +129,9 @@ func (s *MetadataService) importTranslatedBatch(version common.GameVersion, kind
 		plan, perr := s.prepareImport(filepath.Join(root, name), version)
 		if perr != nil {
 			batch.Errors = append(batch.Errors, fmt.Sprintf("%s: %s", name, perr.Error()))
+			if apply {
+				uilog.File("Import", name, uilog.StatusFailed, perr.Error())
+			}
 			continue
 		}
 		if !want[plan.kind] {
@@ -140,12 +152,24 @@ func (s *MetadataService) importTranslatedBatch(version common.GameVersion, kind
 
 		// Erros globais (dicionário macro) pulam o arquivo inteiro; sem
 		// entrada mesclada não há o que aplicar.
-		if !apply || len(plan.summary.Errors) > 0 || len(plan.merged) == 0 {
+		if len(plan.summary.Errors) > 0 {
+			if apply {
+				uilog.File("Import", name, uilog.StatusFailed, strings.Join(plan.summary.Errors, "; "))
+			}
+			continue
+		}
+		if !apply || len(plan.merged) == 0 {
 			continue
 		}
 		if aerr := s.ApplyTextCollection(plan.kind, version, plan.merged); aerr != nil {
 			batch.Errors = append(batch.Errors, fmt.Sprintf("%s: %s", name, aerr.Error()))
+			if apply {
+				uilog.File("Import", name, uilog.StatusFailed, aerr.Error())
+			}
+			continue
 		}
+		uilog.File("Import", name, uilog.StatusOk,
+			fmt.Sprintf("%d texto(s) em %s", plan.summary.ChangedTexts, plan.kind))
 	}
 
 	// Kinds pedidos sem arquivo nenhum não são erro (dá para marcar mais
@@ -157,5 +181,15 @@ func (s *MetadataService) importTranslatedBatch(version common.GameVersion, kind
 		}
 	}
 	sort.Strings(batch.Kinds)
+
+	if apply {
+		if len(batch.Errors) > 0 {
+			uilog.Warn("Import", "lote translated/ concluído com %d erro(s) — %d texto(s) em %d arquivo(s)",
+				len(batch.Errors), batch.ChangedTexts, len(batch.Files))
+		} else {
+			uilog.Success("Import", "lote translated/ concluído — %d texto(s) em %d arquivo(s)",
+				batch.ChangedTexts, len(batch.Files))
+		}
+	}
 	return batch, nil
 }

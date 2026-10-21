@@ -15,9 +15,16 @@ import (
 type WindowService struct{}
 
 // OpenWindow abre (ou foca) a janela filha nomeada — ver backend/appwindows
-// para o catálogo (config, about).
+// para o catálogo (config, about, logs).
 func (w *WindowService) OpenWindow(name string) error {
 	return appwindows.Open(name)
+}
+
+// CloseWindow fecha a janela filha nomeada (inexistente não é erro): é o
+// caminho de desfazer do checkbox de logs — o X da própria janela emite
+// LogWindowClosed e o checkbox espelha; desmarcar chama isto aqui.
+func (w *WindowService) CloseWindow(name string) error {
+	return appwindows.Close(name)
 }
 
 // OpenExternal abre uma URL no navegador padrão (whitelist: repo/releases).

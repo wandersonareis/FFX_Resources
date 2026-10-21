@@ -10,6 +10,7 @@ import {
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ExportFormatMenu } from '@/components/export-format-menu';
 import { ExportLangsMenu } from '@/components/export-langs-menu';
+import { LogWindowToggle } from '@/components/log-window-toggle';
 import { SHORTCUTS, shortcutTip } from '@/lib/ffx/shortcuts';
 
 /**
@@ -47,6 +48,7 @@ export function AppHeader({
       </Tooltip>
       <ExportFormatMenu />
       <ExportLangsMenu />
+      <LogWindowToggle />
     </header>
   );
 }

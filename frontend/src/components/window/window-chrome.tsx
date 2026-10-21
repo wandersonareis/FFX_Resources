@@ -11,13 +11,20 @@ import { cn } from "cn";
  * bordas de redimensionamento (`--wails-resize: all`) — os controles continuam
  * HTML, mas a janela se comporta como desktop: arrastável, focável, sobre o
  * app. Esc fecha, fechando o mesmo papel do Esc do modal (Radix).
+ *
+ * titleExtra: conteúdo OPCIONAL na própria titlebar (entre o título e os
+ * botões de janela), com no-drag para continuar clicável — a janela de Logs
+ * usa para o contador + Limpar morarem na MESMA barra (uma só, sem toolbar
+ * extra embaixo).
  */
 export function WindowChrome({
   title,
+  titleExtra,
   children,
   className,
 }: {
   title: string;
+  titleExtra?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
@@ -60,6 +67,11 @@ export function WindowChrome({
         <span className="truncate text-xs font-medium text-muted-foreground">
           {title}
         </span>
+        {titleExtra ? (
+          <div className="flex min-w-0 items-center gap-2 [--wails-draggable:no-drag]">
+            {titleExtra}
+          </div>
+        ) : null}
         <div className="flex items-center gap-0.5">
           <button
             type="button"

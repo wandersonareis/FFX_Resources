@@ -22,6 +22,7 @@ import (
 	"ffxresources/backend/appupdater"
 	"ffxresources/backend/common"
 	"ffxresources/backend/loggingService"
+	"ffxresources/backend/uilog"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -374,6 +375,7 @@ func (c *Controller) onImportText(kind string, format appcore.ArtifactFormat) {
 		Collision: appcore.CollisionFail,
 	})
 	if err != nil {
+		uilog.Error("Import", "%s falhou: %v", filepath.Base(text), err)
 		c.failure("Importar "+label, err)
 		return
 	}
@@ -393,6 +395,7 @@ func (c *Controller) onImportText(kind string, format appcore.ArtifactFormat) {
 				Collision: appcore.CollisionOverwrite,
 			})
 			if err != nil {
+				uilog.Error("Import", "%s falhou: %v", o.Input, err)
 				c.failure("Importar "+label, err)
 				continue
 			}
@@ -400,6 +403,17 @@ func (c *Controller) onImportText(kind string, format appcore.ArtifactFormat) {
 				outcomes = append(outcomes, again.Outcomes[0])
 			}
 		}
+	}
+
+	// Log da janela: a ação já aconteceu — o artefato e cada binário com o
+	// resultado na MESMA linha (gravado/sobrescrito/falha/ignorado).
+	uilog.Info("Import", "artefato %s — %d binário(s)", filepath.Base(text), len(outcomes))
+	for _, o := range outcomes {
+		detail := o.Reason
+		if detail == "" && o.Output != "" {
+			detail = o.Output
+		}
+		uilog.File("Import", o.Input, o.Status.String(), detail)
 	}
 
 	c.reportImport("Importar "+label, outcomes)

@@ -90,6 +90,7 @@ func appServices(a *App) []application.Service {
 		application.NewService(a.text),
 		application.NewService(a.image),
 		application.NewService(&WindowService{}),
+		application.NewService(&LogService{}),
 		application.NewService(&UpdateService{}),
 	}
 }

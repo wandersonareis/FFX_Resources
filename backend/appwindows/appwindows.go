@@ -11,6 +11,9 @@
 //   - Singleton por nome: GetByName → Show/Focus. O Wails remove a janela do
 //     registry quando ela fecha, então a próxima abertura recria limpo — sem
 //     mapa próprio e sem vazamento de referência.
+//   - Spec sidebar (logs): janela companheira NÃO-MODAL na lateral direita
+//     da principal — o app segue usável com ela aberta, e o fechamento dela
+//     é anunciado (LogWindowClosed) para o checkbox da principal desmarcar.
 package appwindows
 
 import (
@@ -48,6 +51,11 @@ const (
 	aboutOpenReleases = "about:open-releases"
 )
 
+// logsClosedEvent é emitido quando a janela de LOGS fecha (X/Esc/Alt+F4):
+// o checkbox da janela principal escuta e desmarca — o estado dos dois
+// lados da ponte fica sincronizado nos dois sentidos.
+const logsClosedEvent = "LogWindowClosed"
+
 //go:embed about.html
 var aboutHTMLSrc string
 
@@ -69,6 +77,12 @@ type spec struct {
 	// a do updater do framework — pinta no primeiro quadro, sem Next no
 	// caminho. Sem a flag, a janela é frameless servindo a rota /w.
 	html bool
+	// sidebar: janela COMPANHEIRA na lateral direita da principal (logs).
+	// Diferente das modal: NÃO AttachModal (o app segue usável com ela
+	// aberta), nasce posicionada à direita da principal COM A ALTURA DELA
+	// (a altura do spec é só o tamanho de criação) e avisa o próprio
+	// fechamento (logsClosedEvent) para o checkbox da principal desmarcar.
+	sidebar bool
 }
 
 var specs = map[string]spec{
@@ -77,6 +91,9 @@ var specs = map[string]spec{
 	// chrome rola (hints quebram mais linhas na largura mínima).
 	"config": {title: "Configurações", width: 720, height: 425, minWidth: 560, minHght: 420},
 	"about":  {title: "Sobre", width: 580, height: 480, minWidth: 480, minHght: 420, html: true},
+	// logs: a altura 600 é provisória — positionRightOfMain sobrescreve com
+	// a altura da principal no momento da abertura.
+	"logs": {title: "Logs", width: 480, height: 600, minWidth: 360, minHght: 280, sidebar: true},
 }
 
 // Open abre (ou foca, se já aberta) a janela filha pelo nome.
@@ -119,9 +136,112 @@ func Open(name string) error {
 		opts.URL = "/w#" + name
 	}
 	w := a.Window.NewWithOptions(opts)
+	if s.sidebar {
+		// Janela companheira: sem modal, sem Center — nasce à direita da
+		// principal, com a altura dela (positionRightOfMain), e avisa o
+		// próprio fechamento (checkbox desmarca).
+		ensureCloseChildrenHook(a)
+		positionRightOfMain(a, w, s.width)
+		w.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) {
+			a.Event.Emit(logsClosedEvent)
+		})
+		return nil
+	}
 	w.Center()
 	attachToMain(a, w)
 	return nil
+}
+
+// Close fecha a janela filha nomeada. Janela ausente (nunca aberta, ou já
+// fechada pelo X) não é erro: quem chama está sincronizando estado de UI
+// (o checkbox de logs desmarcando), não gerenciando ciclo de vida.
+func Close(name string) error {
+	if _, ok := specs[name]; !ok {
+		return fmt.Errorf("janela desconhecida: %q", name)
+	}
+	a := application.Get()
+	if a == nil {
+		return fmt.Errorf("app não inicializado")
+	}
+	if w, found := a.Window.GetByName(name); found {
+		w.Close()
+	}
+	return nil
+}
+
+// sidebarGap é a folga entre a borda direita da principal e a janela de logs.
+const sidebarGap = 8
+
+// positionRightOfMain ancora a janela à direita da principal com a MESMA
+// ALTURA dela (efeito sidebar: nasce e termina junto com a principal — a
+// altura do spec é só o tamanho de criação, sobrescrito aqui). Depois é
+// janela livre: arrastável e redimensionável. Position/Size/SetSize/
+// SetPosition do v3 são DIPs, então a conta e o clamp usam a área útil em
+// DIPs (Screen.WorkArea) — a física ficaria em outra escala de coordenadas.
+//
+// Sem espaço ao lado (principal maximizada, ou larga demais): borda direita
+// da área útil, colada no topo e com a altura da área útil (a principal
+// maximizada tem a workarea inteira como altura) — cobre a margem morta do
+// conteúdo (layout limitado a 1440px), não a faixa da caption da principal
+// (senão as duas barras de controles de janela empilham uma sobre a outra).
+func positionRightOfMain(a *application.App, w *application.WebviewWindow, width int) {
+	main, ok := a.Window.GetByName(MainWindowName)
+	if !ok {
+		w.Center()
+		return
+	}
+	mx, my := main.Position()
+	mw, mh := main.Size()
+	h := mh
+	x, y := mx+mw+sidebarGap, my
+
+	wa := workAreaAt(a, x, y)
+	if wa.Width > 0 {
+		if h > wa.Height {
+			h = wa.Height
+		}
+		if x+width > wa.X+wa.Width {
+			x = wa.X + wa.Width - width
+			y = wa.Y
+		}
+		if x < wa.X {
+			x = wa.X
+		}
+		if y < wa.Y {
+			y = wa.Y
+		}
+		if y+h > wa.Y+wa.Height {
+			y = wa.Y + wa.Height - h
+		}
+	}
+	w.SetSize(width, h)
+	w.SetPosition(x, y)
+}
+
+// workAreaAt devolve a área útil (DIPs) da tela que contém o ponto — ou a
+// primária quando nenhuma contém (ponto fora de todas). Rect zerado = sem
+// telas conhecidas: o chamador posiciona sem clamp.
+func workAreaAt(a *application.App, x, y int) application.Rect {
+	screens := a.Screen.GetAll()
+	if len(screens) == 0 {
+		return application.Rect{}
+	}
+	target := screens[0]
+	for _, s := range screens {
+		if s.IsPrimary {
+			target = s
+		}
+		b := s.Bounds
+		if x >= b.X && x < b.X+b.Width && y >= b.Y && y < b.Y+b.Height {
+			target = s
+			break
+		}
+	}
+	wa := target.WorkArea
+	if wa.Width == 0 || wa.Height == 0 {
+		wa = target.Bounds
+	}
+	return wa
 }
 
 // registerAboutEvents liga os eventos da janela Sobre às URLs da
@@ -161,25 +281,20 @@ func aboutHTML() string {
 	return strings.Replace(aboutHTMLSrc, "{{LOGO_IMG}}", img, 1)
 }
 
-// attachToMain liga a filha à principal (doc: Multiple Windows ▸
+// attachToMain liga a filha MODAL à principal (doc: Multiple Windows ▸
 // Parent-Child Relationships): no Windows vira owner real
 // (GWLP_HWNDPARENT) — a filha fica acima, acompanha a principal e a
 // principal é desabilitada enquanto a filha está aberta (modal-like).
 // Se a principal cair, o hook fecha as filhas junto.
+//
+// A janela de LOGS não passa por aqui (sidebar: sem AttachModal) — mas
+// usa o mesmo hook de fechamento em bloco (ensureCloseChildrenHook).
 func attachToMain(a *application.App, w *application.WebviewWindow) {
 	parent, ok := a.Window.GetByName(MainWindowName)
 	if !ok {
 		return
 	}
-	closeChildrenHook.Do(func() {
-		parent.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) {
-			for name := range specs {
-				if child, found := a.Window.GetByName(name); found {
-					child.Close()
-				}
-			}
-		})
-	})
+	ensureCloseChildrenHook(a)
 	parent.AttachModal(w)
 	// Devolução do foco: o Wails só reabilita a owner DEPOIS do
 	// DestroyWindow (defer do 2º WM_CLOSE) — no instante da destruição
@@ -192,6 +307,26 @@ func attachToMain(a *application.App, w *application.WebviewWindow) {
 	w.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) {
 		parent.SetEnabled(true)
 		parent.Focus()
+	})
+}
+
+// ensureCloseChildrenHook garante (uma única vez) que o fecho da principal
+// fecha TODAS as filhas abertas — cobre Linux (AttachModal é no-op lá) e o
+// caso de o SO destruir a principal sem passar pelo fluxo de owner do
+// Windows. Vale para modais (via attachToMain) e para a lateral de logs.
+func ensureCloseChildrenHook(a *application.App) {
+	parent, ok := a.Window.GetByName(MainWindowName)
+	if !ok {
+		return
+	}
+	closeChildrenHook.Do(func() {
+		parent.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) {
+			for name := range specs {
+				if child, found := a.Window.GetByName(name); found {
+					child.Close()
+				}
+			}
+		})
 	})
 }
 

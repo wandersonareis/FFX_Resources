@@ -53,6 +53,7 @@ import (
 	"ffxresources/backend/formatters"
 	"ffxresources/backend/formatters/hash"
 	"ffxresources/backend/progress"
+	"ffxresources/backend/uilog"
 )
 
 // importUint16Limit é o teto de bytes por binário: os offsets são uint16
@@ -1053,20 +1054,33 @@ func (s *MetadataService) PreviewImport(path string, version common.GameVersion)
 // bloqueador GLOBAL (Errors não vazio, como o estouro do dicionário macro)
 // aborta a importação inteira. Devolve quantos textos em inglês mudaram em
 // relação à store.
+//
+// O uilog narra o fluxo para a janela de logs DEPOIS da ação (nível de
+// fluxo: a granularidade por binário dos imports daqui é follow-up, na
+// fase de save do motor de apply).
 func (s *MetadataService) ImportFile(path string, version common.GameVersion) (int, error) {
 	plan, err := s.prepareImport(path, version)
 	if err != nil {
+		uilog.Error("Import", "%s: %v", filepath.Base(path), err)
 		return 0, err
 	}
 	if len(plan.summary.Errors) > 0 {
-		return 0, fmt.Errorf("importação bloqueada: %v", plan.summary.Errors)
-	}
-	if len(plan.merged) == 0 {
-		return 0, fmt.Errorf("nada a importar")
-	}
-	if err := s.ApplyTextCollection(plan.kind, version, plan.merged); err != nil {
+		err := fmt.Errorf("importação bloqueada: %v", plan.summary.Errors)
+		uilog.Error("Import", "%s: %v", filepath.Base(path), err)
 		return 0, err
 	}
+	if len(plan.merged) == 0 {
+		uilog.Warn("Import", "%s: nada a importar", filepath.Base(path))
+		return 0, fmt.Errorf("nada a importar")
+	}
+	uilog.Info("Import", "%s — aplicando %d texto(s) em %s (%s)",
+		filepath.Base(path), plan.summary.ChangedTexts, plan.kind, version.String())
+	if err := s.ApplyTextCollection(plan.kind, version, plan.merged); err != nil {
+		uilog.Error("Import", "%s: falha ao aplicar: %v", filepath.Base(path), err)
+		return 0, err
+	}
+	uilog.Success("Import", "%s — %d texto(s) atualizado(s) e salvos em mods/",
+		filepath.Base(path), plan.summary.ChangedTexts)
 	return plan.summary.ChangedTexts, nil
 }
 

@@ -4,6 +4,7 @@
 import * as App from "./app";
 import * as ConfigService from "./configservice";
 import * as ImageService from "./imageservice";
+import * as LogService from "./logservice";
 import * as TextService from "./textservice";
 import * as UpdateService from "./updateservice";
 import * as VbfService from "./vbfservice";
@@ -12,6 +13,7 @@ export {
     App,
     ConfigService,
     ImageService,
+    LogService,
     TextService,
     UpdateService,
     VbfService,

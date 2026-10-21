@@ -34,6 +34,7 @@ import {
 import { StatusBar } from '@/components/status-bar/status-bar';
 import { GameVersionTab } from '@/components/game-version-tab';
 import { ConfigDialog } from '@/components/dialogs/config-dialog';
+import { LogDrawer } from '@/components/log-drawer';
 import { AppHeader } from '@/components/app-header';
 import { ExportImportControls } from '@/components/export-import-controls';
 import { ProgressNotifier } from '@/components/progress-notifier';
@@ -183,6 +184,7 @@ export function AppShell() {
       <StatusBar />
 
       <ConfigDialog open={configOpen} onOpenChange={setConfigDialogOpen} />
+      <LogDrawer />
       <ProgressNotifier />
       <ProgressModal />
     </div>

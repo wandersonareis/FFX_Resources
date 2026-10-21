@@ -18,6 +18,15 @@
 import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
 
 /**
+ * CloseWindow fecha a janela filha nomeada (inexistente não é erro): é o
+ * caminho de desfazer do checkbox de logs — o X da própria janela emite
+ * LogWindowClosed e o checkbox espelha; desmarcar chama isto aqui.
+ */
+export function CloseWindow(name: string): $CancellablePromise<void> {
+    return $Call.ByID(1853142863, name);
+}
+
+/**
  * OpenExternal abre uma URL no navegador padrão (whitelist: repo/releases).
  */
 export function OpenExternal(url: string): $CancellablePromise<void> {
@@ -26,7 +35,7 @@ export function OpenExternal(url: string): $CancellablePromise<void> {
 
 /**
  * OpenWindow abre (ou foca) a janela filha nomeada — ver backend/appwindows
- * para o catálogo (config, about).
+ * para o catálogo (config, about, logs).
  */
 export function OpenWindow(name: string): $CancellablePromise<void> {
     return $Call.ByID(3846923477, name);
