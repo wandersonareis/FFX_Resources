@@ -73,6 +73,10 @@ function DialogContent({
               variant="ghost"
               className="absolute top-2 right-2"
               size="icon-sm"
+              // id fixo para os testes e2e acharem o X em qualquer diálogo
+              // (o mesmo papel dos data-* da árvore) — sem depender do
+              // rótulo sr-only ("Close", herdado do shadcn).
+              id="dialog-close"
             >
               <XIcon
               />

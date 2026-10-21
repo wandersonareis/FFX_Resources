@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { Window } from "@wailsio/runtime";
 import { ConfigDialogContent } from "@/components/dialogs/config-dialog";
 import { applyConfigSnapshot, loadConfigSnapshot } from "@/lib/ffx/config-store";
 import { useWailsEvent } from "@/lib/ffx/use-wails-event";
@@ -14,7 +13,7 @@ import { useWailsEvent } from "@/lib/ffx/use-wails-event";
  * mantém fresca pelo eco AppConfigChanged — mesmo caminho do AppShell. Os
  * commits passam pelos bindings do ConfigService e o backend faz broadcast
  * para todas as janelas (inclusive a principal), que atualizam os próprios
- * stores.
+ * stores. Fechar é o X/Esc do WindowChrome no topo.
  */
 export function ConfigWindowContent() {
   useEffect(() => {
@@ -25,7 +24,7 @@ export function ConfigWindowContent() {
 
   return (
     <div className="grid gap-4 p-4 text-sm">
-      <ConfigDialogContent onClose={() => void Window.Close().catch(() => undefined)} />
+      <ConfigDialogContent />
     </div>
   );
 }

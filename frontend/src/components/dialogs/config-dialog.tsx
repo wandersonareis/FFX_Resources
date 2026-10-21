@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { loggedToast as toast } from "@/lib/ffx/toast-logged";
-import { FolderOpen, X } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 import { SelectDirectory, SelectGameExeFile } from "@/bindings/ffxresources/configservice";
 import {
   commitEnableMods,
@@ -15,7 +15,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -100,19 +99,23 @@ export function ConfigDialog({
             Diretórios usados pelo app
           </DialogDescription>
         </DialogHeader>
-        <ConfigDialogContent onClose={() => onOpenChange(false)} />
+        <ConfigDialogContent />
       </DialogContent>
     </Dialog>
   );
 }
 
 /**
- * Corpo do diálogo — compartilhado pelo modal (web/desktop legado) e pela
- * janela filha /w#config: mesmos drafts, commits e validação, só o invólucro
- * muda (Portal do Radix vs WindowChrome). `onClose` fecha o invólucro atual
- * (o modal desmonta; a janela fecha a própria janela).
+ * Corpo do diálogo — compartilhado pelo modal (browser/server mode) e
+ * pela janela filha /w#config: mesmos drafts, commits e validação.
+ * Header é do INVÓLUCRO (modal: DialogHeader; janela: titlebar do
+ * WindowChrome) — aqui só o conteúdo.
+ *
+ * Mudanças commitam NA HORA (blur/Enter/seletor/checkbox: otimista +
+ * eco AppConfigChanged): não existe estado "não salvo", fechar é só
+ * navegar — e um rascunho ainda em digitação é descartado ao fechar.
  */
-export function ConfigDialogContent({ onClose }: { onClose: () => void }) {
+export function ConfigDialogContent() {
   const config = useAppConfig();
 
   // Draft do campo em edição — só existe a partir da primeira tecla/colar
@@ -298,13 +301,6 @@ export function ConfigDialogContent({ onClose }: { onClose: () => void }) {
             </p>
           </div>
         </div>
-
-        <DialogFooter>
-          <Button onClick={onClose}>
-            <X size={18} />
-            Fechar
-          </Button>
-        </DialogFooter>
     </>
   );
 }

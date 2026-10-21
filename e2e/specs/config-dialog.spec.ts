@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
-  closeDialog,
+  closeDialogByX,
   dialog,
   expectDialogWithinViewport,
   expectNoHorizontalOverflow,
@@ -10,19 +10,19 @@ import {
 import { gameFiles, translateDir, gameExe } from '../helpers/fixtures';
 
 test.describe('Diálogo de Configurações', () => {
-  test('abre pelo botão do header, pelo Ctrl+, e fecha pelo Fechar', async ({
+  test('abre pelo botão do header, pelo Ctrl+, e fecha pelo X', async ({
     page,
   }) => {
     await gotoApp(page);
 
     await openConfigDialog(page);
     await expect(dialog(page).getByText('Configurações')).toBeVisible();
-    await closeDialog(page, 'Fechar');
+    await closeDialogByX(page);
 
     // Atalho global Ctrl+, abre as mesmas Configurações.
     await page.keyboard.press('Control+,');
     await expect(dialog(page).getByText('Configurações')).toBeVisible();
-    await closeDialog(page, 'Fechar');
+    await closeDialogByX(page);
   });
 
   test('exibe os campos de localização e o toggle mods', async ({ page }) => {
@@ -57,7 +57,7 @@ test.describe('Diálogo de Configurações', () => {
     await expect(
       dialog(page).getByText('Preferir binários traduzidos (mods)')
     ).toBeVisible();
-    await closeDialog(page, 'Fechar');
+    await closeDialogByX(page);
   });
 
   test('sem estouro: diálogo contido na viewport em janela baixa', async ({
@@ -68,7 +68,7 @@ test.describe('Diálogo de Configurações', () => {
     await openConfigDialog(page);
     await expectDialogWithinViewport(page);
     await expectNoHorizontalOverflow(page);
-    await closeDialog(page, 'Fechar');
+    await closeDialogByX(page);
   });
 
   test('seletores nativos não existem no modo servidor: nada quebra', async ({
@@ -91,6 +91,6 @@ test.describe('Diálogo de Configurações', () => {
 
     // O diálogo segue aberto e os valores continuam os do config.
     await expect(dialog(page).getByText('Configurações')).toBeVisible();
-    await closeDialog(page, 'Fechar');
+    await closeDialogByX(page);
   });
 });

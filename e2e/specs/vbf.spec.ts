@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import * as path from 'node:path';
 import {
+  closeDialogByX,
   columnTexts,
   dialog,
   expectDialogWithinViewport,
@@ -157,7 +158,7 @@ test.describe('Containers .vbf', () => {
     const exe = dialog(page).locator('#GameExeLocation');
     await exe.fill('');
     await exe.press('Enter');
-    await dialog(page).getByRole('button', { name: 'Fechar' }).click();
+    await closeDialogByX(page);
 
     // Recarrega a árvore: a descoberta roda de novo.
     await page.getByRole('button', { name: 'Recarregar' }).click();
@@ -172,7 +173,7 @@ test.describe('Containers .vbf', () => {
     // O aviso leva direto às Configurações.
     await alert.getByRole('button', { name: 'Abrir Configurações' }).click();
     await expect(dialog(page).getByText('Configurações')).toBeVisible();
-    await dialog(page).getByRole('button', { name: 'Fechar' }).click();
+    await closeDialogByX(page);
 
     await restoreGameExe(page, originalExe);
   });
@@ -186,7 +187,7 @@ test.describe('Containers .vbf', () => {
     const exe = dialog(page).locator('#GameExeLocation');
     await exe.fill('Z:\\e2e-sem-vbf\\FFX.exe');
     await exe.press('Enter');
-    await dialog(page).getByRole('button', { name: 'Fechar' }).click();
+    await closeDialogByX(page);
     await page.getByRole('button', { name: 'Recarregar' }).click();
 
     const missing = page.locator('[data-vbf-missing]');
@@ -294,7 +295,7 @@ async function restoreGameExe(page: Page, exe: string): Promise<void> {
     await input.fill(exe);
     await input.press('Enter');
   }
-  await dialog(page).getByRole('button', { name: 'Fechar' }).click();
+  await closeDialogByX(page);
   await page.getByRole('button', { name: 'Recarregar' }).click();
   if (exe !== '' && hasVbf) {
     await expect(vbfRow(page, '')).toBeVisible({ timeout: 60_000 });

@@ -167,6 +167,17 @@ export async function closeDialog(page: Page, label: string): Promise<void> {
   await expect(dialog(page)).toBeHidden();
 }
 
+/**
+ * Fecha o diálogo atual pelo X do canto (id fixo do ui/dialog.tsx — todo
+ * DialogContent o carrega). É o fechamento dos diálogos de efeito
+ * imediato, como o de Configurações: as mudanças commitam na hora, não
+ * há o que Cancelar/Salvar — fechar é só sair.
+ */
+export async function closeDialogByX(page: Page): Promise<void> {
+  await dialog(page).locator('#dialog-close').click();
+  await expect(dialog(page)).toBeHidden();
+}
+
 /** Abre as Configurações pelo botão do header. */
 export async function openConfigDialog(page: Page): Promise<void> {
   // exact: o aviso "aponte o executável" da árvore também tem um botão de

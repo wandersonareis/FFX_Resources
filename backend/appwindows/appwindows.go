@@ -72,7 +72,10 @@ type spec struct {
 }
 
 var specs = map[string]spec{
-	"config": {title: "Configurações", width: 720, height: 560, minWidth: 560, minHght: 420},
+	// Altura do config = titlebar do WindowChrome (h-9 = 36px) + conteúdo
+	// (~389px): sem espaço morto embaixo. Abaixo disso o overflow-auto do
+	// chrome rola (hints quebram mais linhas na largura mínima).
+	"config": {title: "Configurações", width: 720, height: 425, minWidth: 560, minHght: 420},
 	"about":  {title: "Sobre", width: 580, height: 480, minWidth: 480, minHght: 420, html: true},
 }
 
