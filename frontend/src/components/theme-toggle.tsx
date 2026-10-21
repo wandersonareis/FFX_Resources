@@ -1,5 +1,6 @@
 'use client';
 
+import { SetTheme } from '@/bindings/ffxresources/configservice';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
@@ -21,6 +22,19 @@ export function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
+
+  // Espelha o tema no backend (config.json + updater). A janela de
+  // atualização é HTML estático em outra webview (sem localStorage) e o Go
+  // renderiza o valor que guarda na abertura. O efeito roda no boot (refresca
+  // a memória — o config.json pode estar defasado em relação ao
+  // localStorage) e a cada troca feita pelo botão. Fire-and-forget: falha de
+  // IPC não pode engasgar o clique.
+  useEffect(() => {
+    if (!mounted) return;
+    if (resolvedTheme === 'dark' || resolvedTheme === 'light') {
+      SetTheme(resolvedTheme).catch(() => {});
+    }
+  }, [mounted, resolvedTheme]);
 
   const isDark = mounted && resolvedTheme === 'dark';
 

@@ -15,12 +15,14 @@ type IGetAppConfig interface {
 	GetLocations() map[string]string
 	GetLocation(name string) string
 	GetEnableMods() bool
+	GetTheme() string
 }
 
 type ISetAppConfig interface {
 	SetGameVersion(version common.GameVersion)
 	SetLocation(name, path string)
 	SetEnableMods(enabled bool)
+	SetTheme(theme string)
 }
 
 type IAppConfig interface {
@@ -41,6 +43,10 @@ type AppConfig struct {
 	gameVersion common.GameVersion
 	enableMods  bool
 	gameExeLoc  string
+	// theme é "dark"|"light": espelho do next-themes no backend, para a
+	// janela de atualização (HTML estático, sem localStorage) seguir o
+	// tema do app. Ver docs/updater.md §5.
+	theme string
 }
 
 type appConfigJSON struct {
@@ -48,6 +54,7 @@ type appConfigJSON struct {
 	GameVersion     common.GameVersion `json:"GameVersion"`
 	EnableMods      *bool              `json:"EnableMods,omitempty"`
 	GameExeLocation string             `json:"GameExeLocation,omitempty"`
+	Theme           string             `json:"Theme,omitempty"`
 }
 
 func NewAppConfig() *AppConfig {
@@ -58,6 +65,7 @@ func NewAppConfig() *AppConfig {
 		locations:   defaultLocations(),
 		gameVersion: common.GameVersionFFX,
 		enableMods:  true, // mods-first é o comportamento padrão
+		theme:       "dark", // mesmo default do Providers (next-themes)
 	}
 
 	if err := c.FromJson(); err != nil {
@@ -148,6 +156,7 @@ func (c *AppConfig) MarshalJSON() ([]byte, error) {
 		GameVersion:     c.gameVersion,
 		EnableMods:      &c.enableMods,
 		GameExeLocation: c.gameExeLoc,
+		Theme:           c.theme,
 	})
 }
 
@@ -195,6 +204,11 @@ func (c *AppConfig) UnmarshalJSON(data []byte) error {
 	// EnableMods ausente no arquivo → mantém o default (true).
 	if aux.EnableMods != nil {
 		c.enableMods = *aux.EnableMods
+	}
+	// Theme ausente/inválido (não dark/light) → mantém o default ("dark").
+	switch theme := strings.TrimSpace(aux.Theme); theme {
+	case "dark", "light":
+		c.theme = theme
 	}
 	return nil
 }
@@ -285,6 +299,25 @@ func (c *AppConfig) GetEnableMods() bool {
 func (c *AppConfig) SetEnableMods(enabled bool) {
 	c.enableMods = enabled
 	common.SetModsEnabled(enabled)
+	_ = c.ToJson()
+}
+
+// GetTheme devolve o tema do app ("dark"|"light") — espelho do
+// next-themes para o backend (janela de atualização e qualquer janela
+// filha de HTML embutido, que não têm acesso ao localStorage).
+func (c *AppConfig) GetTheme() string {
+	return c.theme
+}
+
+// SetTheme persiste o tema escolhido no frontend. Valor fora de
+// dark/light é ignorado (mantém o atual) — a janela de update só
+// conhece esses dois seletores.
+func (c *AppConfig) SetTheme(theme string) {
+	theme = strings.TrimSpace(theme)
+	if theme != "dark" && theme != "light" {
+		return
+	}
+	c.theme = theme
 	_ = c.ToJson()
 }
 

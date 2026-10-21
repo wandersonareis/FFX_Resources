@@ -54,6 +54,14 @@ export function GetGameFilesLocation(): $CancellablePromise<string> {
 }
 
 /**
+ * GetTheme devolve o tema persistido ("dark"|"light") — o frontend lê no
+ * boot para alinhar o backend ao que está no localStorage.
+ */
+export function GetTheme(): $CancellablePromise<string> {
+    return $Call.ByID(243714106);
+}
+
+/**
  * GetTranslateLocation devolve o diretório de tradução usado no
  * reimport (<game>/mods/translated por padrão). Consulta sob demanda.
  */
@@ -105,6 +113,16 @@ export function SetGameLocation(path: string): $CancellablePromise<void> {
  */
 export function SetGameVersion(version: string): $CancellablePromise<void> {
     return $Call.ByID(451997909, version);
+}
+
+/**
+ * SetTheme persiste o tema escolhido no toggle e repassa ao updater: a
+ * janela de atualização é HTML estático (webview separada, sem
+ * localStorage) e renderiza o valor que o Go guarda na abertura — ver
+ * docs/updater.md §5.
+ */
+export function SetTheme(theme: string): $CancellablePromise<void> {
+    return $Call.ByID(1831643238, theme);
 }
 
 /**

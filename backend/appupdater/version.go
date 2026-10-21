@@ -19,6 +19,7 @@
 package appupdater
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -42,6 +43,11 @@ var (
 
 	// ready é a versão já baixada e em stage, esperando o restart.
 	ready string
+
+	// theme é o tema corrente ("dark"|"light"): espelho do config.json para
+	// a janela de update (HTML estático, webview separada, sem acesso ao
+	// localStorage do frontend).
+	theme string
 )
 
 // CurrentVersion devolve a versão em execução: "2.1.1" em build de release
@@ -73,6 +79,39 @@ func ReadyVersion() string {
 	stateMu.RLock()
 	defer stateMu.RUnlock()
 	return ready
+}
+
+// CurrentTheme devolve o tema a renderizar na janela de update:
+// o persistido via ConfigService.SetTheme ou o default "dark" (o mesmo do
+// Providers do frontend) antes de qualquer sync.
+func CurrentTheme() string {
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+	if theme != "dark" && theme != "light" {
+		return "dark"
+	}
+	return theme
+}
+
+// SetTheme grava o tema corrente (chamado pelo ConfigService quando o
+// usuário alterna no frontend, e na carga do config).
+func SetTheme(t string) {
+	t = trimTheme(t)
+	stateMu.Lock()
+	theme = t
+	stateMu.Unlock()
+	if t != "" {
+		emitTheme(t) // fora do lock: broadcast para as janelas (update aberta)
+	}
+}
+
+// trimTheme normaliza para os dois valores que o CSS do window.html conhece.
+func trimTheme(t string) string {
+	t = strings.TrimSpace(t)
+	if t != "dark" && t != "light" {
+		return ""
+	}
+	return t
 }
 
 // ReadyToApply diz se já existe uma atualização baixada, verificada e em

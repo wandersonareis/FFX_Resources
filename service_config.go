@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ffxresources/backend/appupdater"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/interactions"
@@ -74,6 +75,23 @@ func (c *ConfigService) GetEnableMods() bool {
 func (c *ConfigService) SetEnableMods(enabled bool) error {
 	interactions.NewInteractionService().FFXAppConfig().SetEnableMods(enabled)
 	c.emitConfigChanged()
+	return nil
+}
+
+// GetTheme devolve o tema persistido ("dark"|"light") — o frontend lê no
+// boot para alinhar o backend ao que está no localStorage.
+func (c *ConfigService) GetTheme() string {
+	return interactions.NewInteractionService().FFXAppConfig().GetTheme()
+}
+
+// SetTheme persiste o tema escolhido no toggle e repassa ao updater: a
+// janela de atualização é HTML estático (webview separada, sem
+// localStorage) e renderiza o valor que o Go guarda na abertura — ver
+// docs/updater.md §5.
+func (c *ConfigService) SetTheme(theme string) error {
+	cfg := interactions.NewInteractionService().FFXAppConfig()
+	cfg.SetTheme(theme) // valida dark/light; ignora o resto
+	appupdater.SetTheme(cfg.GetTheme())
 	return nil
 }
 

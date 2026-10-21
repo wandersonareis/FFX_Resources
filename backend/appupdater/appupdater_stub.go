@@ -30,3 +30,6 @@ func CheckNow() error { return errNoGUI }
 
 // Restart não tem o que fazer sem GUI.
 func Restart() error { return errNoGUI }
+
+// emitTheme é no-op no modo servidor: não há janela de update para avisar.
+func emitTheme(string) {}
