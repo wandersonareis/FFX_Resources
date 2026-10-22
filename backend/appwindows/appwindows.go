@@ -6,7 +6,7 @@
 //   - Toda janela filha nasce de um SPEC nomeado aqui: título, geometria e
 //     conteúdo (URL) moram num lugar só — frontend e menu abrem pelo MESMO
 //     nome, sem duplicar opções.
-//   - URL "/w#<nome>": a rota /w é o host React (frontend/src/app/w) e o
+//   - URL "/w/#<nome>": a rota /w é o host React (frontend/src/app/w) e o
 //     hash escolhe o conteúdo montado ali dentro.
 //   - Singleton por nome: GetByName → Show/Focus. O Wails remove a janela do
 //     registry quando ela é DESTRUÍDA (listener built-in no WindowClosing),
@@ -173,7 +173,13 @@ func Open(name string) error {
 		opts.AllowSimpleEventEmit = true
 	} else {
 		opts.Frameless = true
-		opts.URL = "/w#" + name
+		// A BARRA antes do hash não é cosmética: o export do Next cria o
+		// DIRETÓRIO w/ (metadados RSC __next.*) ao lado do w.html, e o asset
+		// server do Wails responde 500 se a URL aponta para diretório sem
+		// terminar em "/" — com trailingSlash no next.config o w/index.html
+		// existe e "/w/" o serve. Sem ela o dev segue funcionando (o next
+		// dev resolve a rota) e só o exe de release trava a janela em erro.
+		opts.URL = "/w/#" + name
 	}
 	w := a.Window.NewWithOptions(opts)
 	if s.sidebar {

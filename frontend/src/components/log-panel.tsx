@@ -8,7 +8,7 @@ import { uiLog, useUILog } from '@/lib/ffx/uilog-store';
 
 /**
  * LogPanel é SÓ a lista rolável do log de operações (backend/uilog) — o
- * renderador único compartilhado pelos dois hosts (janela desktop /w#logs e
+ * renderador único compartilhado pelos dois hosts (janela desktop /w/#logs e
  * drawer web). Monoespaçado estilo terminal: timestamp + [ação] + mensagem
  * e, nas linhas de arquivo, caminho com o resultado na MESMA linha
  * ("command.bin — gravado: imported/command.bin"). Cores do nível:

@@ -9,7 +9,7 @@ import { LogPanelControls } from "@/components/log-panel-controls";
 
 /**
  * Host das janelas filhas (rota /w): o backend cria a janela com
- * URL "/w#<nome>" e o hash escolhe o conteúdo montado aqui dentro.
+ * URL "/w/#<nome>" e o hash escolhe o conteúdo montado aqui dentro.
  *
  * ssr:false (dynamic): a rota é prerenderizada estática pelo Next, mas o
  * hash só existe no cliente — ler `location.hash` no initializer evita

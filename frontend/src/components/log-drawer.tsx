@@ -17,7 +17,7 @@ import { setLogWindowOpen, useLogWindowOpen } from '@/lib/ffx/log-window-store';
  * direito NÃO-MODAL — sem overlay e sem foco preso, o app segue usável com
  * o painel aberto (companheiro de trabalho, não diálogo); fecha pelo X, Esc
  * ou checkbox, nunca por clique fora. No desktop este componente não
- * renderiza: lá o host é a JANELA /w#logs (WindowService.OpenWindow).
+ * renderiza: lá o host é a JANELA /w/#logs (WindowService.OpenWindow).
  *
  * UMA barra: o header do Sheet carrega o contador + Limpar (reservando a
  * direita para o X embutido) — o LogPanel é só a lista rolável.

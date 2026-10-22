@@ -107,7 +107,7 @@ export function ConfigDialog({
 
 /**
  * Corpo do diálogo — compartilhado pelo modal (browser/server mode) e
- * pela janela filha /w#config: mesmos drafts, commits e validação.
+ * pela janela filha /w/#config: mesmos drafts, commits e validação.
  * Header é do INVÓLUCRO (modal: DialogHeader; janela: titlebar do
  * WindowChrome) — aqui só o conteúdo.
  *

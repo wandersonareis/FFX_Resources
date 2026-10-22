@@ -3,7 +3,7 @@
 
 /**
  * LogService expõe o histórico de logs da sessão às exibições de log (janela
- * desktop /w#logs e drawer web): o buffer vive no backend/uilog — as
+ * desktop /w/#logs e drawer web): o buffer vive no backend/uilog — as
  * webviews são contextos JS separados, então "abrir e ver tudo que já foi
  * feito" só pode semear daqui.
  * @module

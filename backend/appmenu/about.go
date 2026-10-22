@@ -1,11 +1,12 @@
-// Janela Sobre: agora é uma janela FILHA frameless servida pela rota React
-// /w#about (frontend/src/components/window/about-window.tsx) — logo,
-// descrição e os links de código-fonte e releases no rodapé, abertos no
-// navegador pelo backend (OpenExternal, whitelist).
+// Janela Sobre: janela FILHA frameless de HTML embutido — o documento
+// about.html vive no appwindows (WebviewWindowOptions.HTML) e o logo entra
+// em base64 na montagem (SetAboutLogo, main.go). Logo, descrição e os
+// links de código-fonte e releases no rodapé, abertos no navegador pelo
+// backend (OpenExternal, whitelist).
 //
-// Substitui a versão anterior em HTML/CSS embutido no Go
-// (WebviewWindowOptions.HTML): o conteúdo virou frontend para ter o mesmo
-// tratamento dos demais diálogos.
+// A versão anterior em rota React (/w#about) saiu de cena: conteúdo
+// estático pinta no primeiro quadro sem Next no caminho (mesma decisão
+// da janela do updater do framework).
 package appmenu
 
 import (

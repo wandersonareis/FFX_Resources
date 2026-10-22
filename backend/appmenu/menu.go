@@ -73,7 +73,8 @@ func Build(a *application.App, c *Controller) *application.Menu {
 
 	// ---- Ajuda ----------------------------------------------------------
 	// "Código-fonte" saiu do menu: os links de código-fonte E releases
-	// vivem no rodapé da janela Sobre (janela filha /w#about).
+	// vivem no rodapé da janela Sobre (janela filha de HTML embutido no
+	// appwindows).
 	helpMenu := menu.AddSubmenu("Ajuda")
 	helpMenu.Add("Sobre").
 		OnClick(func(*application.Context) { c.onAbout() })

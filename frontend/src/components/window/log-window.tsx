@@ -5,7 +5,7 @@ import { LogPanel } from "@/components/log-panel";
 import { useWailsEvent } from "@/lib/ffx/use-wails-event";
 
 /**
- * Conteúdo da janela filha de Logs (/w#logs): SÓ o conteúdo — o WindowChrome
+ * Conteúdo da janela filha de Logs (/w/#logs): SÓ o conteúdo — o WindowChrome
  * é do HOST (app/w/page.tsx), que também recebe os controles (LogPanelControls)
  * pela entrada do registry como titleExtra da MESMA barra. Envolver num
  * segundo WindowChrome aqui duplicaria a titlebar (o bug das "duas barras").

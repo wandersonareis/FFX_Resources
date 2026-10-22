@@ -6,7 +6,7 @@ import { applyConfigSnapshot, loadConfigSnapshot } from "@/lib/ffx/config-store"
 import { useWailsEvent } from "@/lib/ffx/use-wails-event";
 
 /**
- * Conteúdo da janela filha de Configurações (/w#config).
+ * Conteúdo da janela filha de Configurações (/w/#config).
  *
  * Cada janela é um React root PRÓPRIO: o store desta janela é outra instância
  * da store de módulo, então ela carrega o snapshot por binding no mount e se
