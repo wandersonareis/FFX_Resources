@@ -8,9 +8,11 @@ import {
   expectNoHorizontalOverflow,
   gotoApp,
   openFirstTextEntry,
+  restoreEnableModsInConfigDialog,
   toast,
 } from '../helpers/ui';
 import { hasData, hasMods, modsDir } from '../helpers/fixtures';
+import { readEnableMods } from '../helpers/config-file';
 import {
   backupTree,
   changedSince,
@@ -52,86 +54,111 @@ test.describe('Editor: escrita, save em mods/, export e import', () => {
   test('texto alterado é salvo no binário (mods/) e volta na recarga', async ({
     page,
   }) => {
-    await gotoApp(page);
-    const entryLabel = await openFirstTextEntry(page);
+    // O ciclo save → recarga → restauração só é observável com o overlay
+    // VIVO: com EnableMods desligado o carimbo de frescura vigia o binário
+    // de data/ (imutável por design) e a restauração do arquivo em mods/
+    // não dispara recarga — o spec precisa do toggle LIGADO. O estado
+    // original do fixture é devolvido no fim (o backend em memória e o
+    // config.json ficam coerentes).
+    const originalMods = readEnableMods();
+    let toggleTouched = false;
+    try {
+      await gotoApp(page);
+      await restoreEnableModsInConfigDialog(page, true);
+      toggleTouched = true;
 
-    // ---- escolhe a row alvo: original com texto, sem tag protegida ----
-    const rows = page.locator('[data-row-key]');
-    await expect(rows.first()).toBeVisible();
-    const originals = await columnTexts(page, 'Original');
-    const targetIndex = originals.findIndex(
-      (t) => t !== '' && t !== '—' && !t.includes('{') && t.length <= 120
-    );
-    expect(targetIndex, 'linha com texto simples para editar').toBeGreaterThanOrEqual(0);
-    const originalText = originals[targetIndex];
+      const entryLabel = await openFirstTextEntry(page);
 
-    // O texto TRADUZIDO atual (é para ele que a célula volta na limpeza).
-    const translatedBefore = (await columnTexts(page, 'Traduzido'))[targetIndex];
+      // ---- escolhe a row alvo: original com texto, sem tag protegida ----
+      const rows = page.locator('[data-row-key]');
+      await expect(rows.first()).toBeVisible();
+      const originals = await columnTexts(page, 'Original');
+      const targetIndex = originals.findIndex(
+        (t) => t !== '' && t !== '—' && !t.includes('{') && t.length <= 120
+      );
+      expect(targetIndex, 'linha com texto simples para editar').toBeGreaterThanOrEqual(0);
+      const originalText = originals[targetIndex];
 
-    // ---- abre o editor da linha ----
-    await rows.nth(targetIndex).locator('.translated-cell').click();
-    const editorDialog = dialog(page);
-    await expect(editorDialog.getByText(/Linha #\d+/)).toBeVisible();
-    const editor = editorDialog.locator('.tiptap');
-    await expect(editor).toBeVisible();
-    // Sem estouro: o diálogo cabe na viewport e a página não rola.
-    await expectDialogWithinViewport(page);
+      // O texto TRADUZIDO atual (é para ele que a célula volta na limpeza).
+      const translatedBefore = (await columnTexts(page, 'Traduzido'))[targetIndex];
 
-    // ---- digita o texto de teste por cima ----
-    const testText = `E2E ${Date.now()}`;
-    await editor.click();
-    await page.keyboard.press('Control+a');
-    await page.keyboard.type(testText, { delay: 10 });
-    await editorDialog.getByRole('button', { name: 'Salvar', exact: true }).click();
-    await expect(editorDialog).toBeHidden();
+      // ---- abre o editor da linha ----
+      await rows.nth(targetIndex).locator('.translated-cell').click();
+      const editorDialog = dialog(page);
+      await expect(editorDialog.getByText(/Linha #\d+/)).toBeVisible();
+      const editor = editorDialog.locator('.tiptap');
+      await expect(editor).toBeVisible();
+      // Sem estouro: o diálogo cabe na viewport e a página não rola.
+      await expectDialogWithinViewport(page);
 
-    // A célula reflete o rascunho e o Salvar do app habilita (sujo).
-    const cell = rows.nth(targetIndex).locator('.translated-cell');
-    await expect(cell).toContainText(testText);
-    const saveButton = page.getByRole('button', { name: 'Salvar', exact: true });
-    await expect(saveButton).toBeEnabled();
+      // ---- digita o texto de teste por cima ----
+      const testText = `E2E ${Date.now()}`;
+      await editor.click();
+      await page.keyboard.press('Control+a');
+      await page.keyboard.type(testText, { delay: 10 });
+      await editorDialog.getByRole('button', { name: 'Salvar', exact: true }).click();
+      await expect(editorDialog).toBeHidden();
 
-    // ---- salva no binário (Ctrl+S, mesmo caminho do botão) ----
-    const before = snapshotMtimes(modsDir);
-    await page.keyboard.press('Control+s');
-    await expect(toast(page, 'Alterações salvas no jogo.')).toBeVisible({
-      timeout: 60_000,
-    });
+      // A célula reflete o rascunho e o Salvar do app habilita (sujo).
+      const cell = rows.nth(targetIndex).locator('.translated-cell');
+      await expect(cell).toContainText(testText);
+      const saveButton = page.getByRole('button', { name: 'Salvar', exact: true });
+      await expect(saveButton).toBeEnabled();
 
-    // ---- prova 1: o binário foi regravado/criado em mods/ ----
-    await expect
-      .poll(
-        async () => changedSince(modsDir, before).length,
-        { timeout: 30_000, message: 'arquivos mudando em mods/' }
-      )
-      .toBeGreaterThan(0);
-    const changed = changedSince(modsDir, before);
-    // O "salvar em binário" só escreve na árvore mods/ (data/ é imutável).
-    for (const rel of changed) {
-      expect(rel, 'gravação dentro de mods/').toMatch(/^(?!edits\/|images\/|translated\/)/);
+      // ---- salva no binário (Ctrl+S, mesmo caminho do botão) ----
+      const before = snapshotMtimes(modsDir);
+      await page.keyboard.press('Control+s');
+      await expect(toast(page, 'Alterações salvas no jogo.')).toBeVisible({
+        timeout: 60_000,
+      });
+
+      // ---- prova 1: o binário foi regravado/criado em mods/ ----
+      await expect
+        .poll(
+          async () => changedSince(modsDir, before).length,
+          { timeout: 30_000, message: 'arquivos mudando em mods/' }
+        )
+        .toBeGreaterThan(0);
+      const changed = changedSince(modsDir, before);
+      // O "salvar em binário" só escreve na árvore mods/ (data/ é imutável).
+      for (const rel of changed) {
+        expect(rel, 'gravação dentro de mods/').toMatch(/^(?!edits\/|images\/|translated\/)/);
+      }
+
+      // ---- prova 2: a UI recarregada exibe o texto salvo ----
+      await page.reload();
+      await expect(page.getByText('Conteúdo').first()).toBeVisible();
+      await openFirstTextEntry(page);
+      const cellAfter = page.locator('[data-row-key]').nth(targetIndex).locator('.translated-cell');
+      await expect(cellAfter).toContainText(testText);
+
+      // ---- limpeza: devolve o binário original e confere a UI ----
+      await restoreChanged(modsBackup, changed);
+      await page.reload();
+      await expect(page.getByText('Conteúdo').first()).toBeVisible();
+      await openFirstTextEntry(page);
+      const cellRestored = page
+        .locator('[data-row-key]')
+        .nth(targetIndex)
+        .locator('.translated-cell');
+      await expect(cellRestored).toContainText(translatedBefore || originalText);
+      test.info().annotations.push({
+        type: 'entry',
+        description: `entrada editada: ${entryLabel} (linha ${targetIndex})`,
+      });
+    } finally {
+      if (toggleTouched) {
+        try {
+          await restoreEnableModsInConfigDialog(page, originalMods);
+        } catch (restoreError) {
+          // não mascara a falha original — mas o fixture fica sujo
+          console.error(
+            `FALHA NA LIMPEZA: EnableMods não restaurado para ${originalMods}`,
+            restoreError
+          );
+        }
+      }
     }
-
-    // ---- prova 2: a UI recarregada exibe o texto salvo ----
-    await page.reload();
-    await expect(page.getByText('Conteúdo').first()).toBeVisible();
-    await openFirstTextEntry(page);
-    const cellAfter = page.locator('[data-row-key]').nth(targetIndex).locator('.translated-cell');
-    await expect(cellAfter).toContainText(testText);
-
-    // ---- limpeza: devolve o binário original e confere a UI ----
-    await restoreChanged(modsBackup, changed);
-    await page.reload();
-    await expect(page.getByText('Conteúdo').first()).toBeVisible();
-    await openFirstTextEntry(page);
-    const cellRestored = page
-      .locator('[data-row-key]')
-      .nth(targetIndex)
-      .locator('.translated-cell');
-    await expect(cellRestored).toContainText(translatedBefore || originalText);
-    test.info().annotations.push({
-      type: 'entry',
-      description: `entrada editada: ${entryLabel} (linha ${targetIndex})`,
-    });
   });
 
   test('export da entrada marcada grava artefatos em mods/edits', async ({

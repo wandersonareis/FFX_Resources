@@ -20,9 +20,16 @@ wails3 task test:e2e
 ```
 
 O Playwright sobe o `build/bin/spira-server.exe` sozinho (espera o
-`/health` do Wails) e o derruba no fim — mas **reusa** um servidor que já
-esteja no ar, então um `wails3 task run:server` manual também serve de
-alvo (basta o build estar atualizado).
+`/health` — a porta TCP aceita conexões antes de o app terminar de
+carregar o config) e o **encerra no fim do run** — o servidor é
+EXCLUSIVO da suíte. Se a porta já estiver ocupada (app em modo servidor,
+`wails3 task run:server` manual), a suíte **aborta no início** e pede
+para encerrar o processo e reexecutar: um servidor alheio valeria um
+binário velho como alvo. A barreira é dupla: a precondition da task
+`test:e2e` (mensagem em português, ANTES do build) e a probe no
+`playwright.config.ts` (só no runner principal — loader/workers reavaliam
+o config depois de o servidor da própria suíte já estar no ar), que
+vale também para `npx playwright test` direto.
 
 Direto, sem Task:
 
@@ -92,8 +99,9 @@ devolvem o fixture ao estado original:
 **Importante:** o fixture (`build/bin/config/config.json`, `data/`) é
 compartilhado com o app desktop. Não rode a suíte com o `spira.exe`
 aberto — o app regrava o config a qualquer setter e pode disputar o
-arquivo com os testes (o mesmo vale para outro `wails3 task run:server`:
-com a porta ocupada a suíte REUSA o servidor que já está no ar).
+arquivo com os testes (o mesmo vale para um `spira-server.exe` /
+`wails3 task run:server` aberto: com a porta ocupada a suíte aborta no
+início — encerre-o antes de reexecutar).
 
 ## Porta e overrides
 

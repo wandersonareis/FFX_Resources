@@ -151,6 +151,14 @@ tasks:
 
   test:e2e:
     summary: Playwright E2E no app servido (builda o spira-server antes)
+    preconditions:
+      # A suíte NÃO reusa servidor: porta ocupada = alguém usando (app em
+      # modo servidor ou run:server manual). Aborta ANTES do build — não
+      # adianta buildar por cima de um exe em execução (Windows trava
+      # arquivo de processo) nem testar contra um binário velho.
+      - sh: |
+          node -e "const net=require('net');const s=net.connect(${E2E_PORT:-9246},'127.0.0.1');s.on('connect',()=>{s.destroy();process.exit(1)});s.on('error',()=>process.exit(0));setTimeout(()=>process.exit(0),2000)"
+        msg: "porta ${E2E_PORT:-9246} ocupada — encerra o spira-server (ou o app em modo servidor) e reexecuta os testes"
     cmds:
       - task: common:build:server
         vars:
