@@ -44,6 +44,10 @@ tasks:
       # Grava a versão do VERSION em build/windows/info.json e
       # frontend/package.json ANTES do .syso e do next build nascerem.
       - task: version:sync
+      # Portão de qualidade: TODO build de produção roda a suíte de testes
+      # ANTES de compilar e ABORTA no primeiro teste falho — binário
+      # vermelho não sai. Dep falha = task inteira para na hora.
+      - task: test
     cmds:
       - task: "{{.GOOS}}:build"
 
@@ -148,6 +152,34 @@ tasks:
     summary: Instala o Playwright (deps do e2e/ e o navegador Chromium)
     cmds:
       - task: common:install:e2e
+
+  test:
+    summary: Roda todos os testes automatizados (backend Go + frontend bun)
+    desc: |
+      O portão do build de produção (dep de `build` — e por tabela de
+      `release`): dep falha = task inteira aborta, nenhum binário sai de
+      suíte vermelha. O e2e (Playwright) NÃO faz parte do portão — ele
+      precisa do binário pronto e da porta livre; use `wails3 task
+      test:e2e`. A suíte Go exige o fixture build/bin (ver comentário do
+      BIN_DIR — data/ extraída é o fixture primário de dezenas de
+      testes); sem ele a suíte Ginkgo de services falha no BeforeAll.
+    deps:
+      - task: test:backend
+      - task: test:frontend
+
+  test:backend:
+    summary: go test ./... (suíte Go inteira, sem cache)
+    cmds:
+      - go test ./... -count=1
+
+  test:frontend:
+    summary: bun test (stores, parsers e helpers do frontend)
+    dir: frontend
+    preconditions:
+      - sh: bun --version
+        msg: "bun not found — instale em https://bun.sh (é o runner do frontend)"
+    cmds:
+      - bun test
 
   test:e2e:
     summary: Playwright E2E no app servido (builda o spira-server antes)
