@@ -132,6 +132,12 @@ func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, v
 	if kind == KindEvents || kind == KindMacro {
 		ids = s.normalizeIDs(ids)
 	}
+	if kind == KindEvents && len(ids) == 0 {
+		// Export bulk: carrega TODOS os eventos, não só os já visitados.
+		if err := s.ensureAllEventsLoaded(version); err != nil {
+			return nil, err
+		}
+	}
 	r.Begin("", 0) // total indeterminado: os builders fazem SetTotal
 	defer r.End()
 

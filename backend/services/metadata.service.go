@@ -1317,7 +1317,7 @@ func (s *MetadataService) GetCollection(kind string, version common.GameVersion,
 		if err := s.ensureEventsLoaded(version); err != nil {
 			return nil, err
 		}
-		// Frescura bulk (export/lote): binário modificado no disco
+		// Bulk (export/lote): binário modificado no disco
 		// recarrega antes de montar o DTO.
 		if event.EnsureAllEventsFresh(version, ids) {
 			clearDedupViewCache()
@@ -1473,6 +1473,18 @@ func (s *MetadataService) ensureEventsLoaded(version common.GameVersion) error {
 	}
 	// A carga é silenciosa (implícita), mas os eventos pulados AVISAM:
 	// diagnóstico + toast com cap — ver reportEventSkips.
+	s.reportEventSkips(b.Skipped)
+	return nil
+}
+
+// ensureAllEventsLoaded carrega TODOS os eventos, mesmo com um subconjunto
+// já no store (a árvore carrega só a primeira página). Export bulk (ids=[])
+// precisa do universo completo.
+func (s *MetadataService) ensureAllEventsLoaded(version common.GameVersion) error {
+	b := event.NewEventsBinaryFile(version)
+	if err := b.LoadFromBinary(); err != nil {
+		return fmt.Errorf("failed to load all events for version %s: %w", version, err)
+	}
 	s.reportEventSkips(b.Skipped)
 	return nil
 }

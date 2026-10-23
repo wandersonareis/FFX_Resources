@@ -69,6 +69,11 @@ diálogo de Configurações, confere o erro e devolve o valor original.
   carrega). É a guarda e2e do self-deadlock do view dedupado
   (`rawViewOf` × `clearDedupViewCache`) — ver
   `backend/services/rawview_reentrant_clear_test.go`;
+- `export-all-disabled-mods.spec` — **export bulk com o toggle de mods
+  desligado**: "Exportar — todos os tipos" lê os ORIGINAIS de data/ e
+  grava TUDO em `mods/edits` (artefatos `.strings`, nada fora de edits/; o
+  mainmenu sai em inglês) — é a guarda e2e do carregamento completo dos
+  eventos no export bulk (`ensureAllEventsLoaded`);
 - `vbf.spec` — raízes do container, arquivo de texto e textura do
   container, diálogo de extração e o erro "aponte o executável".
 
