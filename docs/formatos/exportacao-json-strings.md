@@ -174,4 +174,5 @@ do header, o frontend manda `[default, ...extras marcados]` — o default
   desabilita o botão Importar, e nada é salvo no binário sem o "Salvar"
   explícito.
 - Round-trip: export → import sem edição devolve a MESMA coleção (mesmos
-  textos e metadados).
+  textos e metadados). Em bytes o ciclo extrair → importar → exportar
+  também é idempotente — ver [encoding.md](../encoding.md).

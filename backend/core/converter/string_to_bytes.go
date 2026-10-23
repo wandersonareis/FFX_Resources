@@ -20,7 +20,7 @@ var (
 var (
 	reCmd    = regexp.MustCompile(`^CMD:([0-9A-Fa-f]{1,2}):([0-9A-Fa-f]{1,2})`)
 	reChoice = regexp.MustCompile(`\{CHOICE:([0-9A-Fa-f]{2})\}`)
-	reMCR    = regexp.MustCompile(`^MCR:s([0-9A-Fa-f]{1,2}):l([0-9A-Fa-f]{1,2}):`)
+	reMCR    = regexp.MustCompile(`^MCR:s([0-9A-Fa-f]{1,2}):l([0-9A-Fa-f]{1,2})(?::|$)`)
 	reHEX    = regexp.MustCompile(`^HEX:([0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2})*)$`)
 	rePUA    = regexp.MustCompile(`^PUA:([0-9A-Fa-f]+)`)
 )
@@ -202,6 +202,51 @@ func GetStringBytesAtLookupOffset(table []byte, offset int) []byte {
 	return table[offset : offset+end]
 }
 
+// macroBytes converte os campos hex (seção, linha) de um token MCR/MACRO nos
+// bytes do jogo: seção 0x13.. e linha 0x30...
+func macroBytes(secHex, lineHex string) (uint, uint, bool) {
+	secVal, ok1 := parseHexByte(secHex)
+	lineVal, ok2 := parseHexByte(lineHex)
+	if !ok1 || !ok2 {
+		return 0, 0, false
+	}
+	return uint(secVal + 0x13), uint(lineVal + 0x30), true
+}
+
+// parseHexBytes converte os componentes hex de um token de bytes crus.
+// "??" marca um byte ausente (dado truncado no binário): o token preserva os
+// bytes que existem — "{UNKDBLCHR:2C:??}" re-codifica como [0x2C], e o
+// re-decode do byte restante reemite o mesmo token (ponto fixo). Sem bytes a
+// preservar ("{...:??}" puro), não há o que importar: devolve nil.
+func parseHexBytes(parts []string) []uint {
+	out := make([]uint, 0, len(parts))
+	for _, part := range parts {
+		if part == "??" {
+			if len(out) == 0 {
+				return nil
+			}
+			return out
+		}
+		val, ok := parseHexByte(part)
+		if !ok {
+			return nil
+		}
+		out = append(out, val)
+	}
+	return out
+}
+
+// parseHexByte converte UM componente hex de token (2 dígitos, 0..0xFF).
+// Segundo retorno falso = token inválido (o chamador devolve nil e o
+// ParseCommand ignora o token).
+func parseHexByte(part string) (uint, bool) {
+	val, err := strconv.ParseUint(part, 16, 8)
+	if err != nil {
+		return 0, false
+	}
+	return uint(val), true
+}
+
 func ParseCommand(runes []rune, startIndex int) []uint {
 	if startIndex >= len(runes) {
 		return nil
@@ -237,19 +282,17 @@ func ParseCommand(runes []rune, startIndex int) []uint {
 	case cmd == "BLANK11":
 		return []uint{0x11}
 	case strings.HasPrefix(cmd, "SPACE:"):
-		val, err := strconv.ParseUint(cmd[6:], 16, 8)
-		if err != nil {
+		val, ok := parseHexByte(cmd[6:])
+		if !ok {
 			return nil
 		}
-		pixels := val + 0x30
-		return []uint{0x07, uint(pixels)}
+		return []uint{0x07, uint(val + 0x30)}
 	case strings.HasPrefix(cmd, "TIME:"):
-		val, err := strconv.ParseUint(cmd[5:], 16, 8)
-		if err != nil {
+		val, ok := parseHexByte(cmd[5:])
+		if !ok {
 			return nil
 		}
-		boxType := val + 0x30
-		return []uint{0x09, uint(boxType)}
+		return []uint{0x09, uint(val + 0x30)}
 	case strings.HasPrefix(cmd, "CLR:"):
 		clr := encoding.ColorToByte(cmd[4:])
 		return []uint{0x0A, uint(clr)}
@@ -262,8 +305,8 @@ func ParseCommand(runes []rune, startIndex int) []uint {
 			fmt.Printf("Invalid ICON/BUTTON format: %s\n", cmd)
 			return nil
 		}
-		iconIdx, err := strconv.ParseUint(parts[1], 16, 8)
-		if err != nil {
+		iconIdx, ok := parseHexByte(parts[1])
+		if !ok {
 			fmt.Printf("Invalid hex value: %s\n", parts[1])
 			return nil
 		}
@@ -271,91 +314,75 @@ func ParseCommand(runes []rune, startIndex int) []uint {
 	case cmd == "CHOICE-END":
 		return []uint{0x10, 0xFF}
 	case strings.HasPrefix(cmd, "CHOICE:"):
-		choiceIdx, err := strconv.ParseUint(cmd[7:], 16, 8)
-		if err != nil {
+		val, ok := parseHexByte(cmd[7:])
+		if !ok {
 			return nil
 		}
-		choiceIdx += 0x30
-		return []uint{0x10, uint(choiceIdx)}
+		return []uint{0x10, uint(val + 0x30)}
 	case strings.HasPrefix(cmd, "VAR:"):
-		val, err := strconv.ParseUint(cmd[4:], 16, 8)
-		if err != nil {
+		val, ok := parseHexByte(cmd[4:])
+		if !ok {
 			return nil
 		}
-		varIdx := val + 0x30
-		return []uint{0x12, uint(varIdx)}
+		return []uint{0x12, uint(val + 0x30)}
 	case strings.HasPrefix(cmd, "PC:"):
 		parts := strings.SplitN(cmd, ":", 3)
 		if len(parts) != 3 {
 			fmt.Printf("Invalid PC format: %s\n", cmd)
 			return nil
 		}
-		val, err := strconv.ParseUint(parts[1], 16, 8)
-		if err != nil {
+		val, ok := parseHexByte(parts[1])
+		if !ok {
 			fmt.Printf("Invalid hex value: %s\n", parts[1])
 			return nil
 		}
-		pc := val + 0x30
-		return []uint{0x13, uint(pc)}
+		return []uint{0x13, uint(val + 0x30)}
 	case strings.HasPrefix(cmd, "MCR:"):
 		matches := reMCR.FindStringSubmatch(cmd)
 		if len(matches) != 3 {
 			fmt.Printf("Invalid MCR format: %s\n", cmd)
 			return nil
 		}
-		secVal, err1 := strconv.ParseUint(matches[1], 16, 8)
-		lineVal, err2 := strconv.ParseUint(matches[2], 16, 8)
-		if err1 != nil || err2 != nil {
+		section, line, ok := macroBytes(matches[1], matches[2])
+		if !ok {
 			return nil
 		}
-		section := secVal + 0x13
-		line := lineVal + 0x30
-		return []uint{uint(section), uint(line)}
+		return []uint{section, line}
 	case strings.HasPrefix(cmd, "MACRO:"):
 		if len(cmd) < 12 {
 			return nil
 		}
-		secVal, err1 := strconv.ParseUint(cmd[7:9], 16, 8)
-		lineVal, err2 := strconv.ParseUint(cmd[10:12], 16, 8)
-		if err1 != nil || err2 != nil {
+		section, line, ok := macroBytes(cmd[7:9], cmd[10:12])
+		if !ok {
 			return nil
 		}
-		section := secVal + 0x13
-		line := lineVal + 0x30
-		return []uint{uint(section), uint(line)}
+		return []uint{section, line}
 	case strings.HasPrefix(cmd, "KEY:"):
-		val, err := strconv.ParseUint(cmd[4:6], 16, 8)
-		if err != nil {
+		val, ok := parseHexByte(cmd[4:6])
+		if !ok {
 			return nil
 		}
-		keyItemIdx := val + 0x30
-		return []uint{0x23, uint(keyItemIdx)}
+		return []uint{0x23, uint(val + 0x30)}
 	case strings.HasPrefix(cmd, "CMD:"):
 		matches := reCmd.FindStringSubmatch(cmd)
 		if len(matches) != 3 {
 			fmt.Printf("Invalid CMD format: %s\n", cmd)
 			return nil
 		}
-		cmdIdxVal, err1 := strconv.ParseUint(matches[1], 16, 8)
-		argVal, err2 := strconv.ParseUint(matches[2], 16, 8)
-		if err1 != nil || err2 != nil {
+		cmdIdx, ok1 := parseHexByte(matches[1])
+		argVal, ok2 := parseHexByte(matches[2])
+		if !ok1 || !ok2 {
 			return nil
 		}
-		arg := argVal + 0x30
-		return []uint{uint(cmdIdxVal), uint(arg)}
-	case strings.HasPrefix(cmd, "UNKCHR:"):
-		val, err := strconv.ParseUint(cmd[7:9], 16, 8)
-		if err != nil {
-			return nil
-		}
-		return []uint{uint(val)}
+		return []uint{cmdIdx, uint(argVal + 0x30)}
+	case strings.HasPrefix(cmd, "UNKOP:"):
+		return parseHexBytes(strings.Split(cmd[6:], ":"))
+	case strings.HasPrefix(cmd, "UNKTPLCHR:"):
+		return parseHexBytes(strings.Split(cmd[10:], ":"))
 	case strings.HasPrefix(cmd, "UNKDBLCHR:"):
-		secVal, err1 := strconv.ParseUint(cmd[10:12], 16, 8)
-		idxVal, err2 := strconv.ParseUint(cmd[13:15], 16, 8)
-		if err1 != nil || err2 != nil {
-			return nil
-		}
-		return []uint{uint(secVal), uint(idxVal)}
+		return parseHexBytes(strings.Split(cmd[10:], ":"))
+	case strings.HasPrefix(cmd, "UNKCHR:"):
+		return parseHexBytes(strings.Split(cmd[7:], ":"))
 	case strings.HasPrefix(cmd, "HEX:"):
 		matches := reHEX.FindStringSubmatch(cmd)
 		if len(matches) != 2 {

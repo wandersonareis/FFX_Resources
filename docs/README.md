@@ -26,6 +26,13 @@ formatos de objetos — a lógica é idêntica: um bloco de texto e o compriment
 do texto geram o valor dos ponteiros. Documentado em
 [motor-strings.md](motor-strings.md) (`backend/core/strings`).
 
+## Encoding do texto
+
+A conversão texto ↔ bytes do jogo — charset por idioma, comandos de
+controle e o **round-trip estável** (extrair → importar → exportar devolve
+o mesmo texto, inclusive CJK) — é documentada em
+[encoding.md](encoding.md) (`backend/core/converter`).
+
 ## Convenções gerais
 
 - Todos os inteiros são **little-endian**.
