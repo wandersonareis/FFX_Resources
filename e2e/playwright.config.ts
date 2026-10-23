@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { defineConfig } from '@playwright/test';
 
@@ -18,7 +19,17 @@ import { defineConfig } from '@playwright/test';
  */
 const PORT = Number(process.env.E2E_PORT ?? 9246);
 const BASE_URL = `http://localhost:${PORT}`;
-const SERVER_EXE = path.resolve(__dirname, '..', 'build', 'bin', 'spira-server.exe');
+const SERVER_EXE_PROD = path.resolve(__dirname, '..', 'build', 'bin', 'spira-server.exe');
+// `wails3 run:server` (DEV=true) grava <app>-server-dev.exe; o build de
+// produção grava <app>-server.exe. Usa o que existir.
+const SERVER_EXE_DEV = path.resolve(
+  __dirname,
+  '..',
+  'build',
+  'bin',
+  'spira-server-dev.exe'
+);
+const SERVER_EXE = fs.existsSync(SERVER_EXE_PROD) ? SERVER_EXE_PROD : SERVER_EXE_DEV;
 
 export default defineConfig({
   testDir: './specs',
