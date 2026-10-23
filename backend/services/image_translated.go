@@ -180,8 +180,10 @@ func (s *MetadataService) importImagesBatch(version common.GameVersion, subdirs 
 		imported++
 		// Sem re-extrair, os artefatos de trabalho em mods/images ficariam
 		// defasados: Resolve prefere o .dds em disco e serviria a textura
-		// ANTIGA, mascarando a recem-importada.
-		if _, eerr := ddsphyre.Extract(version, c.id); eerr != nil {
+		// ANTIGA, mascarando a recem-importada. ExtractEffective é IMUNE ao
+		// toggle EnableMods — o refresh comum, com mods desligados, gravaria
+		// artefato pristine sobre o container recem-importado.
+		if _, eerr := ddsphyre.ExtractEffective(version, c.id); eerr != nil {
 			common.LogWarning("images %s/%s: container gravado, mas nao atualizei os .dds/.png extraidos: %v", version, c.id, eerr)
 		}
 	}

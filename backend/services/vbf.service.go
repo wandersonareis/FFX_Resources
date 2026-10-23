@@ -748,7 +748,9 @@ func (s *MetadataService) ImportVbfImage(vbfPath, innerPath, ddsPath string) err
 		return err
 	}
 	ddsphyre.InvalidateIndex(target.Version)
-	if _, err := ddsphyre.Extract(target.Version, target.ID); err != nil {
+	// ExtractEffective: refresh imune ao toggle EnableMods — os artefatos
+	// seguem o container recém-gravado, mesmo com mods desligados.
+	if _, err := ddsphyre.ExtractEffective(target.Version, target.ID); err != nil {
 		common.LogWarning("images %s/%s: import do .vbf ok, mas não atualizei os .dds/.png extraídos: %v", target.Version, target.ID, err)
 	}
 	vbfSessionResetAll()
@@ -884,7 +886,9 @@ func (s *MetadataService) ReplicateVbfImage(vbfPath, sourcePath string, targetPa
 			step.Issue(target.ID, readErr.Error())
 			continue
 		}
-		if _, extractErr := ddsphyre.Extract(target.Version, target.ID); extractErr != nil {
+		// ExtractEffective: refresh imune ao toggle EnableMods — os
+		// artefatos seguem o container recém-gravado (ver ImportVbfImage).
+		if _, extractErr := ddsphyre.ExtractEffective(target.Version, target.ID); extractErr != nil {
 			common.LogWarning("vbf images %s/%s: replicação ok, mas falhou a atualização dos .dds/.png: %v", target.Version, target.ID, extractErr)
 		}
 		result.Done = append(result.Done, target.ID)

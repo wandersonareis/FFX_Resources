@@ -27,6 +27,10 @@ import (
 //	2. .png em disco (idem);
 //	3. decode do próprio .dds.phyre EM MEMÓRIA (nada é gravado).
 //
+// Com o config EnableMods desligado a árvore mods/ fica invisível para a
+// leitura (o mesmo toggle do texto): container direto da fonte original
+// (data/ ou .vbf), artefatos de mods/images ignorados — sempre o ramo 3.
+//
 // Exportar (.dds + .png) é uma ação separada (ExtractImage /
 // ExtractImageGroup) — abrir a textura não suja mods/.
 
@@ -249,8 +253,10 @@ func (s *MetadataService) ImportImage(kind, id, ddsPath string, version common.G
 	// Mantém os artefatos de trabalho em sincronia com o .dds.phyre recém-
 	// gravado em mods/: sem isso a próxima abertura serviria o .dds
 	// extraído ANTIGO (Resolve prefere .dds em disco), mascarando a textura
-	// importada. Nada disso toca no .vbf nem em data/ — só mods/.
-	if _, err := ddsphyre.Extract(version, id); err != nil {
+	// importada. ExtractEffective é IMUNE ao toggle EnableMods: um refresh
+	// comum, com mods desligados, gravaria artefato pristine sobre a
+	// importação. Nada disso toca no .vbf nem em data/ — só mods/.
+	if _, err := ddsphyre.ExtractEffective(version, id); err != nil {
 		common.LogWarning("images %s/%s: import ok, mas não atualizei os .dds/.png extraídos: %v", version, id, err)
 	}
 	return nil
@@ -289,7 +295,8 @@ func (s *MetadataService) ImportImageGroup(kind, id, ddsPath string, targets []s
 			res.Failed = append(res.Failed, t+": "+ierr.Error())
 			continue
 		}
-		if _, eerr := ddsphyre.Extract(version, t); eerr != nil {
+		// ExtractEffective: refresh imune ao toggle (ver ImportImage).
+		if _, eerr := ddsphyre.ExtractEffective(version, t); eerr != nil {
 			common.LogWarning("images %s/%s: import ok, mas não atualizei os .dds/.png extraídos: %v", version, t, eerr)
 		}
 		res.Updated = append(res.Updated, t)
@@ -373,9 +380,10 @@ func (s *MetadataService) ExtractImageSelection(kind string, ids []string, versi
 	return res, nil
 }
 
-// ReplicateImage reempacota a IMAGEM ABERTA (o .dds efetivo, mods-first) em
-// mods/ de cada cópia do grupo — o "dupe" que o app faz sozinho, sem
-// diálogo de arquivo: a fonte é o próprio conteúdo servido ao painel.
+// ReplicateImage reempacota a IMAGEM ABERTA em mods/ de cada cópia do grupo
+// — o "dupe" que o app faz sozinho, sem diálogo de arquivo: a fonte é o
+// próprio conteúdo servido ao painel, seguindo o config EnableMods (com
+// mods desligados replica o pristine visível, como o texto).
 //
 // A origem NÃO é tocada: ela já mostra essa imagem (data/ ou mods/), só as
 // cópias recebem o arquivo — por isso Total = cópias, não o grupo inteiro.
@@ -399,9 +407,10 @@ func (s *MetadataService) ReplicateImage(kind, id string, targets []string, vers
 		return dto.BatchResult{}, fmt.Errorf("textura %s não tem cópias para replicar", id)
 	}
 	res := dto.BatchResult{Done: []string{}, Failed: []string{}, Total: len(list) - 1}
-	// Resolve é mods-first: a origem carrega a VERSÃO VISÍVEL (importada ou
-	// pristine). Pré-requisito do repack é o container pristine de data/,
-	// exigido por ImportPayload — nesse caso já vem embutido no erro.
+	// Resolve segue o config EnableMods: a origem carrega a VERSÃO VISÍVEL
+	// (importada com mods ligados, pristine com mods desligados).
+	// Pré-requisito do repack é o container pristine de data/, exigido por
+	// ImportPayload — nesse caso já vem embutido no erro.
 	r, err := ddsphyre.Resolve(version, id)
 	if err != nil {
 		return dto.BatchResult{}, fmt.Errorf("lendo imagem %s: %w", id, err)
@@ -422,8 +431,9 @@ func (s *MetadataService) ReplicateImage(kind, id string, targets []string, vers
 			continue
 		}
 		// Mesmo cuidado do import: sem extrair agora, a próxima abertura
-		// serviria o .dds órfão ANTIGO de mods/images.
-		if _, eerr := ddsphyre.Extract(version, t); eerr != nil {
+		// serviria o .dds órfão ANTIGO de mods/images. ExtractEffective é
+		// imune ao toggle — o refresh espelha o container recém-gravado.
+		if _, eerr := ddsphyre.ExtractEffective(version, t); eerr != nil {
 			common.LogWarning("images %s/%s: replicate ok, mas não atualizei os .dds/.png extraídos: %v", version, t, eerr)
 		}
 		res.Done = append(res.Done, t)

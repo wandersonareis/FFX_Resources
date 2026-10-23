@@ -162,7 +162,9 @@ type Resolved struct {
 // O .dds.phyre VISÍVEL é mods-first (a mesma semântica da coluna Traduzido):
 // se o translator já importou uma textura, é ela que se vê; sem import, o
 // pristine da fonte original (data/ no fluxo normal, o .vbf quando pedido
-// via ResolveFrom).
+// via ResolveFrom). Com o config EnableMods desligado a árvore mods/ fica
+// invisível para a leitura — container e artefatos extraídos vêm da fonte
+// original, como o texto volta ao inglês.
 func Resolve(version common.GameVersion, id string) (*Resolved, error) {
 	return ResolveFrom(version, id, common.SourceData)
 }
@@ -171,19 +173,56 @@ func Resolve(version common.GameVersion, id string) (*Resolved, error) {
 // pristine de data/ (fluxo normal); SourceVbf lê o container — o caminho
 // usado quando a árvore data/ não foi extraída na íntegra.
 func ResolveFrom(version common.GameVersion, id string, originalSrc common.FileSource) (*Resolved, error) {
+	return resolveFrom(version, id, originalSrc, true)
+}
+
+// resolveEffectiveFrom é o resolve mods-first IMUNE ao toggle EnableMods:
+// lê o container efetivo mesmo com mods desligados. É o resolve dos
+// REFRESHES pós-gravação (import/replicate, via ExtractEffective): os
+// artefatos de mods/images precisam espelhar o container que acabou de
+// ser gravado — seguisse o toggle, um import com mods desligados gravaria
+// artefato pristine e o .dds defasado serviria de máscara para a
+// tradução ao religar o mods.
+func resolveEffectiveFrom(version common.GameVersion, id string, originalSrc common.FileSource) (*Resolved, error) {
+	return resolveFrom(version, id, originalSrc, false)
+}
+
+// resolveFrom é o núcleo das variantes: honorToggle=true é a leitura que
+// segue o config EnableMods (container e artefatos consultam o toggle);
+// false é o resolve efetivo dos refreshes — container mods-first e
+// NENHUM artefato: quem alimenta os artefatos é o container em si,
+// nunca um artefato velho que se auto-serviria.
+func resolveFrom(version common.GameVersion, id string, originalSrc common.FileSource, honorToggle bool) (*Resolved, error) {
 	rel := RelPath(version, id)
+
+	// modsHidden: a árvore mods/ está invisível para ESTA leitura — o config
+	// tem EnableMods desligado E o chamador segue o toggle. Vale para o
+	// container E para os artefatos de mods/images.
+	modsHidden := honorToggle && common.DisableMods
+
 	acc, err := common.NewFileAccessorFrom(rel, common.SourceMods)
 	if err != nil {
 		return nil, err
 	}
-	inMods := acc.Exists
-	if !inMods {
-		if acc, err = common.NewFileAccessorFrom(rel, originalSrc); err != nil {
+	inMods := false
+	if modsHidden {
+		acc, err = common.NewFileAccessorFrom(rel, originalSrc)
+		if err != nil {
 			return nil, err
 		}
-		if !acc.Exists {
-			return nil, fmt.Errorf("textura %s não encontrada em %s nem em mods/", id, originalSrc)
+	} else if acc.Exists {
+		inMods = true
+	} else {
+		acc, err = common.NewFileAccessorFrom(rel, originalSrc)
+		if err != nil {
+			return nil, err
 		}
+	}
+	if !acc.Exists {
+		if modsHidden {
+			return nil, fmt.Errorf("textura %s não encontrada em %s (mods desligados)", id, originalSrc)
+		}
+		return nil, fmt.Errorf("textura %s não encontrada em %s nem em mods/", id, originalSrc)
 	}
 	raw, err := acc.ReadBytes()
 	if err != nil {
@@ -207,25 +246,33 @@ func ResolveFrom(version common.GameVersion, id string, originalSrc common.FileS
 		InMods:       inMods,
 	}
 
-	switch {
-	case fileExists(ddsPath):
-		dds, rerr := os.ReadFile(ddsPath)
-		if rerr == nil {
-			if png, perr := DDSToPNG(dds); perr == nil {
-				out.Source = "dds"
-				out.DDS = dds
-				out.PNG = png
-				out.DDSPath = ddsPath
-				out.PNGPath = existingOrEmpty(pngPath)
+	// Artefatos extraídos (mods/images): preferência só da LEITURA com mods
+	// ligado. Desligados, eles são conteúdo da árvore invisível — podem ser
+	// o export de uma tradução anterior — e o preview decodifica o próprio
+	// container escolhido acima. O refresh efetivo (honorToggle=false)
+	// também os ignora: a extração que REGRAVA os artefatos tem de sair do
+	// container, senão um artefato defasado se auto-serviria para sempre.
+	if honorToggle && !modsHidden {
+		switch {
+		case fileExists(ddsPath):
+			dds, rerr := os.ReadFile(ddsPath)
+			if rerr == nil {
+				if png, perr := DDSToPNG(dds); perr == nil {
+					out.Source = "dds"
+					out.DDS = dds
+					out.PNG = png
+					out.DDSPath = ddsPath
+					out.PNGPath = existingOrEmpty(pngPath)
+				}
 			}
-		}
-	case fileExists(pngPath):
-		png, rerr := os.ReadFile(pngPath)
-		if rerr == nil {
-			out.Source = "png"
-			out.PNG = png
-			out.PNGPath = pngPath
-			out.DDSPath = existingOrEmpty(ddsPath)
+		case fileExists(pngPath):
+			png, rerr := os.ReadFile(pngPath)
+			if rerr == nil {
+				out.Source = "png"
+				out.PNG = png
+				out.PNGPath = pngPath
+				out.DDSPath = existingOrEmpty(ddsPath)
+			}
 		}
 	}
 
@@ -260,11 +307,35 @@ func fileExists(path string) bool {
 }
 
 // Extract grava .dds e .png em mods/images e devolve os caminhos.
+//
+// Extrai o que se VÊ: Resolve segue o config EnableMods — desligado, o
+// export sai pristine (igual ao export de texto, que sai em inglês);
+// ligado, a textura efetiva.
 func Extract(version common.GameVersion, id string) ([]string, error) {
 	r, err := Resolve(version, id)
 	if err != nil {
 		return nil, err
 	}
+	return extractFrom(r, version, id)
+}
+
+// ExtractEffective grava .dds e .png do container EFETIVO (mods-first),
+// imune ao config EnableMods. É o refresh dos fluxos de escrita (import e
+// replicate): os artefatos precisam espelhar o container recém-gravado em
+// mods/ — um Extract comum, com mods desligados, gravaria artefato
+// pristine sobre uma tradução recém-importada, e o .dds defasado
+// serviria de máscara ao religar o mods.
+func ExtractEffective(version common.GameVersion, id string) ([]string, error) {
+	r, err := resolveEffectiveFrom(version, id, common.SourceData)
+	if err != nil {
+		return nil, err
+	}
+	return extractFrom(r, version, id)
+}
+
+// extractFrom grava os artefatos (.dds e .png em mods/images) da textura
+// já resolvida — o corpo comum de Extract e ExtractEffective.
+func extractFrom(r *Resolved, version common.GameVersion, id string) ([]string, error) {
 	ddsPath, pngPath := ExportPaths(version, id)
 	dds := r.DDS
 	if dds == nil {
@@ -272,12 +343,14 @@ func Extract(version common.GameVersion, id string) ([]string, error) {
 		if r.Texture == nil {
 			return nil, fmt.Errorf("%s: container indisponível", id)
 		}
+		var err error
 		if dds, err = r.Texture.ExtractToDDS(); err != nil {
 			return nil, fmt.Errorf("%s: %w", id, err)
 		}
 	}
 	png := r.PNG
 	if png == nil {
+		var err error
 		if png, err = DDSToPNG(dds); err != nil {
 			return nil, fmt.Errorf("%s: %w", id, err)
 		}
