@@ -24,7 +24,7 @@ func main() {
 
 	// ===== FFX (v1) =====
 	interactions.NewInteractionService().FFXAppConfig().SetGameVersion(common.GameVersionFFX)
-	if err := interactions.NewInteractionService().GameLocation.SetTargetDirectory("/home/mestre/FFX_Resources/build/bin/data/"); err != nil {
+	if err := interactions.NewInteractionService().GameLocation.SetTargetDirectory("build\\bin\\data"); err != nil {
 		// Defina o caminho correto para os arquivos do jogo
 		common.LogError("Erro ao definir diretório de destino: %v\n", err)
 		return
