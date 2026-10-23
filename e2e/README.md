@@ -63,6 +63,12 @@ diálogo de Configurações, confere o erro e devolve o valor original.
   menus Exportar/Importar, import translated, editor (cancelar não suja),
   painel de imagem (extrair/deletar/importar traduzidas/replicar) — cada
   um contido na viewport (**sem estouro de conteúdo**);
+- `mods-toggle-navigation.spec` — **alternar o toggle "Preferir binários
+  traduzidos (mods)" e seguir navegando**: com um texto já aberto (troca
+  para outro arquivo após o toggle) e sem nada aberto (o primeiro clique
+  carrega). É a guarda e2e do self-deadlock do view dedupado
+  (`rawViewOf` × `clearDedupViewCache`) — ver
+  `backend/services/rawview_reentrant_clear_test.go`;
 - `vbf.spec` — raízes do container, arquivo de texto e textura do
   container, diálogo de extração e o erro "aponte o executável".
 

@@ -1,4 +1,5 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
+import { readEnableMods } from './config-file';
 
 /**
  * Seletores e fluxos compartilhados — tudo por papel/aria/rótulo (a UI é
@@ -27,7 +28,12 @@ export function nodeRow(page: Page, nodeId: string) {
 async function toggleNode(page: Page, nodeId: string): Promise<void> {
   const row = nodeRow(page, nodeId);
   await expect(row).toBeVisible();
-  await row.locator('button[aria-label^="Alternar"]').first().click();
+  // Timeout próprio (maior que o actionTimeout global): no boot frio do
+  // servidor, o kind pode ainda estar carregando (spinner no lugar do
+  // chevron) — o clique espera o botão existir e estabilizar.
+  await row.locator('button[aria-label^="Alternar"]').first().click({
+    timeout: 60_000,
+  });
 }
 
 /** Espera a árvore montar a raiz de um kind de data/ (ex.: kind:events). */
@@ -41,20 +47,104 @@ export async function waitForKindRoot(page: Page, kind: string): Promise<void> {
  * tabela renderizar rows. Devolve o label da entrada aberta.
  */
 export async function openFirstTextEntry(page: Page): Promise<string> {
+  const leaf = await revealFirstTextLeaf(page);
+  const label = (await leaf.getAttribute('data-node-label')) ?? '';
+  await leaf.locator('[data-node-button]').click();
+  await expect(page.locator('[data-row-key]').first()).toBeVisible({ timeout: 60_000 });
+  return label;
+}
+
+/**
+ * Navega a árvore até a primeira folha de texto ficar VISÍVEL (kind events
+ * expandido + primeiro grupo aberto) e devolve o locator da folha — sem
+ * clicar. É a parte de navegação de openFirstTextEntry, separada para quem
+ * precisa controlar o clique (ex.: sincronizar com a resposta da carga).
+ */
+export async function revealFirstTextLeaf(page: Page): Promise<Locator> {
   await waitForKindRoot(page, 'events');
   await toggleNode(page, 'kind:events');
   const tree = page.locator('#entry-tree');
   for (let i = 0; i < 4; i++) {
     if (await tree.locator('[data-node-entry="true"]').first().isVisible()) break;
     const group = tree.locator('[data-node-id^="group:events:"]').first();
-    await group.locator('button[aria-label^="Alternar"]').first().click();
+    await group.locator('button[aria-label^="Alternar"]').first().click({
+      timeout: 60_000,
+    });
   }
   const leaf = tree.locator('[data-node-entry="true"]').first();
   await expect(leaf).toBeVisible();
+  return leaf;
+}
+
+/**
+ * Acha uma folha de texto DIFERENTE da indicada (label distinto): procura
+ * entre as folhas já visíveis e, se só existe uma, expande o próximo grupo
+ * de events colapsado (chevron à direita) até achar outra. Devolve o
+ * locator da folha — sem clicar.
+ */
+export async function findAnotherTextLeaf(
+  page: Page,
+  firstLabel: string
+): Promise<Locator> {
+  const tree = page.locator('#entry-tree');
+  for (let round = 0; round < 10; round++) {
+    const leaves = tree.locator('[data-node-entry="true"]');
+    const count = await leaves.count();
+    for (let i = 0; i < count; i++) {
+      const leaf = leaves.nth(i);
+      const label = (await leaf.getAttribute('data-node-label')) ?? '';
+      if (label !== '' && label !== firstLabel) return leaf;
+    }
+    // Nenhuma folha diferente visível: expande o próximo grupo colapsado
+    // (o chevron aponta à direita quando o grupo está fechado).
+    const collapsed = tree
+      .locator('[data-node-id^="group:events:"]')
+      .filter({
+        has: page.locator('button[aria-label^="Alternar"] svg[class*="chevron-right"]'),
+      });
+    if ((await collapsed.count()) === 0) break;
+    await collapsed.first().locator('button[aria-label^="Alternar"]').first().click({
+      timeout: 60_000,
+    });
+  }
+  throw new Error(`nenhuma folha de texto além de "${firstLabel}" na árvore de events`);
+}
+
+/**
+ * ID do binding TextService.GetTextEntry (frontend/bindings) — é a chamada
+ * que carrega o conteúdo de uma entrada de texto clicada na árvore.
+ * O corpo do POST do runtime carrega "methodID":<id> (ver @wailsio/runtime).
+ */
+const GET_TEXT_ENTRY_METHOD_ID = 826447931;
+
+/**
+ * Clica uma folha de texto e espera a carga dela RESPONDER — não basta a
+ * row visível: a tabela do arquivo ANTERIOR continua exibida durante o
+ * load, então rows visíveis não provam que trocou. A resposta HTTP do
+ * binding (200 = carregou; erro = a UI limpa a seleção e mostra toast) é o
+ * ponto exato em que o conteúdo novo existe. Devolve o label da folha.
+ */
+export async function openLeafAndWaitLoad(page: Page, leaf: Locator): Promise<string> {
   const label = (await leaf.getAttribute('data-node-label')) ?? '';
+  const loaded = page.waitForResponse(
+    (res) =>
+      res.request().method() === 'POST' &&
+      res.url().includes('/wails/runtime') &&
+      (res.request().postData() ?? '').includes(
+        `"methodID":${GET_TEXT_ENTRY_METHOD_ID}`
+      ),
+    { timeout: 60_000 }
+  );
   await leaf.locator('[data-node-button]').click();
-  await expect(page.locator('[data-row-key]').first()).toBeVisible({ timeout: 60_000 });
+  const res = await loaded;
+  expect(res.ok(), `GetTextEntry de "${label}" respondeu HTTP ${res.status}`).toBeTruthy();
+  await expect(page.locator('[data-row-key]').first()).toBeVisible({ timeout: 30_000 });
   return label;
+}
+
+/** Barra de título da tabela (main h3): "Eventos · <arquivo>" + badge. */
+export function entryHeading(page: Page): Locator {
+  return page.locator('main h3');
 }
 
 /**
@@ -186,4 +276,68 @@ export async function openConfigDialog(page: Page): Promise<void> {
     .getByRole('button', { name: 'Configurações', exact: true })
     .click();
   await expect(dialog(page)).toBeVisible();
+}
+
+/**
+ * Alternador do checkbox "Preferir binários traduzidos (mods)"
+ * (#EnableMods, o "disable mods" do config): INVERTE o estado atual —
+ * marcado desmarca, desmarcado marca. Espera o espelho do config.json
+ * chegar ao diálogo ANTES de clicar (a carga do store é assíncrona e o
+ * default é ligado) e confirma DEPOIS que o backend persistiu o novo
+ * valor. Devolve o estado que ficou (o inverso do encontrado).
+ */
+export async function toggleEnableModsInConfigDialog(page: Page): Promise<boolean> {
+  const target = !readEnableMods();
+  await openConfigDialog(page);
+  const box = dialog(page).locator('#EnableMods');
+  await expect(box).toBeVisible();
+  // O checkbox precisa espelhar o config.json antes do clique — sem isso
+  // um clique no meio da hidratação alternaria a partir do default errado.
+  await expect
+    .poll(() => box.isChecked(), { timeout: 15_000 })
+    .toBe(!target);
+  await box.click();
+  await expect
+    .poll(() => box.isChecked(), { timeout: 15_000 })
+    .toBe(target);
+  await expect
+    .poll(() => readEnableMods(), {
+      timeout: 15_000,
+      message: `config.json com EnableMods=${target}`,
+    })
+    .toBe(target);
+  await closeDialogByX(page);
+  return target;
+}
+
+/**
+ * Devolve o toggle de mods ao estado pedido (original do fixture):
+ * só clica se divergir, e sempre confirma o config.json no fim. Usada na
+ * limpeza dos specs que alternaram o toggle pela UI — o backend em
+ * memória e o arquivo ficam coerentes.
+ */
+export async function restoreEnableModsInConfigDialog(
+  page: Page,
+  target: boolean
+): Promise<void> {
+  await openConfigDialog(page);
+  const box = dialog(page).locator('#EnableMods');
+  await expect(box).toBeVisible();
+  const current = readEnableMods();
+  await expect
+    .poll(() => box.isChecked(), { timeout: 15_000 })
+    .toBe(current);
+  if (current !== target) {
+    await box.click();
+    await expect
+      .poll(() => box.isChecked(), { timeout: 15_000 })
+      .toBe(target);
+  }
+  await expect
+    .poll(() => readEnableMods(), {
+      timeout: 15_000,
+      message: `config.json restaurado com EnableMods=${target}`,
+    })
+    .toBe(target);
+  await closeDialogByX(page);
 }

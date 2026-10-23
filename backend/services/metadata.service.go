@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"ffxresources/backend/builders"
 	"ffxresources/backend/common"
@@ -123,23 +124,59 @@ type rawView struct {
 var (
 	dedupViewMu    sync.Mutex
 	dedupViewCache = map[string]rawView{}
+	// Serializa a CONSTRUÇÃO do view cru. É um mutex à parte do
+	// dedupViewMu de propósito: a build passa por GetCollection, que pode
+	// recarregar o store (EnsureAllEventsFresh: binário mudou no disco, ou
+	// o toggle EnableMods trocou a árvore resolvida pelos carimbos) e
+	// chamar clearDedupViewCache NO MEIO do caminho — mutex não é
+	// reentrante, e segurar o dedupViewMu através da build travava a
+	// goroutine nela mesma (self-deadlock permanente: toda carga de events
+	// a partir dali bloqueava no lock mantido).
+	dedupViewBuildMu sync.Mutex
+	// Geração do cache: sobe a cada clear. Uma build que atravessou um
+	// clear leu um store anterior a ele — não grava no cache (o próximo
+	// leitor reconstrói do store atual).
+	dedupViewGeneration atomic.Uint64
 )
 
 func (s *MetadataService) rawViewOf(kind string, version common.GameVersion) (rawView, error) {
 	key := version.String() + "|" + kind
-	dedupViewMu.Lock()
-	defer dedupViewMu.Unlock()
-	if v, ok := dedupViewCache[key]; ok {
+	if v, ok := dedupViewCached(key); ok {
 		return v, nil
 	}
+	dedupViewBuildMu.Lock()
+	defer dedupViewBuildMu.Unlock()
+	// Outra goroutine pode ter completado a build enquanto esperávamos a
+	// trava — o view dela serve (mesma árvore, mesmo store).
+	if v, ok := dedupViewCached(key); ok {
+		return v, nil
+	}
+	generation := dedupViewGeneration.Load()
+	// Build FORA do dedupViewMu (ver o bloco var acima): o clear interno
+	// de GetCollection não esbarra no lock da própria build.
 	full, err := s.GetCollection(kind, version, nil, progress.Nop())
 	if err != nil {
 		return rawView{}, err
 	}
 	normalized := s.normalizeCollection(kind, version, full)
 	v := rawView{collection: normalized, order: builders.NewHashOrder(normalized)}
-	dedupViewCache[key] = v
+	// Ninguém limpou o cache durante a build: grava. Alguém limpou (apply,
+	// import ou o próprio reload de frescura): o view construído é anterior
+	// ao clear — entrega ao chamador atual e deixa o cache vazio para o
+	// próximo leitor reconstruir do store que ficou.
+	if dedupViewGeneration.Load() == generation {
+		dedupViewMu.Lock()
+		dedupViewCache[key] = v
+		dedupViewMu.Unlock()
+	}
 	return v, nil
+}
+
+func dedupViewCached(key string) (rawView, bool) {
+	dedupViewMu.Lock()
+	defer dedupViewMu.Unlock()
+	v, ok := dedupViewCache[key]
+	return v, ok
 }
 
 // normalizeCollection devolve a Collection com os ponteiros normalizados
@@ -204,6 +241,10 @@ func (s *MetadataService) normalizeCollection(kind string, version common.GameVe
 // frescura; re-decodificar é o comportamento original do fluxo por clique.
 func clearDedupViewCache() {
 	clearTextSearchCache()
+	// A geração sobe ANTES de limpar: uma build em curso (fora do lock, ver
+	// rawViewOf) compara a geração no fim e se abstém de gravar o view que
+	// leu antes do clear.
+	dedupViewGeneration.Add(1)
 	dedupViewMu.Lock()
 	dedupViewCache = map[string]rawView{}
 	dedupViewMu.Unlock()
