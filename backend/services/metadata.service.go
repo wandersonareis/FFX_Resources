@@ -281,7 +281,11 @@ var (
 
 // ensureVersionReady garante charsets e macros da versão antes de qualquer
 // leitura de texto. lastmiss reaproveita o bucket de ffx2 (CharsetVersion).
+// Sob o viewLoadMu (leitura): a carga em voo não pode atravessar um
+// InvalidateViewCaches e ressuscitar o estado da árvore anterior.
 func ensureVersionReady(version common.GameVersion) error {
+	viewLoadMu.RLock()
+	defer viewLoadMu.RUnlock()
 	v := common.CharsetVersion(version)
 	readyMu.Lock()
 	defer readyMu.Unlock()
@@ -1463,7 +1467,12 @@ func (s *MetadataService) resolveObjectLayouts(version common.GameVersion, ids [
 // onde o Extract direto do arquivo funcionaria.
 // ensureEventsLoaded garante o store em memória (carga bulk única;
 // método: precisa do notifier para reportar os eventos pulados).
+// Sob o viewLoadMu (leitura): uma carga bulk em voo não pode atravessar
+// o ClearAllEvents de um InvalidateViewCaches e repovoar o store com o
+// conteúdo da árvore anterior (ver view_load_barrier.go).
 func (s *MetadataService) ensureEventsLoaded(version common.GameVersion) error {
+	viewLoadMu.RLock()
+	defer viewLoadMu.RUnlock()
 	if event.HasEvents(version) {
 		return nil
 	}
@@ -1479,8 +1488,10 @@ func (s *MetadataService) ensureEventsLoaded(version common.GameVersion) error {
 
 // ensureAllEventsLoaded carrega TODOS os eventos, mesmo com um subconjunto
 // já no store (a árvore carrega só a primeira página). Export bulk (ids=[])
-// precisa do universo completo.
+// precisa do universo completo. Mesma barreira do ensureEventsLoaded.
 func (s *MetadataService) ensureAllEventsLoaded(version common.GameVersion) error {
+	viewLoadMu.RLock()
+	defer viewLoadMu.RUnlock()
 	b := event.NewEventsBinaryFile(version)
 	if err := b.LoadFromBinary(); err != nil {
 		return fmt.Errorf("failed to load all events for version %s: %w", version, err)
@@ -1490,7 +1501,10 @@ func (s *MetadataService) ensureAllEventsLoaded(version common.GameVersion) erro
 }
 
 // ensureHelpLoaded garante os painéis de ajuda em memória (carga única).
+// Mesma barreira dos events: a carga em voo não atravessa o ClearAllHelp.
 func ensureHelpLoaded(version common.GameVersion) error {
+	viewLoadMu.RLock()
+	defer viewLoadMu.RUnlock()
 	return helpfile.EnsureHelpLoaded(version)
 }
 

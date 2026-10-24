@@ -16,14 +16,18 @@ import { readEnableMods } from '../helpers/config-file';
  * Alternar o checkbox "Preferir binários traduzidos (mods)" (#EnableMods —
  * o "disable mods" do config) e continuar navegando os textos:
  *
- *  1. com um texto JÁ aberto: alternar o toggle e clicar em OUTRO texto —
- *     a exibição tem de trocar para o novo arquivo;
+ *  1. com um texto JÁ aberto: alternar o toggle — o conteúdo RECARGA a
+ *     frio na hora (o eco invalida os caches do backend e a aba dá
+ *     coldReload, mesmo caminho do botão Refresh da sidebar) — e depois
+ *     clicar em OUTRO texto: a exibição tem de trocar para o novo arquivo;
  *  2. sem clicar em nada: alternar o toggle ANTES de qualquer carga e só
  *     então clicar num texto — o primeiro load tem de carregar e exibir.
  *
- * O toggle muda a resolução de caminhos no backend (mods-first ↔ data/) na
- * hora (SetEnableMods aplica e persiste) — as cargas seguintes têm de
- * funcionar com a preferência nova, venham de onde vier o binário.
+ * Continua sendo a guarda e2e do self-deadlock do view dedupado
+ * (rawViewOf × clearDedupViewCache — ver
+ * backend/services/rawview_reentrant_clear_test.go): o toggle agora
+ * invalida os caches no próprio SetEnableMods e a navegação seguinte tem
+ * de sobreviver à reconstrução do view.
  *
  * EnableMods volta ao valor original no fim (pela UI, para o backend em
  * memória e o config.json ficarem coerentes).
@@ -60,8 +64,24 @@ test.describe('Alternar o toggle de mods e a navegação de textos', () => {
         description: `EnableMods: ${originalMods} → ${flippedTo}`,
       });
 
-      // ---- 3. clica em OUTRO texto: tem de carregar e TROCAR ----
-      const leafB = await findAnotherTextLeaf(page, labelA);
+      // ---- 3. o toggle RECARGEA a árvore a frio (coldReload automático):
+      // a seleção cai e a árvore recomeça dos placeholders — esperar a
+      // recarga terminar é parte do contrato "todo o conteúdo muda".
+      await expect(
+        page.getByText('Selecione um arquivo no sidebar.')
+      ).toBeVisible({ timeout: 30_000 });
+
+      // ---- 4. reabre a MESMA entrada: a árvore remontou e a carga
+      // seguinte ao toggle sobrevive (é o fluxo que travava no
+      // self-deadlock do view dedupado).
+      const leafA2 = await revealFirstTextLeaf(page);
+      const labelA2 = await openLeafAndWaitLoad(page, leafA2);
+      await expect(heading).toContainText(`· ${labelA2}`);
+      expect(labelA2, 'a mesma entrada continua navegável pós-toggle').toBe(labelA);
+      await expectTextDisplayed(page);
+
+      // ---- 5. clica em OUTRO texto: tem de carregar e TROCAR ----
+      const leafB = await findAnotherTextLeaf(page, labelA2);
       const labelB = await openLeafAndWaitLoad(page, leafB);
       await expect(heading).toContainText(`· ${labelB}`);
       // A tabela do arquivo anterior continua visível DURANTE a carga —

@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import { loggedToast as toast } from "@/lib/ffx/toast-logged";
 import { FolderOpen } from "lucide-react";
-import { SelectDirectory, SelectGameExeFile } from "@/bindings/ffxresources/configservice";
+import { SelectDirectory, SelectGameExeFile, ResolveEnableModsChange } from "@/bindings/ffxresources/configservice";
+import { HasUnsavedEdits } from "@/bindings/ffxresources/app";
 import {
   commitEnableMods,
   commitGameExeLocation,
@@ -11,6 +12,11 @@ import {
   commitTranslateLocation,
   useAppConfig,
 } from "@/lib/ffx/config-store";
+import { editDraft } from "@/lib/ffx/edit-draft";
+import {
+  ModsToggleGuardDialog,
+  type ModsGuardDecision,
+} from "@/components/dialogs/mods-toggle-guard-dialog";
 import {
   Dialog,
   DialogContent,
@@ -111,9 +117,12 @@ export function ConfigDialog({
  * Header é do INVÓLUCRO (modal: DialogHeader; janela: titlebar do
  * WindowChrome) — aqui só o conteúdo.
  *
- * Mudanças commitam NA HORA (blur/Enter/seletor/checkbox: otimista +
- * eco AppConfigChanged): não existe estado "não salvo", fechar é só
- * navegar — e um rascunho ainda em digitação é descartado ao fechar.
+ * Mudanças commitam NA HORA (blur/Enter/seletor: otimista + eco
+ * AppConfigChanged): não existe estado "não salvo", fechar é só navegar —
+ * e um rascunho ainda em digitação é descartado ao fechar. EXCEÇÃO: o
+ * checkbox de mods — com edições não salvas ele passa pela guarda
+ * (ModsToggleGuardDialog) antes de aplicar, porque o toggle recarrega
+ * todo o conteúdo e o rascunho sujo pede decisão explícita.
  */
 export function ConfigDialogContent() {
   const config = useAppConfig();
@@ -125,6 +134,13 @@ export function ConfigDialogContent() {
   // Commits em voo (Enter ainda não resolvido no blur seguinte: o mesmo
   // caminho não é persistido duas vezes).
   const pending = useRef(new Set<FieldKey>());
+
+  // Toggle de mods pendente na guarda de edições não salvas: o valor que o
+  // usuário quer aplicar, null = guarda fechada. Enquanto a guarda decide,
+  // NADA é commitado — o checkbox segue exibindo o estado do store (o
+  // antigo), e o cancelamento o devolve intacto, sem tocar rascunhos nem
+  // os inputs de caminho.
+  const [pendingMods, setPendingMods] = useState<boolean | null>(null);
 
   const storeValue: Record<FieldKey, string> = {
     gameExe: config.gameExeLocation,
@@ -215,6 +231,45 @@ export function ConfigDialogContent() {
     }
   };
 
+  /**
+   * Alternar o checkbox de mods (#EnableMods — o "disable mods" do
+   * config). Sem edições não salvas aplica direto (commit otimista + eco;
+   * o eco invalida os caches do backend e as abas dão coldReload). Com
+   * rascunho sujo, abre a guarda: aplicar o toggle recarrega todo o
+   * conteúdo e a decisão de salvar/descartar é do usuário.
+   *
+   * O critério de "sujo" é o MESMO boolean que habilita o botão Salvar
+   * da tabela (editDraft) — leitura local e exata na janela principal.
+   * A janela FILHA de config (desktop) tem outro editDraft (vazio): lá
+   * vale a flag do backend (HasUnsavedEdits), espelho da mesma fonte
+   * mantido pelo GameVersionTab via SetUnsavedEdits.
+   */
+  const onToggleMods = async (next: boolean): Promise<void> => {
+    if (next === config.enableMods) return;
+    let dirty = editDraft.getSnapshot().hasDirty;
+    if (!dirty) {
+      dirty = await HasUnsavedEdits().catch(() => false);
+    }
+    if (!dirty) {
+      void commitEnableMods(next);
+      return;
+    }
+    setPendingMods(next);
+  };
+
+  /**
+   * Decisão da guarda (Salvar/Descartar): viaja pelo evento
+   * EnableModsChange e a janela PRINCIPAL — dona dos rascunhos — executa
+   * (save/discard + apply). Se o salvar falhar lá, o toggle não é
+   * aplicado e o checkbox permanece no estado antigo.
+   */
+  const resolveModsGuard = (decision: ModsGuardDecision): void => {
+    const next = pendingMods;
+    setPendingMods(null);
+    if (next === null) return;
+    void ResolveEnableModsChange(next, decision).catch(notify);
+  };
+
   return (
     <>
         <div className="flex flex-col gap-3 pt-2 min-w-0">
@@ -287,7 +342,7 @@ export function ConfigDialogContent() {
           <Checkbox
             id="EnableMods"
             checked={config.enableMods}
-            onCheckedChange={(v) => void commitEnableMods(Boolean(v))}
+            onCheckedChange={(v) => void onToggleMods(Boolean(v))}
           />
           <div className="grid gap-1 leading-none">
             <Label htmlFor="EnableMods" className="cursor-pointer">
@@ -301,6 +356,12 @@ export function ConfigDialogContent() {
             </p>
           </div>
         </div>
+
+        <ModsToggleGuardDialog
+          next={pendingMods}
+          onDecision={resolveModsGuard}
+          onCancel={() => setPendingMods(null)}
+        />
     </>
   );
 }

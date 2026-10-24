@@ -8,6 +8,7 @@ import type { GameVersionId } from "@/lib/ffx/game-version";
 import { useEditDraft } from "@/lib/ffx/edit-draft";
 import { useWailsEvent } from "@/lib/ffx/use-wails-event";
 import { saveAllDrafts } from "@/lib/ffx/save-all";
+import { onEnableModsChanged } from "@/lib/ffx/config-store";
 import { setActiveFile } from "@/lib/ffx/active-file-store";
 import {
   ResizableHandle,
@@ -101,6 +102,16 @@ export function GameVersionTab({ version }: { version: GameVersionId }) {
     invalidateTextSearchResults(version);
     void view.actions.reload();
   });
+
+  // Preferência de mods virou no backend (eco AppConfigChanged): todo o
+  // conteúdo da aba é recarregado a frio — mesmo caminho do botão Refresh
+  // da sidebar. Os caches do backend caíram dentro de SetEnableMods
+  // (antes do eco), então a recarga lê com a preferência nova: a
+  // tradução liga/desliga de fato, nada fica no estado anterior.
+  useEffect(
+    () => onEnableModsChanged(() => void view.actions.coldReload()),
+    [view]
+  );
 
   const onSaveAll = () => {
     void saveAllDrafts(() => saving, setSaving);

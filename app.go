@@ -228,6 +228,15 @@ func (a *App) hasUnsavedEdits() bool {
 	return a.unsavedEdits
 }
 
+// HasUnsavedEdits expõe a flag de edições pendentes ao frontend — a guarda
+// do toggle de mods no diálogo de config precisa dela na JANELA FILHA
+// (desktop), onde o editDraft local é outra instância, vazia. A flag é o
+// mesmo boolean que habilita o botão Salvar da tabela: o GameVersionTab a
+// mantém sincronizada via SetUnsavedEdits a cada mudança de rascunho.
+func (a *App) HasUnsavedEdits() bool {
+	return a.hasUnsavedEdits()
+}
+
 // SetUnsavedEdits recebe do frontend o estado de edições não salvas.
 func (a *App) SetUnsavedEdits(dirty bool) {
 	a.unsavedMu.Lock()

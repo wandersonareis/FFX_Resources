@@ -24,6 +24,16 @@ export function nodeRow(page: Page, nodeId: string) {
   return page.locator(`[data-node-id="${attr(nodeId)}"]`);
 }
 
+/**
+ * Row da tabela pela chave data-row-key (index:name do binário). A chave
+ * identifica a row NO ARQUIVO — diferente de nth(), que quebra quando o
+ * conjunto de rows visíveis muda (p.ex. o toggle de mods troca a árvore
+ * do slot 'us' e o filtro de linhas em branco deixa passar outras rows).
+ */
+export function tableRow(page: Page, rowKey: string) {
+  return page.locator(`[data-row-key="${attr(rowKey)}"]`);
+}
+
 /** Botão que expande/colapsa um nó da árvore (chevron). */
 async function toggleNode(page: Page, nodeId: string): Promise<void> {
   const row = nodeRow(page, nodeId);
@@ -270,12 +280,96 @@ export async function closeDialogByX(page: Page): Promise<void> {
 
 /** Abre as Configurações pelo botão do header. */
 export async function openConfigDialog(page: Page): Promise<void> {
+  // Robustez (limpeza de specs): um diálogo esquecido ABERTO — p.ex. o de
+  // Configurações de um passo que falhou antes de fechar — bloqueia o
+  // botão do header pelo overlay. Fecha pelo X antes de abrir de novo.
+  if (await dialog(page).isVisible().catch(() => false)) {
+    await closeDialogByX(page);
+  }
   // exact: o aviso "aponte o executável" da árvore também tem um botão de
   // Configurações ("Abrir Configurações") — o do header é o único exato.
   await page
     .getByRole('button', { name: 'Configurações', exact: true })
     .click();
   await expect(dialog(page)).toBeVisible();
+}
+
+/** Botões da guarda do toggle de mods (edições não salvas). */
+export type ModsGuardChoice = 'Salvar e recarregar' | 'Descartar e recarregar';
+
+/**
+ * Diálogo da guarda do toggle de mods — aninhado SOBRE o de Configurações
+ * (os dois são [data-slot="dialog-content"], então dialog(page) casaria
+ * com dois elementos quando a guarda está aberta). id fixo
+ * #mods-guard-dialog para os locators não dependerem da ordem de portal.
+ */
+export function modsGuard(page: Page) {
+  return page.locator('#mods-guard-dialog');
+}
+
+/**
+ * ID do binding ConfigService.SetEnableMods — o POST do runtime que aplica
+ * e persiste o toggle de mods (ver frontend/bindings/configservice.ts).
+ */
+const SET_ENABLE_MODS_METHOD_ID = 1081754423;
+
+/**
+ * Espera o binding SetEnableMods RESPONDER. É o ponto em que o backend
+ * terminou a invalidação (a barreira viewLoadMu esperou as cargas em voo
+ * — o worker de pré-carga pode levar vários segundos) e o eco
+ * AppConfigChanged que dispara o coldReload das abas sai junto com a
+ * resposta. Sem isso, o helper retornaria quando o config.json muda
+ * (persistência imediata) e o reload chegaria DEPOIS, derrubando a
+ * navegação que o spec já começou na árvore antiga.
+ */
+function waitEnableModsApplied(page: Page): Promise<unknown> {
+  return page.waitForResponse(
+    (res) =>
+      res.request().method() === 'POST' &&
+      res.url().includes('/wails/runtime') &&
+      (res.request().postData() ?? '').includes(
+        `"methodID":${SET_ENABLE_MODS_METHOD_ID}`
+      ),
+    { timeout: 120_000 }
+  );
+}
+
+/**
+ * Clica o checkbox de mods resolvendo a guarda de edições não salvas
+ * quando ela abre: sem rascunho sujo o toggle aplica direto; com sujeira,
+ * a guarda pergunta e o botão dado decide (Salvar/Descartar aplicam e
+ * recarregam; só Cancelar deixaria o checkbox no estado anterior).
+ * Espera o binding aplicar de verdade no backend antes de voltar — o
+ * spec seguinte navega já sobre a árvore nova. Devolve true se a guarda
+ * foi aberta.
+ */
+async function clickEnableModsCheckbox(
+  page: Page,
+  box: Locator,
+  target: boolean,
+  guardChoice: ModsGuardChoice
+): Promise<boolean> {
+  // Registrada ANTES do clique: no caminho da guarda, o binding só dispara
+  // depois da decisão (o save pode levar segundos; a barreira, mais).
+  const applied = waitEnableModsApplied(page);
+  await box.click();
+  const guard = modsGuard(page);
+  // Ou a guarda abre (edições não salvas) ou o checkbox aplica direto.
+  await expect
+    .poll(
+      async () => (await guard.isVisible()) || (await box.isChecked()) === target,
+      {
+        timeout: 15_000,
+        message: 'aplicar o toggle de mods ou abrir a guarda de edições não salvas',
+      }
+    )
+    .toBeTruthy();
+  if (await guard.isVisible()) {
+    await guard.getByRole('button', { name: guardChoice, exact: true }).click();
+    await expect(guard).toBeHidden();
+  }
+  await applied;
+  return true;
 }
 
 /**
@@ -285,8 +379,16 @@ export async function openConfigDialog(page: Page): Promise<void> {
  * chegar ao diálogo ANTES de clicar (a carga do store é assíncrona e o
  * default é ligado) e confirma DEPOIS que o backend persistiu o novo
  * valor. Devolve o estado que ficou (o inverso do encontrado).
+ *
+ * Com edições não salvas a GUARDA abre no lugar do commit direto
+ * (salvar/descartar recarrega tudo; cancelar devolveria o checkbox ao
+ * estado anterior): `guardChoice` decide o botão — o default descarta,
+ * que é o que uma limpeza de fixture quer.
  */
-export async function toggleEnableModsInConfigDialog(page: Page): Promise<boolean> {
+export async function toggleEnableModsInConfigDialog(
+  page: Page,
+  guardChoice: ModsGuardChoice = 'Descartar e recarregar'
+): Promise<boolean> {
   const target = !readEnableMods();
   await openConfigDialog(page);
   const box = dialog(page).locator('#EnableMods');
@@ -296,7 +398,7 @@ export async function toggleEnableModsInConfigDialog(page: Page): Promise<boolea
   await expect
     .poll(() => box.isChecked(), { timeout: 15_000 })
     .toBe(!target);
-  await box.click();
+  await clickEnableModsCheckbox(page, box, target, guardChoice);
   await expect
     .poll(() => box.isChecked(), { timeout: 15_000 })
     .toBe(target);
@@ -314,11 +416,14 @@ export async function toggleEnableModsInConfigDialog(page: Page): Promise<boolea
  * Devolve o toggle de mods ao estado pedido (original do fixture):
  * só clica se divergir, e sempre confirma o config.json no fim. Usada na
  * limpeza dos specs que alternaram o toggle pela UI — o backend em
- * memória e o arquivo ficam coerentes.
+ * memória e o arquivo ficam coerentes. Se a guarda de edições não salvas
+ * aparecer (spec falhou com rascunho sujo), a escolha dada resolve para
+ * que a limpeza nunca trave.
  */
 export async function restoreEnableModsInConfigDialog(
   page: Page,
-  target: boolean
+  target: boolean,
+  guardChoice: ModsGuardChoice = 'Descartar e recarregar'
 ): Promise<void> {
   await openConfigDialog(page);
   const box = dialog(page).locator('#EnableMods');
@@ -328,10 +433,7 @@ export async function restoreEnableModsInConfigDialog(
     .poll(() => box.isChecked(), { timeout: 15_000 })
     .toBe(current);
   if (current !== target) {
-    await box.click();
-    await expect
-      .poll(() => box.isChecked(), { timeout: 15_000 })
-      .toBe(target);
+    await clickEnableModsCheckbox(page, box, target, guardChoice);
   }
   await expect
     .poll(() => readEnableMods(), {

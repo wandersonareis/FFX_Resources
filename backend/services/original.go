@@ -609,7 +609,15 @@ func clearOriginalCache() {
 // gamefiles (DTOs deduplicados, original pristine e os stores de formato).
 // Chamado ao trocar GameFilesLocation: os binários carregados pertencem à
 // árvore anterior e sem isso a view serviria texto de outro diretório.
+// O toggle EnableMods também invalida (SetEnableMods): a preferência
+// muda a resolução de caminhos de TUDO que já foi carregado.
+//
+// Sob o viewLoadMu (escrita): o clear nunca acontece no MEIO de uma carga
+// bulk — a carga em voo terminaria por repovoar o store com conteúdo da
+// árvore anterior (ver view_load_barrier.go).
 func InvalidateViewCaches() {
+	viewLoadMu.Lock()
+	defer viewLoadMu.Unlock()
 	treeGeneration.Add(1)
 	preloadMu.Lock()
 	preloadedVersions = map[string]bool{}

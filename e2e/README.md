@@ -71,11 +71,18 @@ diálogo de Configurações, confere o erro e devolve o valor original.
   painel de imagem (extrair/deletar/importar traduzidas/replicar) — cada
   um contido na viewport (**sem estouro de conteúdo**);
 - `mods-toggle-navigation.spec` — **alternar o toggle "Preferir binários
-  traduzidos (mods)" e seguir navegando**: com um texto já aberto (troca
-  para outro arquivo após o toggle) e sem nada aberto (o primeiro clique
+  traduzidos (mods)" e seguir navegando**: com um texto já aberto (a
+  seleção cai na recarga automática e a mesma entrada reabre, trocando
+  depois para outro arquivo) e sem nada aberto (o primeiro clique
   carrega). É a guarda e2e do self-deadlock do view dedupado
   (`rawViewOf` × `clearDedupViewCache`) — ver
   `backend/services/rawview_reentrant_clear_test.go`;
+- `mods-toggle-guard.spec` — **a guarda de edições não salvas do toggle
+  de mods**: com rascunho sujo, o checkbox pergunta antes de aplicar —
+  Cancelar devolve o checkbox e preserva o rascunho (nada recarrega);
+  Descartar/Salvar aplicam o toggle e recarregam todo o conteúdo (o
+  descartado morre, o salvo vai para o binário em mods/ e volta na
+  recarga com a tradução ligada);
 - `export-all-disabled-mods.spec` — **export bulk com o toggle de mods
   desligado**: "Exportar — todos os tipos" lê os ORIGINAIS de data/ e
   grava TUDO em `mods/edits` (artefatos `.strings`, nada fora de edits/; o

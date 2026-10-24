@@ -360,8 +360,43 @@ as cópias idênticas — sem escolher arquivo:
   a tradução continua de onde parou. O import de JSON/strings grava os
   binários nessa pasta.
 
-Toda mudança é aplicada imediatamente (não há botão Salvar): o backend
-persiste no `config.json` e recarrega a árvore.
+Os três primeiros campos são aplicados imediatamente (não há botão
+Salvar): o backend persiste no `config.json` e recarrega a árvore.
+
+### Alternar "Preferir binários traduzidos (mods)"
+
+O toggle muda a **resolução de caminhos de tudo que já foi carregado**
+(DTOs, stores de events/help/lockit, macros, texturas, overlay do `.vbf`),
+então alternar não mexe só no que virá: o backend **descarta os caches de
+view dentro do próprio `SetEnableMods`** e o eco de config dispara uma
+**recarga a frio em todas as abas** (o mesmo caminho do botão *Refresh* da
+sidebar — seleção, resultados de busca e cache `.vbf` caem junto). O
+conteúdo exibido troca na hora: ligado mostra a tradução de `mods/`,
+desligado volta ao inglês original de `data/`. Nada fica no estado
+anterior — manter o conteúdo velho na tela não é uma opção.
+
+Com **edições não salvas** na sessão (o mesmo estado que habilita o botão
+`Salvar` da tabela), alternar abre a **guarda "Alterações não salvas"**
+antes de aplicar — a recarga derruba o que está aberto, então a decisão é
+explícita:
+
+- **Aviso destacado**: *escolher Salvar ou Descartar aplica a nova
+  preferência e recarrega todo o conteúdo — somente Cancelar mantém tudo
+  como está.*
+- **Salvar e recarregar** — persiste os rascunhos primeiro (mesmo motor
+  do `Ctrl+S`, inclusive o gate de tags protegidas) e então aplica o
+  toggle. Se o salvar falhar ou for bloqueado, **o toggle não é
+  aplicado** e o checkbox permanece no estado anterior.
+- **Descartar e recarregar** — joga fora os rascunhos da sessão
+  (permanentemente) e aplica o toggle.
+- **Cancelar** — anula **só o toggle**: o checkbox volta ao estado
+  anterior, o `config.json` fica intocado, os rascunhos continuam sujos
+  e **nada é recarregado**. Os demais campos do diálogo não são
+  afetados.
+
+A mesma guarda vale para a janela de configuração (desktop): a decisão
+viaja pelo evento `EnableModsChange` e a **janela principal** — dona dos
+rascunhos — salva/descarta e aplica o toggle.
 
 ## Fluxo de trabalho típico
 

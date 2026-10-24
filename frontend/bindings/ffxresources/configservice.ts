@@ -69,6 +69,19 @@ export function GetTranslateLocation(): $CancellablePromise<string> {
     return $Call.ByID(2573491630);
 }
 
+/**
+ * ResolveEnableModsChange publica a decisão da guarda de edições não
+ * salvas do checkbox de mods. Os rascunhos de tradução moram na janela
+ * principal (o editDraft do frontend é POR JANELA — na janela filha de
+ * config ele é uma instância vazia), então salvar/descartar só pode
+ * acontecer lá: este evento é o pedido que o AppShell da janela principal
+ * executa (save/discard + apply), vindo o clique do modal OU da janela
+ * filha. decision: "save" | "discard".
+ */
+export function ResolveEnableModsChange(enabled: boolean, decision: string): $CancellablePromise<void> {
+    return $Call.ByID(3211847695, enabled, decision);
+}
+
 export function SelectDirectory(title: string): $CancellablePromise<string> {
     return $Call.ByID(3940172930, title);
 }
@@ -86,6 +99,13 @@ export function SelectGameExeFile(): $CancellablePromise<string> {
 
 /**
  * SetEnableMods persiste e aplica o toggle mods-first imediatamente.
+ * 
+ * A preferência muda a RESOLUÇÃO de caminhos de tudo que já foi carregado
+ * (DTOs deduplicados, stores de events/help/lockit/eventtable, macros,
+ * original pristine): os caches derivados da árvore caem aqui — sem isso o
+ * frontend recarregaria e o backend continuaria servindo conteúdo lido com
+ * a preferência ANTIGA. O eco AppConfigChanged sai DEPOIS da invalidação,
+ * então o reload que ele dispara nunca pega cache velho.
  */
 export function SetEnableMods(enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(1081754423, enabled);

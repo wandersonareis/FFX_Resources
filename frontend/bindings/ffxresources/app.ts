@@ -16,6 +16,17 @@
 import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
 
 /**
+ * HasUnsavedEdits expõe a flag de edições pendentes ao frontend — a guarda
+ * do toggle de mods no diálogo de config precisa dela na JANELA FILHA
+ * (desktop), onde o editDraft local é outra instância, vazia. A flag é o
+ * mesmo boolean que habilita o botão Salvar da tabela: o GameVersionTab a
+ * mantém sincronizada via SetUnsavedEdits a cada mudança de rascunho.
+ */
+export function HasUnsavedEdits(): $CancellablePromise<boolean> {
+    return $Call.ByID(1437247688);
+}
+
+/**
  * PreloadVersions aquece as versões indicadas em background (uma goroutine
  * worker, versões uma a uma). Chamado pelo frontend após a carga da aba
  * visualizada concluir — trocar de aba cai no caminho rápido.

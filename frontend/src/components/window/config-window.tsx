@@ -20,7 +20,7 @@ export function ConfigWindowContent() {
     void loadConfigSnapshot();
   }, []);
 
-  useWailsEvent("AppConfigChanged", (data) => applyConfigSnapshot(data));
+  useWailsEvent("AppConfigChanged", (data) => applyConfigSnapshot(data, true));
 
   return (
     <div className="grid gap-4 p-4 text-sm">

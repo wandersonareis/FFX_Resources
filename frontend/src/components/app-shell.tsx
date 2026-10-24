@@ -13,8 +13,13 @@ import { GAME_VERSIONS, GameVersionId } from '@/lib/ffx/game-version';
 import { tabStorage } from '@/lib/ffx/tab-storage';
 import { useWailsEvent } from '@/lib/ffx/use-wails-event';
 import { saveAllDrafts } from '@/lib/ffx/save-all';
+import { editDraft } from '@/lib/ffx/edit-draft';
 import { exportSelection, EXPORT_FORMAT_LABELS } from '@/lib/ffx/export-selection';
-import { applyConfigSnapshot, loadConfigSnapshot } from '@/lib/ffx/config-store';
+import {
+  applyConfigSnapshot,
+  commitEnableMods,
+  loadConfigSnapshot,
+} from '@/lib/ffx/config-store';
 import {
   configDialogStore,
   setConfigDialogOpen,
@@ -131,8 +136,39 @@ export function AppShell() {
 
   // Eco do config: cada setter do backend persiste e re-emite o snapshot
   // completo — o store espelha a verdade (caminho Abs, exe recusado em
-  // silêncio, translated derivado) para todos os consumidores.
-  useWailsEvent('AppConfigChanged', (data) => applyConfigSnapshot(data));
+  // silêncio, translated derivado) para todos os consumidores. fromEvent:
+  // é o eco pós-mudança (não a carga inicial) que dispara o coldReload de
+  // enableMods nas abas.
+  useWailsEvent('AppConfigChanged', (data) => applyConfigSnapshot(data, true));
+
+  // Decisão da guarda do toggle de mods (ConfigService.ResolveEnableMods
+  // Change, publicado pelo modal de config OU pela janela filha): os
+  // rascunhos de tradução moram NESTA janela (o editDraft é por janela),
+  // então salvar/descartar só pode acontecer aqui. "save" que não salva
+  // (gate de tags protegidas, erro de escrita) ABORTA o toggle — o
+  // rascunho continua sujo e o checkbox segue no estado antigo. Aplicar
+  // (commitEnableMods) emite o eco que invalida os caches do backend e
+  // dispara o coldReload das abas: todo o conteúdo troca para a
+  // preferência nova.
+  useWailsEvent('EnableModsChange', (data) => {
+    const payload = (data ?? {}) as { enabled?: unknown; decision?: unknown };
+    if (typeof payload.enabled !== 'boolean') return;
+    if (payload.decision !== 'save' && payload.decision !== 'discard') return;
+    const enabled = payload.enabled;
+    const decision = payload.decision;
+    void (async () => {
+      if (decision === 'save') {
+        await saveAllDrafts(() => saving, setSaving);
+        // Falhou/bloqueado: o rascunho segue sujo — o toggle não aplica.
+        if (editDraft.getSnapshot().hasDirty) return;
+      } else {
+        // Descartar limpa os rascunhos; a flag do backend (unsavedEdits)
+        // desce pelo efeito de hasDirty do GameVersionTab.
+        editDraft.clearAll();
+      }
+      await commitEnableMods(enabled);
+    })();
+  });
 
   const onTabChange = (index: string) => {
     const idx = Number.parseInt(index, 10);
