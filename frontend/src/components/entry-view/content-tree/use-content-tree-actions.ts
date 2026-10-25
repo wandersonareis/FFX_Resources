@@ -19,6 +19,7 @@ import { exportLangs } from '@/lib/ffx/export-langs';
 import { vbfSelection } from '@/lib/ffx/vbf-selection';
 import {
   entryIdsInNode,
+  isKindRootNode,
   type SideNode,
 } from '@/lib/ffx/content-tree/model';
 import type { TreeCtxNode } from '@/lib/ffx/content-tree/menu-target';
@@ -62,7 +63,9 @@ export function useContentTreeActions({
     [ctxNode]
   );
 
-  // Checkbox de data/: folha = 1 id; grupo = todos os filhos.
+  // Checkbox de data/: folha = 1 id; grupo = todos os filhos; raiz do kind
+  // = o kind INTEIRO (`whole`), que deduplica a exportação para o artefato
+  // bulk único.
   // Checkbox do .vbf: guarda o caminho (diretório = subárvore, expandida
   // pelo backend); inclui imagens e formatos fora do escopo de texto para
   // permitir a extração dos binários originais.
@@ -75,7 +78,16 @@ export function useContentTreeActions({
         return;
       }
       if (!node.kind) return;
-      exportSelection.setMany(version, node.kind, entryIdsInNode(node), checked);
+      // A raiz do kind (kind:<kind>) cobre tudo que a árvore serve dele:
+      // marcar ela é marcar o kind inteiro — daí o `whole`.
+      const whole = isKindRootNode(node) && checked;
+      exportSelection.setMany(
+        version,
+        node.kind,
+        entryIdsInNode(node),
+        checked,
+        whole
+      );
     },
     [version]
   );
@@ -114,6 +126,9 @@ export function useContentTreeActions({
   // Exporta só o que está marcado na árvore de data/ no FORMATO SELECIONADO
   // no topo (JSON | Strings | CSV | XLSX) — leitura imperativa do store
   // compartilhado. Uma ação = modal de progresso com o resumo no final.
+  //
+  // Seleção marcada pela RAIZ do kind (`complete`) deduplica para o
+  // artefato bulk único (prefixo tree_ no backend): um arquivo em vez de N.
   const onCtxExport = useCallback(async () => {
     const kind = ctxNode?.kind;
     if (!kind) return;
@@ -123,8 +138,14 @@ export function useContentTreeActions({
       return;
     }
     const format = exportSelection.formatOf();
+    const complete = exportSelection.completeOf(version, kind);
     try {
-      const paths = await exportArtifactBatch([{ kind, ids }], version, exportLangs.langsOf(), format);
+      const paths = await exportArtifactBatch(
+        [{ kind, ids, complete }],
+        version,
+        exportLangs.langsOf(),
+        format
+      );
       if ((paths ?? []).length === 0) {
         toast.info('Nada para exportar.');
       }

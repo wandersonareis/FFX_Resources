@@ -12,11 +12,32 @@ import (
 	jsonfmt "ffxresources/backend/formatters/json"
 )
 
+// treeBulkPrefix prefixa o base do artefato bulk gerado pela SELEÇÃO
+// completa de um kind na árvore (checkbox da raiz). Separa o artefato
+// vindo da árvore do canônico do export completo (mesmo conteúdo, outra
+// origem) sem colidir com ele — e sem depender do nome no import, que
+// casa o kind pelo metadata.key das entradas.
+const treeBulkPrefix = "tree_"
+
+// hasBulkArtifact informa se o kind tem artefato bulk ÚNICO (ids vazios =
+// um arquivo por kind). lockit não tem: é sempre por entrada, então a
+// marcação "kind completo" nele segue o caminho normal da seleção.
+func hasBulkArtifact(kind string) bool {
+	switch kind {
+	case KindEvents, KindMacro, KindHelp, KindObjects,
+		KindBattleText, KindCloud, KindTutorial, KindMenuMain:
+		return true
+	}
+	return false
+}
+
 // eventsExportPath resolve o caminho do artefato JSON de events:
-//   - ids vazio (tudo)     → events_all_localizations[_<v>].json
+//   - ids vazio (tudo)     → [<prefix>]events_all_localizations[_<v>].json
 //   - 1 entrada            → event_<id>_all_localizations[_<v>].json
 //   - subconjunto          → events_sel_<n>_<id1>_all_localizations[_<v>].json
-func eventsExportPath(version common.GameVersion, ids []string) (string, error) {
+//
+// prefix só vale no ramo bulk: subconjunto nunca carrega prefixo.
+func eventsExportPath(version common.GameVersion, ids []string, prefix string) (string, error) {
 	editsPath := filepath.Join(common.GameFilesRoot, common.ModsFolder, "edits")
 	if err := common.EnsurePathExists(editsPath); err != nil {
 		return "", fmt.Errorf("error creating edits directory: %w", err)
@@ -24,7 +45,7 @@ func eventsExportPath(version common.GameVersion, ids []string) (string, error) 
 	var name string
 	switch len(ids) {
 	case 0:
-		name = "events_all_localizations.json"
+		name = prefix + "events_all_localizations.json"
 	case 1:
 		name = "event_" + ids[0] + "_all_localizations.json"
 	default:
@@ -34,13 +55,13 @@ func eventsExportPath(version common.GameVersion, ids []string) (string, error) 
 }
 
 // objectsBulkPath resolve o caminho do artefato JSON ÚNICO de objects
-// (export completo): objects_all_localizations[_<v>].json em edits/.
-func objectsBulkPath(version common.GameVersion) (string, error) {
+// (export completo): [<prefix>]objects_all_localizations[_<v>].json em edits/.
+func objectsBulkPath(version common.GameVersion, prefix string) (string, error) {
 	editsPath := filepath.Join(common.GameFilesRoot, common.ModsFolder, "edits")
 	if err := common.EnsurePathExists(editsPath); err != nil {
 		return "", fmt.Errorf("error creating edits directory: %w", err)
 	}
-	return filepath.Join(editsPath, common.WithVersionSuffixFor("objects_all_localizations.json", version)), nil
+	return filepath.Join(editsPath, common.WithVersionSuffixFor(prefix+"objects_all_localizations.json", version)), nil
 }
 
 // tableBulkNames mapeia kind de tabela → base do artefato bulk em edits/.
@@ -65,7 +86,7 @@ var tableBulkNames = map[string]string{
 // completo (ids vazio) dos kinds de tabela: edits/<base>_all_localizations
 // [_<versão>].json — irmão do bulk de objects (objectsBulkPath), mesmo
 // padrão de dedup global entre entradas no WriteObjectsFile.
-func tableBulkPath(kind string, version common.GameVersion) (string, error) {
+func tableBulkPath(kind string, version common.GameVersion, prefix string) (string, error) {
 	base, ok := tableBulkNames[kind]
 	if !ok {
 		return "", fmt.Errorf("sem nome bulk registrado para o kind: %s", kind)
@@ -74,7 +95,7 @@ func tableBulkPath(kind string, version common.GameVersion) (string, error) {
 	if err := common.EnsurePathExists(editsPath); err != nil {
 		return "", fmt.Errorf("error creating edits directory: %w", err)
 	}
-	return filepath.Join(editsPath, common.WithVersionSuffixFor(base+"_all_localizations.json", version)), nil
+	return filepath.Join(editsPath, common.WithVersionSuffixFor(prefix+base+"_all_localizations.json", version)), nil
 }
 
 // macroExportPath resolve o caminho do artefato JSON do dicionário:
@@ -82,7 +103,7 @@ func tableBulkPath(kind string, version common.GameVersion) (string, error) {
 //     (artefato canônico, mesmo do import padrão);
 //   - 1 chunk           → macro_chunk_NN_all_localizations
 //   - subconjunto       → macro_sel_<n>_<chunk1>_all_localizations
-func macroExportPath(version common.GameVersion, ids []string) (string, error) {
+func macroExportPath(version common.GameVersion, ids []string, prefix string) (string, error) {
 	canonical, err := jsonfmt.MacroJSONPath(version)
 	if err != nil {
 		return "", err
@@ -90,7 +111,7 @@ func macroExportPath(version common.GameVersion, ids []string) (string, error) {
 	var name string
 	switch len(ids) {
 	case 0:
-		name = filepath.Base(canonical)
+		name = prefix + filepath.Base(canonical)
 	case 1:
 		name = "macro_" + ids[0] + "_all_localizations.json"
 	default:

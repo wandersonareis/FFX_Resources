@@ -597,7 +597,7 @@ func writeVbfExport(kind string, version common.GameVersion, ids []string, c dto
 
 	switch kind {
 	case KindEvents:
-		p, err := eventsExportPath(version, ids)
+		p, err := eventsExportPath(version, ids, "")
 		if err != nil {
 			return nil, err
 		}
@@ -620,14 +620,14 @@ func writeVbfExport(kind string, version common.GameVersion, ids []string, c dto
 		}
 		return paths, nil
 	case KindMacro:
-		p, err := macroExportPath(version, nil)
+		p, err := macroExportPath(version, nil, "")
 		if err != nil {
 			return nil, err
 		}
 		written, werr := write(c, p)
 		return []string{written}, werr
 	case KindHelp:
-		p, err := jsonfmt.HelpJSONPath(version)
+		p, err := jsonfmt.HelpJSONPath(version, "")
 		if err != nil {
 			return nil, err
 		}

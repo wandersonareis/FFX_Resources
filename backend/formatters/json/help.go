@@ -12,11 +12,13 @@ import (
 )
 
 // HelpJSONPath resolve o caminho do artefato JSON único de help em
-// mods/edits (padrão dos demais kinds): help_all_localizations[_<versão>].json.
-func HelpJSONPath(version common.GameVersion) (string, error) {
+// mods/edits (padrão dos demais kinds): [<prefix>]help_all_localizations
+// [_<versão>].json. prefix não vazio marca a origem do artefato (a
+// seleção completa da árvore) sem colidir com o canônico.
+func HelpJSONPath(version common.GameVersion, prefix string) (string, error) {
 	editsPath := filepath.Join(common.GameFilesRoot, common.ModsFolder, "edits")
 	if err := common.EnsurePathExists(editsPath); err != nil {
 		return "", fmt.Errorf("error creating edits directory: %w", err)
 	}
-	return filepath.Join(editsPath, common.WithVersionSuffixFor("help_all_localizations.json", version)), nil
+	return filepath.Join(editsPath, common.WithVersionSuffixFor(prefix+"help_all_localizations.json", version)), nil
 }

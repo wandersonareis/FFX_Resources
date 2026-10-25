@@ -174,6 +174,7 @@ for (const version of TABS_FULL_TEST) {
       await expect(menu.getByRole('menuitem', { name: /Exportar todos os tipos/ })).toBeVisible();
       await expect(menu.getByText('Escopo')).toBeVisible();
       await expect(menu.getByRole('menuitemcheckbox', { name: 'Eventos' })).toBeVisible();
+      await expect(menu.getByRole('menuitem', { name: /tipos marcados/ })).toBeVisible();
       await page.keyboard.press('Escape');
     });
 

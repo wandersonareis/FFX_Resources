@@ -64,8 +64,17 @@ diálogo de Configurações, confere o erro e devolve o valor original.
   Traduzido quando mods/ existe (badge de progresso > 0);
 - `editor-save.spec` — **o ciclo de escrita**: editar → Salvar (Ctrl+S) →
   binário regravado em mods/ (varredura de mtime) → UI recarregada
-  exibindo o texto salvo → export (artefatos em mods/edits com modal de
-  progresso) → import do lote translated (bin regravado em mods/);
+  exibindo o texto salvo → export pelo menu de contexto da árvore
+  (artefatos em mods/edits com modal de progresso) → import do lote
+  translated (bin regravado em mods/);
+- `export-scopes.spec` — **os três tipos de export**: o popover Exportar
+  ("todos os tipos" e "Exportar seleção" = os **tipos marcados no
+  escopo**, cada um por inteiro — a marcação da árvore não entra) e o menu
+  de contexto da árvore (a **seleção marcada**: parcial = um arquivo por
+  entrada; kind inteiro marcado pela raiz = artefato bulk único com
+  prefixo `tree_`, que não sobrescreve o canônico). Inclui a marcação
+  tri-state das raízes de kind (`Texto` e `Imagens` ficam sem checkbox) e
+  a extensão do artefato por formato (JSON/Strings/CSV/XLSX);
 - `dialogs.spec` — todos os diálogos: busca global, busca no arquivo,
   menus Exportar/Importar, import translated, editor (cancelar não suja),
   painel de imagem (extrair/deletar/importar traduzidas/replicar) — cada

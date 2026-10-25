@@ -122,6 +122,8 @@ test.describe('Diálogos', () => {
       menu.getByRole('menuitemcheckbox', { name: 'Eventos' })
     ).toBeVisible();
     await expect(menu.getByRole('menuitem', { name: /Exportar seleção/ })).toBeVisible();
+    // O subtítulo é do ESCOPO (tipos marcados), não da seleção da árvore.
+    await expect(menu.getByRole('menuitem', { name: /tipos marcados/ })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(menu).toBeHidden();
   });

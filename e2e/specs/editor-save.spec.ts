@@ -11,6 +11,7 @@ import {
   restoreEnableModsInConfigDialog,
   toast,
 } from '../helpers/ui';
+import { contextMenuExport } from '../helpers/export';
 import { hasData, hasMods, modsDir } from '../helpers/fixtures';
 import { readEnableMods } from '../helpers/config-file';
 import {
@@ -175,10 +176,10 @@ test.describe('Editor: escrita, save em mods/, export e import', () => {
 
     const before = snapshotMtimes(modsDir);
 
-    // Exportar ▾ → Exportar seleção (marcados) — o formato é o do seletor
-    // do header (default JSON).
-    await page.getByRole('button', { name: /Exportar/ }).first().click();
-    await page.getByRole('menuitem', { name: /Exportar seleção/ }).click();
+    // Menu de contexto da árvore → Exportar: exporta a SELEÇÃO MARCADA na
+    // árvore (o botão Exportar do header é de escopo de tipo — a seleção
+    // por item vive no menu de contexto, coberto em export-scopes.spec).
+    await contextMenuExport(page, await leaf.getAttribute('data-node-id') ?? '');
 
     // Modal de progresso: abre, conclui e é fechado pelo usuário.
     const progress = dialog(page);

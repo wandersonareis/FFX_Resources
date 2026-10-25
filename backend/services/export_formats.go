@@ -21,9 +21,17 @@ import (
 
 // ExportPlanItem é UMA ação do lote: um kind e os ids dele (vazio = tudo
 // do kind; com seleção, os ids marcados na árvore).
+//
+// Complete marca a seleção TOTAL do kind — o checkbox da raiz na árvore.
+// Com ele o backend desvia para o artefato bulk ÚNICO (um arquivo, dedup
+// global entre entradas), com o prefixo treeBulkPrefix no base para NÃO
+// colidir com o artefato canônico do export completo. O prefixo é só a
+// marca da origem: o import decide o kind pelo metadata.key de cada
+// entrada (detectImportKind), nunca pelo nome do arquivo.
 type ExportPlanItem struct {
-	Kind string   `json:"kind"`
-	IDs  []string `json:"ids"`
+	Kind     string   `json:"kind"`
+	IDs      []string `json:"ids"`
+	Complete bool     `json:"complete"`
 }
 
 // kindStepLabels são os rótulos PT dos steps do modal de export — os
@@ -77,7 +85,7 @@ func (s *MetadataService) ExportArtifactBatch(items []ExportPlanItem, version co
 	var all []string
 	for i, it := range items {
 		kind := strings.ToLower(strings.TrimSpace(it.Kind))
-		ps, err := s.exportKind(steps[i], kind, format, version, it.IDs, langs)
+		ps, err := s.exportKind(steps[i], kind, format, version, it.IDs, it.Complete, langs)
 		all = append(all, ps...)
 		if err != nil {
 			steps[i].Fail(err.Error())
@@ -126,9 +134,26 @@ func exportSummaryDestination(paths []string) string {
 // exportKind extrai e escreve o artefato de UM kind no formato pedido.
 // O Reporter r é o step do batch: a extração (GetCollection → builders)
 // faz SetTotal + um tick por entrada; o write em si é rápido e não ticka.
-func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, version common.GameVersion, ids, langs []string) (paths []string, retErr error) {
+//
+// complete = a seleção marcou o kind INTEIRO (checkbox da raiz na árvore):
+// o artefato vira o bulk único, com prefixo treeBulkPrefix. Kinds sem
+// caminho bulk (lockit) ignoram a marca e seguem por-entrada — a seleção
+// continua válida, só não há artefato único para eles.
+func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, version common.GameVersion, ids []string, complete bool, langs []string) (paths []string, retErr error) {
 	r = progress.OrNop(r)
 	kind = strings.ToLower(strings.TrimSpace(kind))
+	prefix := ""
+	if complete {
+		if !hasBulkArtifact(kind) {
+			// Sem artefato bulk registrado: seleção normal, por entrada.
+			complete = false
+		} else {
+			prefix = treeBulkPrefix
+			// Kind inteiro = o universo completo: ids vazios É o contrato
+			// de bulk do exportKind (e events carrega tudo de propósito).
+			ids = nil
+		}
+	}
 	if kind == KindEvents || kind == KindMacro {
 		ids = s.normalizeIDs(ids)
 	}
@@ -162,21 +187,21 @@ func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, v
 
 	switch kind {
 	case KindEvents:
-		path, perr := eventsExportPath(version, ids)
+		path, perr := eventsExportPath(version, ids, prefix)
 		if perr != nil {
 			return nil, perr
 		}
 		p, werr := write(c, path)
 		return []string{p}, werr
 	case KindMacro:
-		path, perr := macroExportPath(version, ids)
+		path, perr := macroExportPath(version, ids, prefix)
 		if perr != nil {
 			return nil, perr
 		}
 		p, werr := write(c, path)
 		return []string{p}, werr
 	case KindHelp:
-		path, perr := jsonfmt.HelpJSONPath(version)
+		path, perr := jsonfmt.HelpJSONPath(version, prefix)
 		if perr != nil {
 			return nil, perr
 		}
@@ -188,9 +213,9 @@ func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, v
 			var path string
 			var perr error
 			if kind == KindObjects {
-				path, perr = objectsBulkPath(version)
+				path, perr = objectsBulkPath(version, prefix)
 			} else {
-				path, perr = tableBulkPath(kind, version)
+				path, perr = tableBulkPath(kind, version, prefix)
 			}
 			if perr != nil {
 				return nil, perr

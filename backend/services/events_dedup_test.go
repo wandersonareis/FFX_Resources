@@ -165,7 +165,7 @@ func TestEventsDedupViewCacheInvalidatedOnApply(t *testing.T) {
 func TestEventsExportPathScopes(t *testing.T) {
 	seedEventsTempRoot(t)
 
-	bulk, err := eventsExportPath(common.GameVersionFFX2, nil)
+	bulk, err := eventsExportPath(common.GameVersionFFX2, nil, "")
 	if err != nil {
 		t.Fatalf("bulk: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestEventsExportPathScopes(t *testing.T) {
 		t.Fatalf("bulk: %s", bulk)
 	}
 
-	single, err := eventsExportPath(common.GameVersionFFX2, []string{"azit0000"})
+	single, err := eventsExportPath(common.GameVersionFFX2, []string{"azit0000"}, "")
 	if err != nil {
 		t.Fatalf("single: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestEventsExportPathScopes(t *testing.T) {
 		t.Fatalf("single: %s", single)
 	}
 
-	sel, err := eventsExportPath(common.GameVersionFFX2, []string{"dnfr0100", "dnfr0300", "dnfr0500"})
+	sel, err := eventsExportPath(common.GameVersionFFX2, []string{"dnfr0100", "dnfr0300", "dnfr0500"}, "")
 	if err != nil {
 		t.Fatalf("sel: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestEventsExportPathScopes(t *testing.T) {
 func TestMacroExportPathScopes(t *testing.T) {
 	seedEventsTempRoot(t)
 
-	full, err := macroExportPath(common.GameVersionFFX2, nil)
+	full, err := macroExportPath(common.GameVersionFFX2, nil, "")
 	if err != nil {
 		t.Fatalf("full: %v", err)
 	}
@@ -209,7 +209,7 @@ func TestMacroExportPathScopes(t *testing.T) {
 		t.Fatalf("full: %s", full)
 	}
 
-	chunk, err := macroExportPath(common.GameVersionFFX2, []string{"chunk_03"})
+	chunk, err := macroExportPath(common.GameVersionFFX2, []string{"chunk_03"}, "")
 	if err != nil {
 		t.Fatalf("chunk: %v", err)
 	}
@@ -217,7 +217,7 @@ func TestMacroExportPathScopes(t *testing.T) {
 		t.Fatalf("chunk: %s", chunk)
 	}
 
-	sel, err := macroExportPath(common.GameVersionFFX2, []string{"chunk_03", "chunk_07"})
+	sel, err := macroExportPath(common.GameVersionFFX2, []string{"chunk_03", "chunk_07"}, "")
 	if err != nil {
 		t.Fatalf("sel: %v", err)
 	}

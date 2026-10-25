@@ -94,7 +94,7 @@ func TestTableBulkPathScopes(t *testing.T) {
 	}
 	bulks := make(map[string]bool, len(cases))
 	for _, tc := range cases {
-		p, err := tableBulkPath(tc.kind, common.GameVersionFFX)
+		p, err := tableBulkPath(tc.kind, common.GameVersionFFX, "")
 		if err != nil {
 			t.Fatalf("%s: %v", tc.kind, err)
 		}
@@ -129,7 +129,7 @@ func TestTableBulkPathScopes(t *testing.T) {
 		}
 	}
 
-	if _, err := tableBulkPath(KindEvents, common.GameVersionFFX); err == nil {
+	if _, err := tableBulkPath(KindEvents, common.GameVersionFFX, ""); err == nil {
 		t.Fatal("kind sem nome bulk registrado deve falhar (events tem path próprio)")
 	}
 }

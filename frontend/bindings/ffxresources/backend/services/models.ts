@@ -41,6 +41,7 @@ export class EntrySummary {
 export class ExportPlanItem {
     "kind": string;
     "ids": string[];
+    "complete": boolean;
 
     /** Creates a new ExportPlanItem instance. */
     constructor($$source: Partial<ExportPlanItem> = {}) {
@@ -49,6 +50,9 @@ export class ExportPlanItem {
         }
         if (!("ids" in $$source)) {
             this["ids"] = [];
+        }
+        if (!("complete" in $$source)) {
+            this["complete"] = false;
         }
 
         Object.assign(this, $$source);

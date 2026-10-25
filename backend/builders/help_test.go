@@ -232,7 +232,7 @@ func TestHelpArtifactRoundTripUnchanged(t *testing.T) {
 		t.Fatalf("build: %v", err)
 	}
 
-	jp, err := jsonfmt.HelpJSONPath(common.GameVersionFFX)
+	jp, err := jsonfmt.HelpJSONPath(common.GameVersionFFX, "")
 	if err != nil {
 		t.Fatalf("json path: %v", err)
 	}

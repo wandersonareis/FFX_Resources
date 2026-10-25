@@ -528,7 +528,7 @@ func (s *MetadataService) ExportEntry(kind string, version common.GameVersion, i
 
 	switch kind {
 	case KindEvents:
-		path, perr := eventsExportPath(version, []string{id})
+		path, perr := eventsExportPath(version, []string{id}, "")
 		if perr != nil {
 			return nil, perr
 		}
@@ -538,7 +538,7 @@ func (s *MetadataService) ExportEntry(kind string, version common.GameVersion, i
 	case KindMacro:
 		// Chunk selecionado não pode sobrescrever o artefato canônico
 		// (macro_dictionary): o naming segue o escopo do pedido.
-		path, perr := macroExportPath(version, []string{id})
+		path, perr := macroExportPath(version, []string{id}, "")
 		if perr != nil {
 			return nil, perr
 		}
@@ -546,7 +546,7 @@ func (s *MetadataService) ExportEntry(kind string, version common.GameVersion, i
 			return paths, err
 		}
 	case KindHelp:
-		path, perr := jsonfmt.HelpJSONPath(version)
+		path, perr := jsonfmt.HelpJSONPath(version, "")
 		if perr != nil {
 			return nil, perr
 		}
@@ -656,7 +656,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if !helpfile.IsHelpEntry(id) {
 			return nil, fmt.Errorf("painel de ajuda desconhecido: %s", id)
 		}
-		path, err := jsonfmt.HelpJSONPath(version)
+		path, err := jsonfmt.HelpJSONPath(version, "")
 		if err != nil {
 			return nil, err
 		}

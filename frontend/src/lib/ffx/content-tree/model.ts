@@ -70,6 +70,16 @@ export const EMPTY_IDS: ReadonlySet<string> = new Set<string>();
 export const TEXT_ROOT_NODE_ID = 'kind:text';
 
 /**
+ * true para a raiz de UM kind de data/ (`kind:events`, `kind:battletext`…).
+ * `Texto` (kind:text) também casa no prefixo, mas NÃO tem `kind` — o
+ * agrupamento é só visual e nunca é enviado ao backend como EntryKind.
+ * Use com `node.kind` para decidir o que é selecionável/exportável.
+ */
+export function isKindRootNode(node: SideNode): boolean {
+  return node.id.startsWith('kind:');
+}
+
+/**
  * Agrupa as raizes reais para exibicao. `Texto` e apenas um no visual sem
  * `kind`, portanto nao e enviado ao backend como EntryKind. Imagens e todos
  * os kinds textuais preservam seus nos/kinds originais.

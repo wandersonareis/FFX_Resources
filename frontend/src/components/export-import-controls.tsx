@@ -7,7 +7,7 @@ import { Events } from '@wailsio/runtime';
 import * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { GAME_VERSIONS, GameVersionId } from '@/lib/ffx/game-version';
 import { EntryKind, KIND_LABELS } from '@/lib/ffx/display-names';
-import { exportSelection, EXPORT_FORMAT_LABELS, useExportSelection } from '@/lib/ffx/export-selection';
+import { EXPORT_FORMAT_LABELS, useExportSelection } from '@/lib/ffx/export-selection';
 import { exportLangs } from '@/lib/ffx/export-langs';
 import { parseError } from '@/lib/ffx/error-handler';
 import { progressWasShown } from '@/lib/ffx/progress-store';
@@ -90,22 +90,19 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
   // Exporta os kinds no FORMATO SELECIONADO como UMA operação agrupada:
   // o modal de progresso cuida de tudo (um step por kind com barra própria
   // + resumo de arquivos/destino no final) — nada de toast paralelo.
-  // useCheckedIds=false força ids=[] → tudo do kind; com seleção, exigirá
-  // ≥1 marcado.
+  //
+  // O botão Exportar é SÓ DE ESCOPO DE TIPO: cada kind sai por inteiro
+  // (ids = [], o contrato de "tudo do kind" do backend). A seleção de
+  // itens da árvore não entra aqui — ela é do menu de contexto da árvore,
+  // que é onde o usuário espera exportar "o que marquei".
   const runExport = useCallback(
-    async (kinds: EntryKind[], useCheckedIds: boolean) => {
+    async (kinds: EntryKind[]) => {
       const format = activeFormat;
-      if (useCheckedIds && kinds.every((kind) => exportSelection.countOf(version, kind) === 0)) {
-        toast.info('Nada para exportar — selecione itens na árvore.');
+      if (kinds.length === 0) {
+        toast.info('Nada para exportar — marque um tipo no escopo.');
         return;
       }
-      const items = kinds
-        .map((kind) => ({ kind, ids: useCheckedIds ? exportSelection.idsOf(version, kind) : [] }))
-        .filter((item) => !useCheckedIds || item.ids.length > 0);
-      if (items.length === 0) {
-        toast.info('Nada para exportar.');
-        return;
-      }
+      const items = kinds.map((kind) => ({ kind, ids: [] as string[] }));
       try {
         // Idiomas: array do seletor do header (default + extras marcados);
         // `[]` (pré-hidratação) = todos, o contrato do backend.
@@ -227,7 +224,7 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
           <Button
             size="sm"
             variant="outline"
-            title={`Exportar textos — ${EXPORT_FORMAT_LABELS[activeFormat]} (formato do seletor ao lado das configurações), de todos os tipos ou da seleção marcada`}
+            title={`Exportar textos — ${EXPORT_FORMAT_LABELS[activeFormat]} (formato do seletor ao lado das configurações): todos os tipos, ou só os tipos marcados no escopo`}
           >
             <Download size={16} />
             Exportar
@@ -235,7 +232,7 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-56">
-          <DropdownMenuItem onSelect={() => void runExport(servedKinds, false)}>
+          <DropdownMenuItem onSelect={() => void runExport(servedKinds)}>
             <Download size={14} />
             Exportar
             <span className="ml-auto pl-3 text-xs opacity-60">todos os tipos</span>
@@ -255,10 +252,10 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
             </DropdownMenuCheckboxItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => void runExport(activeScope, true)}>
+          <DropdownMenuItem onSelect={() => void runExport(activeScope)}>
             <ListChecks size={14} />
             Exportar seleção
-            <span className="ml-auto pl-3 text-xs opacity-60">marcados</span>
+            <span className="ml-auto pl-3 text-xs opacity-60">tipos marcados</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

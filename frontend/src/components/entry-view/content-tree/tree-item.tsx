@@ -21,6 +21,7 @@ import {
   EMPTY_IDS,
   entryCheckState,
   entryNodeId,
+  TEXT_ROOT_NODE_ID,
   type SideNode,
 } from '@/lib/ffx/content-tree/model';
 import { useContentTree } from './tree-context';
@@ -57,15 +58,19 @@ export const TreeItem = memo(function TreeItem({
     (!!node.children && node.children.length > 0) || (node.expandable ?? false);
   const isExpanded = expanded.has(node.id);
   const isSelected = node.entry ? selectedId === entryNodeId(node.entry) : false;
-  // Raiz de kind (Eventos/Sistema/Dicionário) não tem checkbox: "extrair o
-  // kind inteiro" é papel do botão Exportar na linha das abas.
-  const isKindRoot = node.id.startsWith('kind:');
   // O container .vbf é somente leitura, mas seus caminhos podem ser
   // selecionados para extração/exportação sem alterar o arquivo.
   const isVbf = node.vbf === true;
-  // Raiz do container .vbf não tem checkbox (igual à raiz de kind):
-  // extrair o container inteiro não faz sentido — marque diretórios/arquivos.
+  // Raiz do container .vbf não tem checkbox: extrair o container inteiro
+  // não faz sentido — marque diretórios/arquivos.
   const isVbfContainerRoot = isVbf && !node.entry && (node.vbfPath ?? '') === '';
+  // Raiz de kind (Eventos/Sistema/Dicionário…) TEM checkbox tri-state:
+  // marcar ela marca o kind inteiro (o backend deduplica para o artefato
+  // bulk único). O agrupamento `Texto` e as raízes de imagem NÃO têm —
+  // `Texto` é só visual (sem kind) e imagens seguem pela marcação de
+  // folha/grupo, que alimenta extrair/deletar.
+  const isTextRoot = node.id === TEXT_ROOT_NODE_ID || node.id.startsWith('kind:images');
+  const selectable = !isVbfContainerRoot && !isTextRoot && !!node.kind;
   const vbfRoot = node.vbfRoot ?? node.entry?.vbf?.root;
   const vbfPath = node.vbfPath ?? node.entry?.vbf?.path ?? '';
   const selected = node.kind
@@ -73,7 +78,7 @@ export const TreeItem = memo(function TreeItem({
     : EMPTY_IDS;
 
   let checked: boolean | 'indeterminate' = false;
-  if (!isKindRoot && !isVbf) checked = entryCheckState(node, selected);
+  if (selectable) checked = entryCheckState(node, selected);
 
   if (isVbf && !isVbfContainerRoot) {
     const paths = vbfRoot ? (vbfSelectionByRoot.get(vbfRoot) ?? []) : [];
@@ -122,7 +127,7 @@ export const TreeItem = memo(function TreeItem({
         ) : (
           <span className="w-8 shrink-0" />
         )}
-        {isKindRoot || isVbfContainerRoot ? null : (
+        {isVbfContainerRoot || isTextRoot ? null : (
           <Checkbox
             className="mr-1"
             checked={checked}

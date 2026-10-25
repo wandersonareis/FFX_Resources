@@ -449,15 +449,23 @@ export async function importEntry(
 /** Exporta o lote como UMA operação agrupada: um item {kind, ids} por ação
  * (ids vazio = tudo do kind), no formato pedido (json | strings | csv |
  * xlsx). O modal de progresso (steps por kind, barra própria por ação) é
- * dirigido pelos eventos do backend — o caller não mexe em toast. */
+ * dirigido pelos eventos do backend — o caller não mexe em toast.
+ *
+ * `complete: true` marca a seleção TOTAL do kind (checkbox da raiz na
+ * árvore): o backend devolve o artefato bulk ÚNICO com prefixo `tree_`,
+ * em vez de um arquivo por entrada. */
 export async function exportArtifactBatch(
-  items: { kind: EntryKind; ids: string[] }[],
+  items: { kind: EntryKind; ids: string[]; complete?: boolean }[],
   version: GameVersionId,
   langs: string[] = [],
   format: ExportFormat
 ): Promise<string[]> {
   return ExportArtifactBatch(
-    items.map((it) => ({ kind: it.kind, ids: it.ids })),
+    items.map((it) => ({
+      kind: it.kind,
+      ids: it.ids,
+      complete: it.complete ?? false,
+    })),
     version as Parameters<typeof ExportArtifactBatch>[1],
     langs,
     format
