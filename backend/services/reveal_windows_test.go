@@ -3,6 +3,7 @@
 package services
 
 import (
+	"ffxresources/testData/tempdir"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,7 +14,7 @@ import (
 // caminho errado em silêncio — e é coberto sem efeito colateral: a shell não
 // acha o PIDL, logo nenhuma janela é aberta.
 func TestRevealFileOnOSRetornaErroParaCaminhoInexistente(t *testing.T) {
-	abs := filepath.Join(t.TempDir(), "nao-existe.dds.phyre")
+	abs := filepath.Join(tempdir.TempDir(t), "nao-existe.dds.phyre")
 
 	if err := revealFileOnOS(abs); err == nil {
 		t.Fatalf("revealFileOnOS(%s) = nil, esperado erro para caminho inexistente", abs)
@@ -28,7 +29,7 @@ func TestRevealFileOnOSDestacaArquivoComEspacosECasosEspeciais(t *testing.T) {
 		t.Skip("defina FFX_REVEAL_DEMO=1 para abrir o Explorer e conferir a seleção manualmente")
 	}
 
-	abs := filepath.Join(t.TempDir(), "FINAL FANTASY FFX&FFX-2 (HD) arquivo de teste.txt")
+	abs := filepath.Join(tempdir.TempDir(t), "FINAL FANTASY FFX&FFX-2 (HD) arquivo de teste.txt")
 	if err := os.WriteFile(abs, []byte("x"), 0o644); err != nil {
 		t.Fatalf("criando arquivo de teste: %v", err)
 	}

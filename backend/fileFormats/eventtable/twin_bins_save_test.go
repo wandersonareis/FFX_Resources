@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/core/converter"
 	ffxencoding "ffxresources/backend/core/encoding"
@@ -81,7 +82,7 @@ func TestTuto0000SalvaOsDoisGemeos(t *testing.T) {
 	tabela := tabelaSinteticaTuto(t)
 	esperadas := stringsDaTabela(t, tabela)
 
-	tmp := t.TempDir()
+	tmp := tempdir.TempDir(t)
 	usRel := filepath.FromSlash(common.GetLocalizationRootForVersion(common.GameVersionFFX2, common.DefaultLocalization))
 	tutoDir := filepath.Join(tmp, usRel, "battle", "btl", "tuto0000")
 	if err := os.MkdirAll(tutoDir, 0o755); err != nil {

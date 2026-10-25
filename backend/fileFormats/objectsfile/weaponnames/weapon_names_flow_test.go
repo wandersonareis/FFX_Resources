@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/fileFormats/objectsfile/chunkmap"
@@ -274,7 +275,7 @@ func TestWeaponNameExternalRoundTrip(t *testing.T) {
 		t.Fatalf("Collection: %v", err)
 	}
 
-	jsonPath := filepath.Join(t.TempDir(), "w_name_all_localizations.json")
+	jsonPath := filepath.Join(tempdir.TempDir(t), "w_name_all_localizations.json")
 	jsonF, ok := formatters.Get("json")
 	if !ok {
 		t.Fatal("formatter json não registrado")

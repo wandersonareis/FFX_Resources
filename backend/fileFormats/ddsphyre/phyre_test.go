@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 )
 
@@ -237,7 +238,7 @@ func TestResolveOrders(t *testing.T) {
 func withTempTree(t *testing.T) (root, id string, raw []byte) {
 	t.Helper()
 	_, sample := samplePhyre(t)
-	root = t.TempDir()
+	root = tempdir.TempDir(t)
 	prev := common.GameFilesRoot
 	common.GameFilesRoot = root
 	t.Cleanup(func() { common.GameFilesRoot = prev })
@@ -334,7 +335,7 @@ func TestExtractResolveImportFlow(t *testing.T) {
 
 func TestSaveDDSAndPNG(t *testing.T) {
 	_, id, _ := withTempTree(t)
-	dest := filepath.Join(t.TempDir(), "saida.dds")
+	dest := filepath.Join(tempdir.TempDir(t), "saida.dds")
 	if err := Save(common.GameVersionFFX, id, "dds", dest); err != nil {
 		t.Fatalf("Save dds: %v", err)
 	}

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"ffxresources/testData/tempdir"
 	"errors"
 	"os"
 	"path/filepath"
@@ -14,7 +15,7 @@ import (
 func vbfTestRoot(t *testing.T) string {
 	t.Helper()
 	prev := GameFilesRoot
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	GameFilesRoot = root
 	t.Cleanup(func() { GameFilesRoot = prev })
 	return root

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	ffxencoding "ffxresources/backend/core/encoding"
 	"ffxresources/backend/dto"
@@ -30,7 +31,7 @@ func seedEventsSynthetic(version common.GameVersion, id string, texts []string) 
 func seedEventsTempRoot(t *testing.T) {
 	t.Helper()
 	prevRoot, prevMods := common.GameFilesRoot, common.DisableMods
-	common.GameFilesRoot = t.TempDir()
+	common.GameFilesRoot = tempdir.TempDir(t)
 	common.DisableMods = true
 	t.Cleanup(func() {
 		common.GameFilesRoot = prevRoot

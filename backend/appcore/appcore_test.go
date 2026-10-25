@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	jsonfmt "ffxresources/backend/formatters/json"
@@ -149,7 +150,7 @@ func TestDetectHelp(t *testing.T) {
 }
 
 func TestDetectSkipListPeloNome(t *testing.T) {
-	dir := t.TempDir()
+	dir := tempdir.TempDir(t)
 	path := filepath.Join(dir, "bltz0001.bin") // entrada da lista de skip do FFX
 	if err := os.WriteFile(path, []byte{0x00, 0x01, 0x02}, 0o644); err != nil {
 		t.Fatalf("fixture: %v", err)
@@ -168,7 +169,7 @@ func TestDetectSkipListPeloNome(t *testing.T) {
 }
 
 func TestDetectExtensaoForaDaLista(t *testing.T) {
-	dir := t.TempDir()
+	dir := tempdir.TempDir(t)
 	path := filepath.Join(dir, "aleatorio.exe")
 	if err := os.WriteFile(path, []byte("MZ..."), 0o644); err != nil {
 		t.Fatalf("fixture: %v", err)
@@ -179,7 +180,7 @@ func TestDetectExtensaoForaDaLista(t *testing.T) {
 }
 
 func TestDetectArtefatos(t *testing.T) {
-	dir := t.TempDir()
+	dir := tempdir.TempDir(t)
 
 	j := filepath.Join(dir, "artefato.json")
 	if err := os.WriteFile(j, []byte(`{"ffx/x.bin":{"rows":[]}}`), 0o644); err != nil {
@@ -233,7 +234,7 @@ func sampleDedupeCollection(t *testing.T) dto.Collection {
 }
 
 func TestDedupeDupeRoundTrip(t *testing.T) {
-	dir := t.TempDir()
+	dir := tempdir.TempDir(t)
 	ctx := context.Background()
 
 	c := sampleDedupeCollection(t)
@@ -311,7 +312,7 @@ func TestDedupeDupeRoundTrip(t *testing.T) {
 
 func TestExportTextEvents(t *testing.T) {
 	root := useFFXRoot(t)
-	out := t.TempDir()
+	out := tempdir.TempDir(t)
 
 	res, err := ExportText(context.Background(), ExportRequest{
 		Inputs:    []string{ffxFixture(t, "event/obj_ps3/az/azit0000/azit0000.bin")},
@@ -342,7 +343,7 @@ func TestExportTextEvents(t *testing.T) {
 
 func TestExportTextKindDivergente(t *testing.T) {
 	useFFXRoot(t)
-	out := t.TempDir()
+	out := tempdir.TempDir(t)
 
 	res, err := ExportText(context.Background(), ExportRequest{
 		Inputs:    []string{ffxFixture(t, "battle/kernel/command.bin")},
@@ -369,7 +370,7 @@ func TestExportTextKindDivergente(t *testing.T) {
 func TestImportTextEventsRoundTrip(t *testing.T) {
 	root := useFFXRoot(t)
 	ctx := context.Background()
-	work := t.TempDir()
+	work := tempdir.TempDir(t)
 
 	// (1) Export do fixture para o diretório de trabalho.
 	src := ffxFixture(t, "event/obj_ps3/az/azit0000/azit0000.bin")
@@ -470,7 +471,7 @@ func TestImportTextEventsRoundTrip(t *testing.T) {
 func TestImportTextIgnoraSemCorrespondencia(t *testing.T) {
 	useFFXRoot(t)
 	ctx := context.Background()
-	work := t.TempDir()
+	work := tempdir.TempDir(t)
 
 	src := ffxFixture(t, "event/obj_ps3/az/azit0000/azit0000.bin")
 	res, err := ExportText(ctx, ExportRequest{
@@ -504,7 +505,7 @@ func TestImportTextIgnoraSemCorrespondencia(t *testing.T) {
 func TestImportTextFormatoIncompativel(t *testing.T) {
 	useFFXRoot(t)
 	ctx := context.Background()
-	work := t.TempDir()
+	work := tempdir.TempDir(t)
 
 	// Artefato de Sistema (objects).
 	res, err := ExportText(ctx, ExportRequest{
@@ -540,7 +541,7 @@ func TestImportTextFormatoIncompativel(t *testing.T) {
 
 func TestExportTextObjectsLockitMacroHelp(t *testing.T) {
 	ctx := context.Background()
-	work := t.TempDir()
+	work := tempdir.TempDir(t)
 
 	cases := []struct {
 		name  string
@@ -598,7 +599,7 @@ func TestExportTextoLivreDentroDaArvore(t *testing.T) {
 
 	// Raiz de jogo temporária com o binário DENTRO de data/ (o cenário real
 	// que o menu pega: exportar ao lado do arquivo apontado na árvore).
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	prev := common.GameFilesRoot
 	common.GameFilesRoot = root
 	t.Cleanup(func() { common.GameFilesRoot = prev })

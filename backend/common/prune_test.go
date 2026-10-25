@@ -1,6 +1,7 @@
 package common
 
 import (
+	"ffxresources/testData/tempdir"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,7 +9,7 @@ import (
 
 // O ramo vazio some inteiro e o piso fica de pé.
 func TestPruneEmptyDirsPodaRamoVazioAteOPiso(t *testing.T) {
-	floor := t.TempDir()
+	floor := tempdir.TempDir(t)
 	deep := filepath.Join(floor, "ffx_data", "gamedata", "ps3data", "dup")
 	if err := os.MkdirAll(deep, 0o755); err != nil {
 		t.Fatalf("criando ramo: %v", err)
@@ -27,7 +28,7 @@ func TestPruneEmptyDirsPodaRamoVazioAteOPiso(t *testing.T) {
 // Diretório com conteúdo não é podado — nem quando o invasor é invisível
 // para o usuário (arquivo oculto), e o pai dele também fica.
 func TestPruneEmptyDirsPreservaNaoVazio(t *testing.T) {
-	floor := t.TempDir()
+	floor := tempdir.TempDir(t)
 	cheio := filepath.Join(floor, "mods", "ffx_data")
 	oculto := filepath.Join(floor, "mods", "imagens")
 	for dir, name := range map[string]string{cheio: "irmao.txt", oculto: ".DS_Store"} {
@@ -51,8 +52,8 @@ func TestPruneEmptyDirsPreservaNaoVazio(t *testing.T) {
 
 // Diretório igual ao piso, inexistente ou fora dele não é tocado.
 func TestPruneEmptyDirsRespeitaPisoEEstrangeiros(t *testing.T) {
-	floor := t.TempDir()
-	fora := t.TempDir()
+	floor := tempdir.TempDir(t)
+	fora := tempdir.TempDir(t)
 
 	PruneEmptyDirs(floor, floor) // igual ao piso: no-op
 	if _, err := os.Stat(floor); err != nil {

@@ -1,6 +1,7 @@
 package vbf
 
 import (
+	"ffxresources/testData/tempdir"
 	"bytes"
 	"compress/zlib"
 	"crypto/md5"
@@ -134,7 +135,7 @@ func buildVBF(t *testing.T, files map[string][]byte, compress bool) string {
 	sum := md5.Sum(out.Bytes()[:headerLen])
 	out.Write(sum[:])
 
-	path := filepath.Join(t.TempDir(), "test.vbf")
+	path := filepath.Join(tempdir.TempDir(t), "test.vbf")
 	if err := os.WriteFile(path, out.Bytes(), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +245,7 @@ func TestListDiretoriosEDecompressao(t *testing.T) {
 }
 
 func TestErrNotVBF(t *testing.T) {
-	p := filepath.Join(t.TempDir(), "nao.vbf")
+	p := filepath.Join(tempdir.TempDir(t), "nao.vbf")
 	if err := os.WriteFile(p, bytes.Repeat([]byte("x"), 128), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +322,7 @@ func TestExtractEntryRoundTrip(t *testing.T) {
 	// mesmas regras de detecção do ReadEntry.
 	for _, compress := range []bool{false, true} {
 		a := openFixture(t, compress)
-		dest := t.TempDir()
+		dest := tempdir.TempDir(t)
 		for name, want := range fixture() {
 			e, ok := a.Entry(name)
 			if !ok {
@@ -359,7 +360,7 @@ func TestExtractEntryGrandeSemLimite(t *testing.T) {
 	if !ok {
 		t.Fatal("entry ausente")
 	}
-	err = a.ExtractEntry(e, filepath.Join(t.TempDir(), "grande.bin"))
+	err = a.ExtractEntry(e, filepath.Join(tempdir.TempDir(t), "grande.bin"))
 	if errors.Is(err, ErrTooLarge) {
 		t.Errorf("extração recusou com ErrTooLarge: %v", err)
 	}
@@ -374,7 +375,7 @@ func TestExtractEntryNaoDeixaTmp(t *testing.T) {
 		t.Fatal("entry ausente")
 	}
 	e.StartBlock = uint32(len(a.blocks)) + 10
-	dest := filepath.Join(t.TempDir(), "fora.bin")
+	dest := filepath.Join(tempdir.TempDir(t), "fora.bin")
 	if err := a.ExtractEntry(e, dest); err == nil {
 		t.Fatal("esperado erro de bloco fora do índice")
 	}
@@ -482,7 +483,7 @@ func buildVBFWithDeclaredSize(t *testing.T, files map[string][]byte, declared ui
 	out.Write(sum[:])
 	_ = sum
 
-	p := filepath.Join(t.TempDir(), "declarado.vbf")
+	p := filepath.Join(tempdir.TempDir(t), "declarado.vbf")
 	if err := os.WriteFile(p, out.Bytes(), 0o644); err != nil {
 		t.Fatal(err)
 	}

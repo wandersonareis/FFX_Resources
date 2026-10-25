@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/fileFormats/ddsphyre"
 )
@@ -16,7 +17,7 @@ func dupTreeFixture(t *testing.T) (root, idA, idB, idC string) {
 	t.Helper()
 	sampleA, sampleC := realSampleWithPayload(t)
 
-	root = t.TempDir()
+	root = tempdir.TempDir(t)
 	prev := common.GameFilesRoot
 	common.GameFilesRoot = root
 	t.Cleanup(func() {

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/builders"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
@@ -24,7 +25,7 @@ func seedTempHelpRoot(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("abs: %v", err)
 	}
-	tempRoot := t.TempDir()
+	tempRoot := tempdir.TempDir(t)
 	if err := os.CopyFS(tempRoot, os.DirFS(fixtureRoot)); err != nil {
 		t.Fatalf("copy fixture: %v", err)
 	}

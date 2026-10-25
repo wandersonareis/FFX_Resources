@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/loggingService"
 )
 
@@ -15,7 +16,7 @@ import (
 // console silenciado: os testes asserem os ARQUIVOS.
 func resetForTest(t *testing.T) string {
 	t.Helper()
-	dir := t.TempDir()
+	dir := tempdir.TempDir(t)
 	loggingService.ResetForTest(dir)
 	t.Cleanup(func() { loggingService.ResetForTest(dir) })
 	return dir
@@ -198,7 +199,7 @@ func TestSingleFilePerStart(t *testing.T) {
 // pastas diferentes do repositório).
 func TestLogDirAnchoredToExecutableDir(t *testing.T) {
 	loggingService.ResetForTest("") // sem override → âncora no executável
-	t.Cleanup(func() { loggingService.ResetForTest(t.TempDir()) })
+	t.Cleanup(func() { loggingService.ResetForTest(tempdir.TempDir(t)) })
 
 	dir := loggingService.LogDir()
 	if dir == "" {

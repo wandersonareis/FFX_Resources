@@ -1,6 +1,7 @@
 package common
 
 import (
+	"ffxresources/testData/tempdir"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,7 +12,7 @@ import (
 // de <gamefiles>/<rel>; sem mods (ou arquivo ausente em mods), cai para o
 // original de data.
 func TestResolvePathModsFirst(t *testing.T) {
-	gameFiles := t.TempDir()
+	gameFiles := tempdir.TempDir(t)
 	prevRoot, prevMods := GameFilesRoot, DisableMods
 	GameFilesRoot = gameFiles
 	defer func() {

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/fileFormats/eventtable"
 	testcommon "ffxresources/testData"
@@ -35,7 +36,7 @@ func TestCloudSaveWritesBothBins(t *testing.T) {
 		t.Skip("cloudv fixture ausente:", err)
 	}
 
-	tmp := t.TempDir()
+	tmp := tempdir.TempDir(t)
 	common.GameFilesRoot = tmp
 	if err := f.Save(); err != nil {
 		t.Fatal(err)

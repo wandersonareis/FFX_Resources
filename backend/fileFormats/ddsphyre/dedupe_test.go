@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 )
 
@@ -20,7 +21,7 @@ func withDupTree(t *testing.T) (root string, a, b, c string, sample []byte) {
 	t.Helper()
 	_, sample = samplePhyre(t)
 
-	root = t.TempDir()
+	root = tempdir.TempDir(t)
 	prev := common.GameFilesRoot
 	common.GameFilesRoot = root
 	t.Cleanup(func() {

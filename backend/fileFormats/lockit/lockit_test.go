@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/builders"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
@@ -28,7 +29,7 @@ func srcDataRoot() string {
 // aponta o GameFilesRoot para lá (sem tocar nos originais).
 func setupTempData(t *testing.T) string {
 	t.Helper()
-	tmp := t.TempDir()
+	tmp := tempdir.TempDir(t)
 	for _, rel := range []string{
 		"ffx_data/gamedata/ps3data/lockit",
 		"ffx-2_data/gamedata/ps3data/lockit",

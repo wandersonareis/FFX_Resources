@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/fileFormats/ddsphyre"
 	"ffxresources/backend/fileFormats/vbf"
@@ -145,7 +146,7 @@ func sortStringsLocal(s []string) {
 // sintético e aponta o config para lá. Devolve o caminho do .vbf.
 func seedVbfExtractRoot(t *testing.T, files map[string][]byte) string {
 	t.Helper()
-	dir := t.TempDir()
+	dir := tempdir.TempDir(t)
 	exe := filepath.Join(dir, "FFX.exe")
 	if err := os.WriteFile(exe, []byte("MZ"), 0o644); err != nil {
 		t.Fatal(err)
@@ -180,7 +181,7 @@ func TestVbfPreviewEExtracaoSelecao(t *testing.T) {
 	vbfPath := seedVbfExtractRoot(t, vbfExtractFixture())
 	svc := NewMetadataService(nil)
 
-	dest := t.TempDir()
+	dest := tempdir.TempDir(t)
 
 	// Preview de um DIRETÓRIO: 2 arquivos, 0 existentes.
 	prev, err := svc.PreviewVbfExtraction(vbfPath, []string{"ffx_data/gamedata/ps3data/a_dir"}, dest)
@@ -231,9 +232,9 @@ func TestExtractVbfImagesSelectionPreservesInnerPathAndSkipsOtherKinds(t *testin
 		imagePath: phyre,
 		otherPath: []byte("binary"),
 	})
-	dest := t.TempDir()
+	dest := tempdir.TempDir(t)
 	prevRoot := common.GameFilesRoot
-	common.GameFilesRoot = t.TempDir()
+	common.GameFilesRoot = tempdir.TempDir(t)
 	t.Cleanup(func() { common.GameFilesRoot = prevRoot })
 
 	res, err := NewMetadataService(nil).ExtractVbfImagesSelection(vbfPath, []string{"ffx_data/gamedata/ps3data"}, dest)
@@ -263,7 +264,7 @@ func TestVbfImageDuplicatesAreDiscoveredAsImagesAreOpened(t *testing.T) {
 		pathB: append([]byte(nil), phyre...),
 	})
 	prevRoot := common.GameFilesRoot
-	common.GameFilesRoot = t.TempDir()
+	common.GameFilesRoot = tempdir.TempDir(t)
 	t.Cleanup(func() { common.GameFilesRoot = prevRoot })
 	vbfSessionResetAll()
 	t.Cleanup(vbfSessionResetAll)
@@ -301,7 +302,7 @@ func TestVbfImageDedupMarksModsOverlayAsDivergent(t *testing.T) {
 		pathB: append([]byte(nil), phyre...),
 	})
 	prevRoot := common.GameFilesRoot
-	common.GameFilesRoot = t.TempDir()
+	common.GameFilesRoot = tempdir.TempDir(t)
 	t.Cleanup(func() { common.GameFilesRoot = prevRoot })
 	vbfSessionResetAll()
 	t.Cleanup(vbfSessionResetAll)
@@ -318,7 +319,7 @@ func TestVbfImageDedupMarksModsOverlayAsDivergent(t *testing.T) {
 		t.Fatalf("fixture DDS curto demais: %d", len(dds))
 	}
 	dds[len(dds)-1] ^= 0xff // mantém dimensões/formato, altera o payload efetivo.
-	ddsPath := filepath.Join(t.TempDir(), "divergente.dds")
+	ddsPath := filepath.Join(tempdir.TempDir(t), "divergente.dds")
 	if err := os.WriteFile(ddsPath, dds, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +350,7 @@ func TestReplicateVbfImageWritesOnlyModsForOpenedDuplicates(t *testing.T) {
 		pathA: phyre,
 		pathB: append([]byte(nil), phyre...),
 	})
-	gameRoot := t.TempDir()
+	gameRoot := tempdir.TempDir(t)
 	prevRoot := common.GameFilesRoot
 	common.GameFilesRoot = gameRoot
 	t.Cleanup(func() { common.GameFilesRoot = prevRoot })
@@ -401,7 +402,7 @@ func TestVbfImageImportWritesModsAndSaveReadsVbfImage(t *testing.T) {
 	phyre, _ := realSampleWithPayload(t)
 	inner := "ffx_data/gamedata/ps3data/yonishi_data/dat_et/et_ffx/tex/d3d11/15040_19_0_0_128_128.dds.phyre"
 	vbfPath := seedVbfExtractRoot(t, map[string][]byte{inner: phyre})
-	gameRoot := t.TempDir()
+	gameRoot := tempdir.TempDir(t)
 	prevRoot := common.GameFilesRoot
 	common.GameFilesRoot = gameRoot
 	t.Cleanup(func() { common.GameFilesRoot = prevRoot })
@@ -414,7 +415,7 @@ func TestVbfImageImportWritesModsAndSaveReadsVbfImage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("extraindo DDS fixture: %v", err)
 	}
-	ddsPath := filepath.Join(t.TempDir(), "edited.dds")
+	ddsPath := filepath.Join(tempdir.TempDir(t), "edited.dds")
 	if err := os.WriteFile(ddsPath, dds, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +434,7 @@ func TestVbfImageImportWritesModsAndSaveReadsVbfImage(t *testing.T) {
 	}
 
 	for _, format := range []string{"dds", "png"} {
-		dest := filepath.Join(t.TempDir(), "saved."+format)
+		dest := filepath.Join(tempdir.TempDir(t), "saved."+format)
 		if err := svc.SaveVbfImage(vbfPath, inner, format, dest); err != nil {
 			t.Fatalf("SaveVbfImage(%s): %v", format, err)
 		}
@@ -446,7 +447,7 @@ func TestVbfImageImportWritesModsAndSaveReadsVbfImage(t *testing.T) {
 func TestVbfExtracaoRaizEAquivoSoltos(t *testing.T) {
 	vbfPath := seedVbfExtractRoot(t, vbfExtractFixture())
 	svc := NewMetadataService(nil)
-	dest := t.TempDir()
+	dest := tempdir.TempDir(t)
 
 	// Arquivo solto + arquivo de outro ramo na MESMA seleção.
 	res, err := svc.ExtractVbfSelection(vbfPath, []string{
@@ -525,7 +526,7 @@ func TestVbfSelecaoRejectsTraversal(t *testing.T) {
 }
 
 func TestVbfExtractTargetRejectsTraversal(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	for _, inner := range []string{
 		"../outside.bin",
 		"ffx_data/../../outside.bin",
@@ -543,7 +544,7 @@ func TestVbfExtracaoDestinoDefaultEData(t *testing.T) {
 	svc := NewMetadataService(nil)
 
 	// destRoot "" = data/ do jogo (GameFilesRoot/data).
-	gameRoot := t.TempDir()
+	gameRoot := tempdir.TempDir(t)
 	prevRoot := common.GameFilesRoot
 	common.GameFilesRoot = gameRoot
 	t.Cleanup(func() { common.GameFilesRoot = prevRoot })
@@ -592,7 +593,7 @@ func TestVbfExportSelecaoCaminhoDeTexto(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gameRoot := t.TempDir()
+	gameRoot := tempdir.TempDir(t)
 	if err := os.CopyFS(gameRoot, os.DirFS(fixtureRoot)); err != nil {
 		t.Fatalf("copiando fixtures: %v", err)
 	}

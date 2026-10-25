@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/loggingService"
 )
 
@@ -114,9 +115,9 @@ func TestClear(t *testing.T) {
 func TestWriteThroughFile(t *testing.T) {
 	reset()
 
-	dir := t.TempDir()
+	dir := tempdir.TempDir(t)
 	loggingService.ResetForTest(dir)
-	defer func() { loggingService.ResetForTest(t.TempDir()) }()
+	defer func() { loggingService.ResetForTest(tempdir.TempDir(t)) }()
 
 	File("Import", `C:\jogo\fscene.bin`, "falha", "reconstrução inválida")
 	Success("Import", "lote concluído")

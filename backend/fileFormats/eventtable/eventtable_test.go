@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/fileFormats/event"
 )
@@ -213,7 +214,7 @@ func TestSave(t *testing.T) {
 	}
 
 	// Save to a temp location
-	common.SetGameFilesRoot(t.TempDir())
+	common.SetGameFilesRoot(tempdir.TempDir(t))
 	
 	err := f.Save()
 	if err != nil {

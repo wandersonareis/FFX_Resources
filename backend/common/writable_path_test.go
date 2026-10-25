@@ -1,6 +1,7 @@
 package common
 
 import (
+	"ffxresources/testData/tempdir"
 	"errors"
 	"os"
 	"path/filepath"
@@ -16,13 +17,13 @@ func withGameFilesRoot(t *testing.T, root string) {
 }
 
 func TestCheckWritablePathBloqueiaVbf(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	withGameFilesRoot(t, root)
 
 	for _, target := range []string{
 		filepath.Join(root, "data", "FFX_Data.vbf"),
 		filepath.Join(root, "mods", "algum.vbf"),
-		filepath.Join(t.TempDir(), "fora.vbf"),
+		filepath.Join(tempdir.TempDir(t), "fora.vbf"),
 		"relativo.qualquer.VBF",
 	} {
 		err := CheckWritablePath(target)
@@ -33,7 +34,7 @@ func TestCheckWritablePathBloqueiaVbf(t *testing.T) {
 }
 
 func TestCheckWritablePathAceitaModsEBloqueiaData(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	withGameFilesRoot(t, root)
 
 	mods := filepath.Join(root, ModsFolder, "uspc", "menu", "macrodic.dcp")
@@ -55,10 +56,10 @@ func TestCheckWritablePathAceitaModsEBloqueiaData(t *testing.T) {
 }
 
 func TestCheckWritablePathForaDaArvoreDoJogo(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	withGameFilesRoot(t, root)
 
-	if err := CheckWritablePath(filepath.Join(t.TempDir(), "copia.png")); err != nil {
+	if err := CheckWritablePath(filepath.Join(tempdir.TempDir(t), "copia.png")); err != nil {
 		t.Fatalf("destino fora da árvore do jogo deveria ser aceito: %v", err)
 	}
 	// Prefixo parecido com mods mas não é: "mods_backup" dentro de data/.
@@ -69,7 +70,7 @@ func TestCheckWritablePathForaDaArvoreDoJogo(t *testing.T) {
 }
 
 func TestWriteBytesToFileNaoCriaNadaParaAlvoBloqueado(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	withGameFilesRoot(t, root)
 
 	vbf := filepath.Join(root, "data", "novo.vbf")
@@ -102,7 +103,7 @@ func TestWriteBytesToFileNaoCriaNadaParaAlvoBloqueado(t *testing.T) {
 }
 
 func TestWriteBytesToFileErroDeixaClaraARegra(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	withGameFilesRoot(t, root)
 
 	err := WriteBytesToFile(filepath.Join(root, "data", "x.bin"), []byte("x"))
@@ -114,7 +115,7 @@ func TestWriteBytesToFileErroDeixaClaraARegra(t *testing.T) {
 // A variante SEM a trava é o caminho do acesso externo (menu/CLI avulso):
 // grava dentro da árvore do jogo, em qualquer pasta.
 func TestWriteBytesToFileAnywhereGravaDentroDaArvore(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	withGameFilesRoot(t, root)
 
 	target := filepath.Join(root, "data", "new_uspc", "event", "export_x.json")

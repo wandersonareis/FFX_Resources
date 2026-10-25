@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 )
 
@@ -17,7 +18,7 @@ func withToggleTree(t *testing.T) (id string, pristine, modded []byte) {
 	t.Helper()
 	_, pristine = samplePhyre(t)
 
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	prev := common.GameFilesRoot
 	common.GameFilesRoot = root
 	t.Cleanup(func() { common.GameFilesRoot = prev })

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/loggingService"
 )
 
@@ -137,8 +138,8 @@ func TestBatchThrottle(t *testing.T) {
 // Issue: conta na ação, avança o item e tosta com cap — além do cap o
 // erro segue só no diagnóstico.
 func TestStepIssueCap(t *testing.T) {
-	loggingService.ResetForTest(t.TempDir())
-	t.Cleanup(func() { loggingService.ResetForTest(t.TempDir()) })
+	loggingService.ResetForTest(tempdir.TempDir(t))
+	t.Cleanup(func() { loggingService.ResetForTest(tempdir.TempDir(t)) })
 
 	warns := 0
 	em, cap := newTestEmitter(func(string) { warns++ })

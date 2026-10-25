@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/fileFormats/ddsphyre"
 )
@@ -78,7 +79,7 @@ func writePhyre(t *testing.T, root, id string, raw []byte) {
 func TestImportImageGroupEndToEnd(t *testing.T) {
 	sampleA, sampleC := realSampleWithPayload(t)
 
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	prev := common.GameFilesRoot
 	common.GameFilesRoot = root
 	t.Cleanup(func() {

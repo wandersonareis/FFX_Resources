@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/formatters"
 	_ "ffxresources/backend/formatters/csv"
@@ -48,7 +49,7 @@ func TestWriterReaderRoundTripAllFormats(t *testing.T) {
 			if !ok {
 				t.Fatalf("formatter %s não registrado", name)
 			}
-			path := filepath.Join(t.TempDir(), "artifact"+f.Extension())
+			path := filepath.Join(tempdir.TempDir(t), "artifact"+f.Extension())
 
 			w := formatters.NewWriter(f, artifactSample(), path, nil)
 			written, err := w.Write()
@@ -94,7 +95,7 @@ func TestWriterLangsFilter(t *testing.T) {
 			if !ok {
 				t.Fatalf("formatter %s não registrado", name)
 			}
-			path := filepath.Join(t.TempDir(), "artifact"+f.Extension())
+			path := filepath.Join(tempdir.TempDir(t), "artifact"+f.Extension())
 			if _, err := formatters.NewWriter(f, artifactSample(), path, []string{"jp"}).Write(); err != nil {
 				t.Fatalf("write: %v", err)
 			}
@@ -134,7 +135,7 @@ func TestNewWriterEmptyCollection(t *testing.T) {
 	if !ok {
 		t.Fatal("formatter json não registrado")
 	}
-	path := filepath.Join(t.TempDir(), "vazio.json")
+	path := filepath.Join(tempdir.TempDir(t), "vazio.json")
 	if _, err := formatters.NewWriter(f, dto.Collection{}, path, nil).Write(); err == nil ||
 		!strings.Contains(err.Error(), "no text data") {
 		t.Fatalf("esperava erro de coleção vazia, veio: %v", err)

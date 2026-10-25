@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	ffxencoding "ffxresources/backend/core/encoding"
 	"ffxresources/backend/fileFormats/event"
@@ -24,7 +25,7 @@ func TestLoadFromBinaryModsPerFile(t *testing.T) {
 
 	// Copia a árvore de eventos do FFX-2 para um temp.
 	root := `F:\ffxWails\FFX_Resources\testData`
-	game := t.TempDir()
+	game := tempdir.TempDir(t)
 	src := filepath.Join(root, "FFX-2", "binary", "ffx_ps2", "ffx2", "master", "new_uspc")
 	dst := filepath.Join(game, "ffx_ps2", "ffx2", "master", "new_uspc")
 	if err := os.CopyFS(dst, os.DirFS(src)); err != nil {

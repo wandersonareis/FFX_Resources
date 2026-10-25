@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/fileFormats/eventtable"
@@ -48,7 +49,7 @@ func tableBulkFixtures(t *testing.T, version common.GameVersion, rels []string) 
 	if _, err := os.Stat(dataRoot); err != nil {
 		t.Skip("build/bin/data indisponível")
 	}
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	prevRoot, prevMods := common.GameFilesRoot, common.DisableMods
 	common.GameFilesRoot = root
 	common.DisableMods = true
@@ -322,7 +323,7 @@ func bulkImportRoundtripScenario(t *testing.T, format string) {
 			break
 		}
 	}
-	edited := filepath.Join(t.TempDir(), "edited."+format)
+	edited := filepath.Join(tempdir.TempDir(t), "edited."+format)
 	if err := os.WriteFile(edited, marshalBulkArtifact(t, format, imported), 0o644); err != nil {
 		t.Fatalf("gravar artefato editado: %v", err)
 	}

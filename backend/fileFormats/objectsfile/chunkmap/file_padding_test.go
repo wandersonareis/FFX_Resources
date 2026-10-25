@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/core/converter"
 	ffxencoding "ffxresources/backend/core/encoding"
@@ -22,7 +23,7 @@ type oversizedTextChunk struct {
 }
 
 func TestReadFileBytesResolvesPatternAgainstGameFilesRoot(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	previousRoot, previousDisableMods := common.GameFilesRoot, common.DisableMods
 	common.GameFilesRoot = root
 	common.DisableMods = false

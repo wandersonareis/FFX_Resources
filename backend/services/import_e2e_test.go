@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/fileFormats/event"
@@ -33,7 +34,7 @@ func importE2EPrepare(t *testing.T, raw []byte, name string) dto.ImportSummary {
 		"Terceira frase do evento",
 	})
 
-	impPath := filepath.Join(t.TempDir(), name)
+	impPath := filepath.Join(tempdir.TempDir(t), name)
 	if err := os.WriteFile(impPath, raw, 0o644); err != nil {
 		t.Fatalf("write artifact: %v", err)
 	}
@@ -171,7 +172,7 @@ func TestImportE2EStaleHash(t *testing.T) {
 
 	// O artefato (hash do texto antigo) não casa mais com a store nova:
 	// 1 de 2 vai, e o resto é log.
-	impPath := filepath.Join(t.TempDir(), "stale.json")
+	impPath := filepath.Join(tempdir.TempDir(t), "stale.json")
 	if err := os.WriteFile(impPath, out, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
@@ -195,7 +196,7 @@ func TestImportE2EUnknownEntry(t *testing.T) {
 	clearEventsForTest(t)
 	seedEventsSynthetic(common.GameVersionFFX2, "zev001", []string{"Frase qualquer aqui"})
 
-	impPath := filepath.Join(t.TempDir(), "unknown.json")
+	impPath := filepath.Join(tempdir.TempDir(t), "unknown.json")
 	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{
 		"zz_inexistente": dto.FileEntry{
 			Metadata: dto.Metadata{Key: "ffx-2/event/zz/zzinexistente.bin", ID: "zz_inexistente"},
@@ -246,7 +247,7 @@ func TestImportE2EUnknownEntryDoesNotBlockBatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	impPath := filepath.Join(t.TempDir(), "unknown-plus-good.json")
+	impPath := filepath.Join(tempdir.TempDir(t), "unknown-plus-good.json")
 	if err := os.WriteFile(impPath, out, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
@@ -295,7 +296,7 @@ func TestImportE2EOverLimitEntrySkipped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	impPath := filepath.Join(t.TempDir(), "overlimit.json")
+	impPath := filepath.Join(tempdir.TempDir(t), "overlimit.json")
 	if err := os.WriteFile(impPath, out, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
@@ -398,7 +399,7 @@ func TestImportE2ESkippedRowsInSummary(t *testing.T) {
 	}
 	ev.Strings[0].GetLocalizedContent(common.DefaultLocalization).SetRegularString("Tradução refeita")
 
-	impPath := filepath.Join(t.TempDir(), "skipped.json")
+	impPath := filepath.Join(tempdir.TempDir(t), "skipped.json")
 	if err := os.WriteFile(impPath, out, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
@@ -458,7 +459,7 @@ func TestImportE2ESkippedRowsReimportIsNoOp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	impPath := filepath.Join(t.TempDir(), "reimport.json")
+	impPath := filepath.Join(tempdir.TempDir(t), "reimport.json")
 	if err := os.WriteFile(impPath, out, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}

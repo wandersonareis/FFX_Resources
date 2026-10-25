@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/fileFormats/event"
 	"ffxresources/backend/loggingService"
@@ -16,7 +17,7 @@ import (
 // o loader coleta os pulados em Skipped e uma carga feliz deixa a lista
 // VAZIA — quem reporta é o chamador (ensureEventsLoaded).
 func TestLoadFromBinarySilentProgress(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	prevRoot := common.GameFilesRoot
 	common.GameFilesRoot = root
 	t.Cleanup(func() { common.GameFilesRoot = prevRoot })
@@ -43,7 +44,7 @@ func TestLoadFromBinarySilentProgress(t *testing.T) {
 // Evento com binário corrompido é pulado com Skipped (o services reporta
 // cada um: toast com cap + arquivo de diagnóstico) e o restante carrega.
 func TestLoadFromBinarySkipsBrokenEvent(t *testing.T) {
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	prevRoot := common.GameFilesRoot
 	common.GameFilesRoot = root
 	t.Cleanup(func() { common.GameFilesRoot = prevRoot })
@@ -89,8 +90,8 @@ func TestLoadFromBinarySkipsBrokenEvent(t *testing.T) {
 	}
 
 	// reportEventSkips: diagnóstico + toast com cap (além dele, silencia).
-	loggingService.ResetForTest(t.TempDir())
-	t.Cleanup(func() { loggingService.ResetForTest(t.TempDir()) })
+	loggingService.ResetForTest(tempdir.TempDir(t))
+	t.Cleanup(func() { loggingService.ResetForTest(tempdir.TempDir(t)) })
 
 	fake := &fakeNotifier{}
 	s := NewMetadataService(fake)

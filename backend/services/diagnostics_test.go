@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/fileFormats/event"
 	"ffxresources/backend/formatters/hash"
@@ -23,8 +24,8 @@ func diagnosticsRoot(t *testing.T) *MetadataService {
 	clearDedupViewCache()
 	t.Cleanup(clearDedupViewCache)
 	// Log em UM arquivo por início de app (console silenciado).
-	loggingService.ResetForTest(t.TempDir())
-	t.Cleanup(func() { loggingService.ResetForTest(t.TempDir()) })
+	loggingService.ResetForTest(tempdir.TempDir(t))
+	t.Cleanup(func() { loggingService.ResetForTest(tempdir.TempDir(t)) })
 	return NewMetadataService(nil)
 }
 
@@ -54,7 +55,7 @@ func logFileContent(t *testing.T) string {
 // igualdade entre execuções do inventário).
 func resetLogFresh(t *testing.T) {
 	t.Helper()
-	loggingService.ResetForTest(t.TempDir())
+	loggingService.ResetForTest(tempdir.TempDir(t))
 }
 
 // TestTreeDiagCountsParallelDeterministic: o inventário reporta as quatro

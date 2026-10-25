@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/interactions"
@@ -204,7 +205,7 @@ func TestCheckVbfSync_AvisaUmaVezPorEstado(t *testing.T) {
 		t.Fatal("nenhum .bin no container")
 	}
 
-	root := t.TempDir()
+	root := tempdir.TempDir(t)
 	common.GameFilesRoot = root
 	writeTreeFile(t, filepath.Join(root, common.ModsFolder, filepath.FromSlash(real)), []byte("ok"))
 	writeTreeFile(t, filepath.Join(root, common.ModsFolder, "nao_existe_no_container.bin"), []byte("orfao"))

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 )
 
@@ -25,7 +26,7 @@ func TestDefaultLocationsDerivesTranslatedFromGameFiles(t *testing.T) {
 }
 
 func TestValidateConfigDerivesTranslatedFromCustomGameFiles(t *testing.T) {
-	tmp := t.TempDir()
+	tmp := tempdir.TempDir(t)
 	gameDir := filepath.Join(tmp, "jogo")
 
 	config := &AppConfig{
@@ -47,7 +48,7 @@ func TestValidateConfigDerivesTranslatedFromCustomGameFiles(t *testing.T) {
 }
 
 func TestValidateConfigKeepsCustomTranslated(t *testing.T) {
-	tmp := t.TempDir()
+	tmp := tempdir.TempDir(t)
 	custom := filepath.Join(tmp, "minha-traducao")
 
 	config := &AppConfig{
@@ -68,7 +69,7 @@ func TestValidateConfigKeepsCustomTranslated(t *testing.T) {
 }
 
 func TestUnmarshalDerivesTranslatedWhenMissing(t *testing.T) {
-	tmp := t.TempDir()
+	tmp := tempdir.TempDir(t)
 	gameDir := filepath.Join(tmp, "jogo")
 
 	payload, err := json.Marshal(appConfigJSON{
@@ -93,7 +94,7 @@ func TestUnmarshalDerivesTranslatedWhenMissing(t *testing.T) {
 }
 
 func TestSetLocationPersistsImmediately(t *testing.T) {
-	tmp := t.TempDir()
+	tmp := tempdir.TempDir(t)
 	configPath := filepath.Join(tmp, "config.json")
 	custom := filepath.Join(tmp, "traduzido-custom")
 
