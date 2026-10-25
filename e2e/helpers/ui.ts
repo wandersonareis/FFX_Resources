@@ -9,6 +9,14 @@ import { readEnableMods } from './config-file';
 export const HEADER_TITLE = 'FINAL FANTASY X and X-2 HD Remaster Resources Editor';
 export const TAB_LABELS = ['FFX', 'FFX Eternal Calm', 'FFX-2', 'FFX-2 Last Mission'];
 
+/** Mapeia GameVersionId → label exato da aba (para switchToTab). */
+export const TAB_LABEL_BY_VERSION: Record<string, string> = {
+  ffx: 'FFX',
+  eternalcalm: 'FFX Eternal Calm',
+  ffx2: 'FFX-2',
+  lastmiss: 'FFX-2 Last Mission',
+};
+
 /** Abre o app e espera a casca hidratar (AppShell é client-only). */
 export async function gotoApp(page: Page): Promise<void> {
   await page.goto('/');
@@ -442,4 +450,41 @@ export async function restoreEnableModsInConfigDialog(
     })
     .toBe(target);
   await closeDialogByX(page);
+}
+
+/**
+ * Confere que a tabela EXIBIU conteúdo de verdade: rows no DOM e a coluna
+ * Original inteira preenchida (a fonte da verdade é sempre data/ — linhas
+ * em branco são filtradas na carga). Devolve os textos da coluna Original
+ * para quem precisa comparar antes/depois.
+ */
+export async function expectTextDisplayed(page: Page): Promise<string[]> {
+  const rows = page.locator('[data-row-key]');
+  const count = await rows.count();
+  expect(count, 'tabela com rows').toBeGreaterThan(0);
+
+  const originals = await columnTexts(page, 'Original');
+  expect(originals.length, 'uma Original por row').toBe(count);
+  const withText = originals.filter((t) => t !== '' && t !== '—');
+  expect(withText.length, 'coluna Original preenchida').toBe(originals.length);
+  return originals;
+}
+
+/**
+ * Troca de aba de versão via atalho (Ctrl+1..4).
+ * Usa GAME_VERSIONS do frontend para a ordem correta.
+ */
+export async function switchToTab(page: Page, version: string): Promise<void> {
+  const expectedLabel = TAB_LABEL_BY_VERSION[version];
+  if (!expectedLabel) {
+    throw new Error(`Versão "${version}" não encontrada em TAB_LABEL_BY_VERSION`);
+  }
+  const tabIndex = TAB_LABELS.indexOf(expectedLabel);
+  if (tabIndex < 0) {
+    throw new Error(`Aba "${expectedLabel}" não encontrada em TAB_LABELS: ${TAB_LABELS.join(', ')}`);
+  }
+  await page.keyboard.press(`Control+${tabIndex + 1}`);
+  await expect(
+    page.getByRole('tab', { name: expectedLabel, exact: true })
+  ).toHaveAttribute('aria-selected', 'true', { timeout: 10_000 });
 }

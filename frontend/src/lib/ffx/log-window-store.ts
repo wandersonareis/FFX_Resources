@@ -2,7 +2,7 @@ import { useSelector } from '@tanstack/react-store';
 import { createStore } from '@tanstack/store';
 import { isDesktop } from './env';
 import { loggedToast } from './toast-logged';
-import { CloseWindow, OpenWindow } from '@/bindings/ffxresources/windowservice';
+import { CloseWindow, OpenWindow } from '../../../bindings/ffxresources/windowservice';
 
 /**
  * Janela/painel de LOGS — estado de MÓDULO (mesmo padrão do

@@ -57,6 +57,12 @@ export const modsDir = path.join(gameFiles, 'mods');
 /** Árvore de originais da aba FFX (ffx_data) — exibição de conteúdo. */
 export const hasData = fs.existsSync(path.join(gameFiles, 'ffx_data'));
 
+/** Árvore de originais da aba FFX-2 (ffx2_data) — exibição de conteúdo. */
+export const hasDataFFX2 = fs.existsSync(path.join(gameFiles, 'ffx2_data'));
+
+/** Árvore de originais da aba Last Mission (lastmiss_data) — exibição de conteúdo. */
+export const hasDataLastMiss = fs.existsSync(path.join(gameFiles, 'lastmiss_data'));
+
 /** Overlay mods/ presente no disco. */
 export const hasMods = fs.existsSync(modsDir);
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { vbfSelection } from './vbf-selection';
 
 const ROOT = 'vbf-selection-test-container';

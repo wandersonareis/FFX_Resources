@@ -43,7 +43,11 @@ dev_mode:
       - "*.ts" # The frontend directory is excluded by the setting above.
     git_ignore: true
   executes:
-    - cmd: wails3 build DEV=true
+    # build:dev (Taskfile.yml) = o build da plataforma SEM o portão de
+    # testes: o watcher recompila a cada save e a suíte inteira no meio
+    # do dev só atrasa. Testes seguem obrigatórios no build de produção
+    # (`wails3 build` -> task build -> dep `test`).
+    - cmd: wails3 task build:dev
       type: blocking
     - cmd: wails3 task common:dev:frontend
       type: background

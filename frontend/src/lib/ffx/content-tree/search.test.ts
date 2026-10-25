@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import * as services from '@/bindings/ffxresources/backend/services/models';
 import type { SideNode } from './model';
 import { buildSearchItems, foldDiacritics, searchTreeNames } from './search';

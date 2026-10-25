@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import {
   LAYOUT_MAX_AGE_MS,
   parseLayoutConfig,

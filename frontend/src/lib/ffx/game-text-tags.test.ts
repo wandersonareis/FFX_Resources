@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { buttonSpriteClasses } from './game-text-tags';
 
 // buttonSpriteClasses recebe o inner pelo parser ("BUTTON:…", sem chaves) e

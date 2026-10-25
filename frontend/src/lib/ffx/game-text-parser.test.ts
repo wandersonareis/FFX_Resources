@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { gameTextParser } from './game-text-parser';
 
 // O editor compara parseGameTextToHTML(value) com editor.getHTML() (literal)

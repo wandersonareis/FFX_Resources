@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { findMatches, replaceMatches, visibleSegments } from './find-in-text';
 
 // O motor da busca local casa SÓ o texto visível: tags {…} e quebras de

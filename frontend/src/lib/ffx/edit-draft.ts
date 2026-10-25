@@ -1,6 +1,6 @@
 import { createStore } from '@tanstack/store';
 import { useSelector } from '@tanstack/react-store';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
+import * as dto from '../../../bindings/ffxresources/backend/dto/models';
 import { EntryKind } from './display-names';
 import type { GameVersionId } from './game-version';
 import {

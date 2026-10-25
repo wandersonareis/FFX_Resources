@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, jest, mock } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { isDesktop } from './env';
 import {
   logWindowStore,
@@ -18,19 +18,22 @@ import {
  * toast de erro é mockado para os assertion de feedback.
  */
 
-const OpenWindow = jest.fn(async (_name: string) => undefined);
-const CloseWindow = jest.fn(async (_name: string) => undefined);
-mock.module('@/bindings/ffxresources/windowservice', () => ({ OpenWindow, CloseWindow }));
+const { OpenWindow, CloseWindow, toastError } = vi.hoisted(() => ({
+  OpenWindow: vi.fn(async (_name: string) => undefined),
+  CloseWindow: vi.fn(async (_name: string) => undefined),
+  toastError: vi.fn(),
+}));
 
-const toastError = jest.fn();
-mock.module('./toast-logged', () => ({
-  loggedToast: Object.assign(jest.fn(), {
+vi.mock('../../../bindings/ffxresources/windowservice', () => ({ OpenWindow, CloseWindow }));
+
+vi.mock('./toast-logged', () => ({
+  loggedToast: Object.assign(vi.fn(), {
     error: toastError,
-    info: jest.fn(),
-    success: jest.fn(),
-    warning: jest.fn(),
-    loading: jest.fn(),
-    message: jest.fn(),
+    info: vi.fn(),
+    success: vi.fn(),
+    warning: vi.fn(),
+    loading: vi.fn(),
+    message: vi.fn(),
   }),
 }));
 

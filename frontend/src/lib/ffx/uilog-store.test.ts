@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest, mock } from 'bun:test';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Entry } from '@/bindings/ffxresources/backend/uilog/models';
 import { uiLog } from './uilog-store';
 
@@ -17,9 +17,12 @@ import { uiLog } from './uilog-store';
 /** Espelho do MAX_LINES do store — mesmo teto do bufferCap do backend/uilog. */
 const MAX_LINES = 10_000;
 
-const History = jest.fn(async () => []);
-const ClearLog = jest.fn(async () => undefined);
-mock.module('@/bindings/ffxresources/logservice', () => ({ History, ClearLog }));
+const { History, ClearLog } = vi.hoisted(() => ({
+  History: vi.fn(async () => []),
+  ClearLog: vi.fn(async () => undefined),
+}));
+
+vi.mock('../../../bindings/ffxresources/logservice', () => ({ History, ClearLog }));
 
 function entry(partial: Partial<Entry> = {}): Entry {
   return { time: Date.now(), level: 'info', message: 'linha', ...partial } as Entry;

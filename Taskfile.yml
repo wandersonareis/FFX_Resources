@@ -51,6 +51,24 @@ tasks:
     cmds:
       - task: "{{.GOOS}}:build"
 
+  build:dev:
+    summary: Build de dev SEM o portão de testes (usado pelo wails3 dev)
+    desc: |
+      Mesmo build do `build`, mas sem as deps de qualidade (version:sync e
+      a task `test`). Quem aponta para cá é o `wails3 dev` — o
+      dev_mode.executes de build/config.yml. Motivo: iterar na UI não pode
+      esperar a suíte inteira (Go + frontend) rodar a cada rebuild do
+      watcher. Os testes continuam obrigatórios no build de produção:
+      `wails3 build`, `task build` e `task release` passam pela task
+      `build`, cuja dep `test` falha = build inteiro aborta.
+      Para buildar em dev à mão: `wails3 task build:dev` (ou
+      `task windows:build DEV=true`).
+    internal: true
+    cmds:
+      - task: "{{.GOOS}}:build"
+        vars:
+          DEV: '{{.DEV | default "true"}}'
+
   version:sync:
     summary: Sincroniza o arquivo VERSION em info.json e frontend/package.json
     desc: |
@@ -173,13 +191,25 @@ tasks:
       - go test ./... -count=1
 
   test:frontend:
-    summary: bun test (stores, parsers e helpers do frontend)
+    summary: vitest run --coverage (stores, parsers e helpers do frontend)
+    desc: |
+      Roda o script `test` do frontend (`vitest run --coverage`) através do
+      bun — NÃO `bun test` direto. A suíte é vitest: usa `vi.hoisted`,
+      `environment: 'jsdom'` (vitest.config.mjs) e o setup
+      `@testing-library/jest-dom` (vitest.setup.ts), que o runner próprio do
+      Bun não implementa — `bun test` quebra com "vi.hoisted is not a
+      function" em 2 arquivos e abortaria o portão do build. O bun segue
+      sendo o runner do frontend; aqui ele só executa o vitest do
+      node_modules via o script do package.json.
     dir: frontend
+    # Sem sources/generates de propósito: task de teste NÃO pode ser
+    # considerada "up to date" por checksum — o portão do build precisa
+    # rodar sempre (senão o teste seria pulado e o gate viraria enfeite).
     preconditions:
       - sh: bun --version
         msg: "bun not found — instale em https://bun.sh (é o runner do frontend)"
     cmds:
-      - bun test
+      - bun run test
 
   test:e2e:
     summary: Playwright E2E no app servido (builda o spira-server antes)
