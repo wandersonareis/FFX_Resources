@@ -11,8 +11,11 @@
 //
 // Pacote separado (nem loggingService, nem services): loggingService é
 // zerolog puro (sem dependência do Wails) e services é importado por
-// builders — quando a fase de save do motor de apply for instrumentada
-// per-binário (follow-up), builders→uilog não pode criar ciclo.
+// builders. A granularidade por binário do apply NÃO passa por builders:
+// quem observa as gravações é o gravador de common
+// (common.RecordWrites — todo escritor de binário passa por
+// common.WriteBytesToFile) e quem narra é o serviço de import
+// (backend/services/import_log.go). Assim builders→uilog nunca existe.
 package uilog
 
 import (

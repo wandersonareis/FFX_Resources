@@ -37,6 +37,13 @@ export class EntrySummary {
 /**
  * ExportPlanItem é UMA ação do lote: um kind e os ids dele (vazio = tudo
  * do kind; com seleção, os ids marcados na árvore).
+ * 
+ * Complete marca a seleção TOTAL do kind — o checkbox da raiz na árvore.
+ * Com ele o backend desvia para o artefato bulk ÚNICO (um arquivo, dedup
+ * global entre entradas), com o prefixo treeBulkPrefix no base para NÃO
+ * colidir com o artefato canônico do export completo. O prefixo é só a
+ * marca da origem: o import decide o kind pelo metadata.key de cada
+ * entrada (detectImportKind), nunca pelo nome do arquivo.
  */
 export class ExportPlanItem {
     "kind": string;

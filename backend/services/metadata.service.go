@@ -26,6 +26,7 @@ import (
 	_ "ffxresources/backend/formatters/strings"
 	"ffxresources/backend/loggingService"
 	"ffxresources/backend/progress"
+	"ffxresources/backend/uilog"
 )
 
 // Kinds lógicos servidos ao frontend: textos e imagens (.dds.phyre).
@@ -572,14 +573,18 @@ func (s *MetadataService) ExportEntry(kind string, version common.GameVersion, i
 }
 
 // ImportEntry lê o artefato JSON padrão da entrada (mods/edits) e aplica o DTO
-// de volta no binário, persistindo. Devolve o caminho lido. Escrita muda o
+// de volta no binário, persistendo. Devolve o caminho lido. Escrita muda o
 // store: o view dedupado (cache por versão) é invalidado.
+//
+// O log da janela é POR BINÁRIO, como no ImportFile: o gravador de gravações
+// informa o que foi recompilado e em que destino de mods/ (import_log.go).
 func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, id string) ([]string, error) {
 	clearDedupViewCache()
 	kind = strings.ToLower(strings.TrimSpace(kind))
 	if err := ensureVersionReady(version); err != nil {
 		return nil, err
 	}
+	uilog.Info(importAction, "%s — aplicando artefato de %s (%s)", id, kind, version.String())
 
 	switch kind {
 	case KindEvents:
@@ -598,7 +603,9 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		if err := builders.ApplyEventsDTO(version, read, []string{id}); err != nil {
+		if _, err := applyRecorded(version, func() error {
+			return builders.ApplyEventsDTO(version, read, []string{id})
+		}); err != nil {
 			return nil, err
 		}
 		return []string{path}, nil
@@ -613,7 +620,10 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 			return nil, err
 		}
 		for _, key := range read.SortedKeys() {
-			if err := s.applyObjectsEntry(version, key, read[key]); err != nil {
+			entry := read[key]
+			if _, err := applyRecorded(version, func() error {
+				return s.applyObjectsEntry(version, key, entry)
+			}); err != nil {
 				return nil, err
 			}
 		}
@@ -628,7 +638,9 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		if err := builders.ApplyMacroDTO(version, read); err != nil {
+		if _, err := applyRecorded(version, func() error {
+			return builders.ApplyMacroDTO(version, read)
+		}); err != nil {
 			return nil, err
 		}
 		return []string{path}, nil
@@ -642,7 +654,9 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		if err := builders.ApplyLockitDTO(version, read); err != nil {
+		if _, err := applyRecorded(version, func() error {
+			return builders.ApplyLockitDTO(version, read)
+		}); err != nil {
 			return nil, err
 		}
 		return []string{path}, nil
@@ -665,7 +679,9 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 			return nil, err
 		}
 		stripHelpRowNames(read)
-		if err := builders.ApplyHelpDTO(version, read, read.SortedKeys()); err != nil {
+		if _, err := applyRecorded(version, func() error {
+			return builders.ApplyHelpDTO(version, read, read.SortedKeys())
+		}); err != nil {
 			return nil, err
 		}
 		return []string{path}, nil
@@ -679,7 +695,9 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		if err := builders.ApplyTableDTO(kind, version, read); err != nil {
+		if _, err := applyRecorded(version, func() error {
+			return builders.ApplyTableDTO(kind, version, read)
+		}); err != nil {
 			return nil, err
 		}
 		return []string{path}, nil

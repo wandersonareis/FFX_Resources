@@ -49,3 +49,6 @@ o mesmo texto, inclusive CJK) — é documentada em
 - [Auto-update (Wails v3)](updater.md) — contrato de release/build do
   updater (asset, `SHA256SUMS`, versão), eventos `wails:updater:*`, janela de
   update e checklist para **agentes de IA** mexerem no assunto.
+- [Janela de logs](janela-de-logs.md) — o que a janela de logs registra por
+  operação (import por binário, com destino em `mods/`), o contrato das
+  linhas de arquivo e as regras para mexer no assunto.

@@ -161,15 +161,22 @@ func (s *MetadataService) importTranslatedBatch(version common.GameVersion, kind
 		if !apply || len(plan.merged) == 0 {
 			continue
 		}
-		if aerr := s.ApplyTextCollection(plan.kind, version, plan.merged); aerr != nil {
+		// Cabeçalho do artefato (azul) e, abaixo dele, UMA linha por binário
+		// gravado em mods/ — destino na linha, motivo na falha.
+		uilog.Info(importAction, "%s — %d texto(s) em %s", name, plan.summary.ChangedTexts, plan.kind)
+		sum, aerr := applyRecorded(version, func() error {
+			return s.ApplyTextCollection(plan.kind, version, plan.merged)
+		})
+		if aerr != nil {
 			batch.Errors = append(batch.Errors, fmt.Sprintf("%s: %s", name, aerr.Error()))
 			if apply {
-				uilog.File("Import", name, uilog.StatusFailed, aerr.Error())
+				uilog.File(importAction, name, uilog.StatusFailed, aerr.Error())
 			}
 			continue
 		}
-		uilog.File("Import", name, uilog.StatusOk,
-			fmt.Sprintf("%d texto(s) em %s", plan.summary.ChangedTexts, plan.kind))
+		if sum.Written == 0 {
+			uilog.File(importAction, name, uilog.StatusOk, "sem alteração — nenhum binário gravado")
+		}
 	}
 
 	// Kinds pedidos sem arquivo nenhum não são erro (dá para marcar mais

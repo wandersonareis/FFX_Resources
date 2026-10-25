@@ -113,7 +113,9 @@ func getModdedFile(path string) string {
 // Cria os diretórios necessários antes de gravar.
 func WriteBytesToFileAnywhere(path string, bytes []byte) error {
 	CreateDirectories(path)
-	return os.WriteFile(path, bytes, 0644)
+	err := os.WriteFile(path, bytes, 0644)
+	recordWrite(path, len(bytes), err)
+	return err
 }
 
 // WriteBytesToFile writes a slice of integers as bytes to a file
@@ -125,6 +127,9 @@ func WriteBytesToFileAnywhere(path string, bytes []byte) error {
 // a trava é WriteBytesToFileAnywhere — é o que o menu/CLI usa.
 func WriteBytesToFile(path string, bytes []byte) error {
 	if err := CheckWritablePath(path); err != nil {
+		// Recusado antes de criar diretório: o destino é conhecido e a
+		// operação precisa vê-lo no log (data/ somente leitura, .vbf).
+		recordWrite(path, len(bytes), err)
 		return err
 	}
 	return WriteBytesToFileAnywhere(path, bytes)

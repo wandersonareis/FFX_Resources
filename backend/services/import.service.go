@@ -1055,9 +1055,10 @@ func (s *MetadataService) PreviewImport(path string, version common.GameVersion)
 // aborta a importação inteira. Devolve quantos textos em inglês mudaram em
 // relação à store.
 //
-// O uilog narra o fluxo para a janela de logs DEPOIS da ação (nível de
-// fluxo: a granularidade por binário dos imports daqui é follow-up, na
-// fase de save do motor de apply).
+// O uilog narra o fluxo para a janela de logs DEPOIS da ação, e a
+// granularidade é POR BINÁRIO: o gravador de gravações de common informa
+// quais binários foram recompilados e em que destino de mods/ (ver
+// import_log.go) — nenhum binário escrito ou falhado fica de fora do log.
 func (s *MetadataService) ImportFile(path string, version common.GameVersion) (int, error) {
 	plan, err := s.prepareImport(path, version)
 	if err != nil {
@@ -1075,12 +1076,22 @@ func (s *MetadataService) ImportFile(path string, version common.GameVersion) (i
 	}
 	uilog.Info("Import", "%s — aplicando %d texto(s) em %s (%s)",
 		filepath.Base(path), plan.summary.ChangedTexts, plan.kind, version.String())
-	if err := s.ApplyTextCollection(plan.kind, version, plan.merged); err != nil {
+	// O log da janela é POR BINÁRIO: quais foram recompilados e onde caíram
+	// em mods/ (uma linha por binário, com o destino e o motivo da falha).
+	sum, err := applyRecorded(version, func() error {
+		return s.ApplyTextCollection(plan.kind, version, plan.merged)
+	})
+	if err != nil {
 		uilog.Error("Import", "%s: falha ao aplicar: %v", filepath.Base(path), err)
 		return 0, err
 	}
-	uilog.Success("Import", "%s — %d texto(s) atualizado(s) e salvos em mods/",
-		filepath.Base(path), plan.summary.ChangedTexts)
+	if sum.Written == 0 {
+		uilog.Success("Import", "%s — %d texto(s), nenhum binário alterado (nada gravado)",
+			filepath.Base(path), plan.summary.ChangedTexts)
+		return plan.summary.ChangedTexts, nil
+	}
+	uilog.Success("Import", "%s — %d texto(s) em %d binário(s) gravado(s) em mods/",
+		filepath.Base(path), plan.summary.ChangedTexts, sum.Written)
 	return plan.summary.ChangedTexts, nil
 }
 
