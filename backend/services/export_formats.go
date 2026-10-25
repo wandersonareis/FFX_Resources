@@ -12,6 +12,7 @@ import (
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/formatters"
+	"ffxresources/backend/uilog"
 	_ "ffxresources/backend/formatters/csv"
 	jsonfmt "ffxresources/backend/formatters/json"
 	_ "ffxresources/backend/formatters/strings"
@@ -82,19 +83,24 @@ func (s *MetadataService) ExportArtifactBatch(items []ExportPlanItem, version co
 		steps = make([]*progress.Step, len(items))
 	}
 
+	uilog.Info("Export", "Iniciando export de %d kind(s) como %s", len(items), format)
+
 	var all []string
 	for i, it := range items {
 		kind := strings.ToLower(strings.TrimSpace(it.Kind))
+		uilog.Info("Export", "%s: exportando", kindStepLabels[kind])
 		ps, err := s.exportKind(steps[i], kind, format, version, it.IDs, it.Complete, langs)
 		all = append(all, ps...)
 		if err != nil {
 			steps[i].Fail(err.Error())
 			batch.End()
+			uilog.Error("Export", "Falha no export: %v", err)
 			return all, err
 		}
 	}
 	batch.SetSummary(len(all), exportSummaryDestination(all))
 	batch.End()
+	uilog.Success("Export", "Export concluído: %d arquivo(s) em %s", len(all), exportSummaryDestination(all))
 	return all, nil
 }
 
@@ -192,6 +198,11 @@ func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, v
 			return nil, perr
 		}
 		p, werr := write(c, path)
+		if werr != nil {
+			uilog.File("Export", p, uilog.StatusFailed, werr.Error())
+		} else {
+			uilog.File("Export", p, uilog.StatusOk, fmt.Sprintf("exportado como %s", format))
+		}
 		return []string{p}, werr
 	case KindMacro:
 		path, perr := macroExportPath(version, ids, prefix)
@@ -199,6 +210,11 @@ func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, v
 			return nil, perr
 		}
 		p, werr := write(c, path)
+		if werr != nil {
+			uilog.File("Export", p, uilog.StatusFailed, werr.Error())
+		} else {
+			uilog.File("Export", p, uilog.StatusOk, fmt.Sprintf("exportado como %s", format))
+		}
 		return []string{p}, werr
 	case KindHelp:
 		path, perr := jsonfmt.HelpJSONPath(version, prefix)
@@ -206,6 +222,11 @@ func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, v
 			return nil, perr
 		}
 		p, werr := write(c, path)
+		if werr != nil {
+			uilog.File("Export", p, uilog.StatusFailed, werr.Error())
+		} else {
+			uilog.File("Export", p, uilog.StatusOk, fmt.Sprintf("exportado como %s", format))
+		}
 		return []string{p}, werr
 	case KindObjects, KindBattleText, KindCloud, KindTutorial, KindMenuMain:
 		if len(ids) == 0 {
@@ -221,6 +242,11 @@ func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, v
 				return nil, perr
 			}
 			p, werr := write(c, path)
+			if werr != nil {
+				uilog.File("Export", p, uilog.StatusFailed, werr.Error())
+			} else {
+				uilog.File("Export", p, uilog.StatusOk, fmt.Sprintf("exportado como %s", format))
+			}
 			return []string{p}, werr
 		}
 		fallthrough
@@ -234,8 +260,10 @@ func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, v
 			}
 			p, werr := write(dto.Collection{key: c[key]}, jp)
 			if werr != nil {
+				uilog.File("Export", p, uilog.StatusFailed, werr.Error())
 				return nil, werr
 			}
+			uilog.File("Export", p, uilog.StatusOk, fmt.Sprintf("exportado como %s", format))
 			paths = append(paths, p)
 		}
 		return paths, nil
