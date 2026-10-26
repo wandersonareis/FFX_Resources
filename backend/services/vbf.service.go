@@ -746,6 +746,9 @@ func (s *MetadataService) ImportVbfImage(vbfPath, innerPath, ddsPath string) err
 	if err := ensureVersionReady(target.Version); err != nil {
 		return err
 	}
+
+	uilog.Info("Import", "%s: importando", target.ID)
+
 	original, err := a.Read(cleanVbfPath(innerPath))
 	if err != nil {
 		return fmt.Errorf("lendo textura do .vbf: %w", err)
@@ -764,6 +767,10 @@ func (s *MetadataService) ImportVbfImage(vbfPath, innerPath, ddsPath string) err
 		common.LogWarning("images %s/%s: import do .vbf ok, mas não atualizei os .dds/.png extraídos: %v", target.Version, target.ID, err)
 	}
 	vbfSessionResetAll()
+
+	// The import writes to mods/ - log the written path
+	modsPath := ddsphyre.RelPath(target.Version, target.ID)
+	uilog.File("Import", modsPath, uilog.StatusOk, "importado de um dds")
 	return nil
 }
 
@@ -786,8 +793,12 @@ func (s *MetadataService) SaveVbfImage(vbfPath, innerPath, format, destPath stri
 	if err != nil {
 		return err
 	}
+
+	formatLower := strings.ToLower(strings.TrimSpace(format))
+	uilog.Info("Export", "%s: exportando", target.ID)
+
 	var payload []byte
-	switch strings.ToLower(strings.TrimSpace(format)) {
+	switch formatLower {
 	case "dds":
 		payload = resolved.DDS
 		if payload == nil && resolved.Texture != nil {
@@ -810,7 +821,40 @@ func (s *MetadataService) SaveVbfImage(vbfPath, innerPath, format, destPath stri
 	if err := common.EnsurePathExists(destPath); err != nil {
 		return err
 	}
-	return os.WriteFile(destPath, payload, 0o644)
+	if err := os.WriteFile(destPath, payload, 0o644); err != nil {
+		return err
+	}
+
+	uilog.File("Export", destPath, uilog.StatusOk, fmt.Sprintf("exportado como %s", formatLower))
+	return nil
+}
+
+// VbfImageExportPath devolve o caminho padrão de exportação (.dds ou .png) em
+// mods/images/<raiz>/<id> para a textura do .vbf — usado pelo "Exportar"
+// direto sem diálogo.
+func (s *MetadataService) VbfImageExportPath(vbfPath, innerPath, format string) (string, error) {
+	_, target, err := s.vbfTargetOf(vbfPath, innerPath)
+	if err != nil {
+		return "", err
+	}
+	if target.Kind != KindImages {
+		return "", fmt.Errorf("não é uma textura do app: %s", cleanVbfPath(innerPath))
+	}
+	if !ddsphyre.ValidID(target.ID) {
+		return "", fmt.Errorf("textura desconhecida: %s", target.ID)
+	}
+	formatLower := strings.ToLower(strings.TrimSpace(format))
+	if formatLower != "dds" && formatLower != "png" {
+		return "", fmt.Errorf("formato %q inválido (esperado dds ou png)", format)
+	}
+	if err := ensureVersionReady(target.Version); err != nil {
+		return "", err
+	}
+	ddsPath, pngPath := ddsphyre.ExportPaths(target.Version, target.ID)
+	if formatLower == "dds" {
+		return ddsPath, nil
+	}
+	return pngPath, nil
 }
 
 // ReplicateVbfImage propaga o DDS visível da imagem aberta no .vbf para as

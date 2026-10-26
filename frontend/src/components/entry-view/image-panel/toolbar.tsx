@@ -1,10 +1,17 @@
-'use client';
+"use client";
 
-import { Copy, FlipVertical, FolderInput, Images, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { SHORTCUTS, shortcutTip } from '@/lib/ffx/shortcuts';
-import { ImageExportMenu } from './export-menu';
-import type { ImageBusy } from './use-image-actions';
+import {
+  Copy,
+  FlipVertical,
+  FolderInput,
+  Images,
+  RefreshCw,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { SHORTCUTS, shortcutTip } from "@/lib/ffx/shortcuts";
+import { ImageExportMenu } from "./export-menu";
+import { ImageExportFormatMenu } from "./image-export-format-menu";
+import type { ImageBusy } from "./use-image-actions";
 
 /**
  * Barra de ações do painel: exportar (salvar como .dds/.png em pasta livre,
@@ -20,8 +27,8 @@ export function ImageToolbar({
   flipped,
   duplicateCount,
   infoHidden,
-  onExtract,
-  onSave,
+  onExport,
+  onExtractTo,
   onImport,
   onImportTranslated,
   onReplicate,
@@ -35,8 +42,10 @@ export function ImageToolbar({
   duplicateCount: number;
   /** Coluna de informações oculta (estado de sessão, vem do imageInfoStore). */
   infoHidden: boolean;
-  onExtract: () => void;
-  onSave: (format: 'dds' | 'png') => void;
+  /** Exporta no formato selecionado para mods/images (sem diálogo). */
+  onExport: (format: "dds" | "png" | "dds+png") => void;
+  /** Exporta no formato selecionado para pasta customizada (com diálogo). */
+  onExtractTo: (format: "dds" | "png" | "dds+png") => void;
   onImport: () => void;
   onImportTranslated: () => void;
   onReplicate: () => void;
@@ -51,21 +60,22 @@ export function ImageToolbar({
     // justify-between: as ações da textura ficam agrupadas à esquerda (e
     // quebram linha ENTRE SI se faltar largura) e o botão Info fica no
     // canto direito, sempre acessível.
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center justify-between gap-1">
+      <div className="flex flex-wrap items-center gap-1">
+        <ImageExportFormatMenu />
         <ImageExportMenu
           disabled={busy !== null}
           readOnly={readOnly}
-          onSave={onSave}
-          onExtract={onExtract}
+          onExport={onExport}
+          onExtractTo={onExtractTo}
         />
         <Button size="sm" disabled={busy !== null} onClick={onImport}>
           <FolderInput size={16} />
-          {busy === 'import'
-            ? 'Importando…'
+          {busy === "import"
+            ? "Importando…"
             : !readOnly && duplicateCount > 0
               ? `Importar .dds… (${copyTotal} idênticas)`
-              : 'Importar .dds…'}
+              : "Importar .dds…"}
         </Button>
         <Button
           size="sm"
@@ -75,7 +85,7 @@ export function ImageToolbar({
           onClick={onImportTranslated}
         >
           <Images size={16} />
-          {busy === 'importBatch' ? 'Importando…' : 'Importar traduzidas…'}
+          {busy === "importBatch" ? "Importando…" : "Importar traduzidas…"}
         </Button>
         {duplicateCount > 0 ? (
           <Button
@@ -84,26 +94,28 @@ export function ImageToolbar({
             disabled={busy !== null}
             title={
               readOnly
-                ? 'Reempacota a imagem aberta em mods/ das cópias do .vbf já identificadas'
-                : 'Reempacota a imagem aberta em mods/ de cada cópia idêntica — sem escolher arquivo'
+                ? "Reempacota a imagem aberta em mods/ das cópias do .vbf já identificadas"
+                : "Reempacota a imagem aberta em mods/ de cada cópia idêntica — sem escolher arquivo"
             }
             onClick={onReplicate}
           >
             <Copy size={16} />
             Replicar para {duplicateCount} cópia
-            {duplicateCount > 1 ? 's' : ''}
+            {duplicateCount > 1 ? "s" : ""}
           </Button>
         ) : null}
         <Button
           size="sm"
-          variant={flipped ? 'default' : 'outline'}
+          variant={flipped ? "default" : "outline"}
           aria-pressed={flipped}
           title={`${shortcutTip(SHORTCUTS.imageFlip.label, SHORTCUTS.imageFlip.keys)} — só na tela: não altera nem reenvia a imagem`}
           onClick={onToggleFlip}
         >
           <FlipVertical size={16} />
-          {flipped ? 'Flip (on)' : 'Flip'}
+          {flipped ? "Flip (on)" : "Flip"}
         </Button>
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
         {!readOnly ? (
           <Button
             size="sm"
@@ -113,26 +125,30 @@ export function ImageToolbar({
             onClick={onRefresh}
           >
             <RefreshCw size={16} />
-            {busy === 'refresh' ? 'Reanalisando…' : 'Reanalisar'}
+            {busy === "refresh" ? "Reanalisando…" : "Reanalisar"}
           </Button>
         ) : null}
-      </div>
-      {/*
+        {/*
           Estado de SESSÃO (imageInfoStore), não de layout: sobrevive à troca
           imagem↔texto e entre abas, mas ao fechar o app a coluna volta aberta
           — por isso não mora no layout-storage e não tem disabled: é só
           exibição, como o Flip. Aceso (azul) = coluna EXIBIDA, apagado =
           coluna oculta — o pressed espelha a coluna, não o clique.
       */}
-      <Button
-        size="sm"
-        variant={infoHidden ? 'outline' : 'default'}
-        aria-pressed={!infoHidden}
-        title={infoHidden ? 'Exibe a coluna de informações' : 'Oculta a coluna de informações'}
-        onClick={onToggleInfo}
-      >
-        Info
-      </Button>
+        <Button
+          size="sm"
+          variant={infoHidden ? "outline" : "default"}
+          aria-pressed={!infoHidden}
+          title={
+            infoHidden
+              ? "Exibe a coluna de informações"
+              : "Oculta a coluna de informações"
+          }
+          onClick={onToggleInfo}
+        >
+          Info
+        </Button>
+      </div>
     </div>
   );
 }

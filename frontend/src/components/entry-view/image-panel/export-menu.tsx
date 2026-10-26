@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Download, FolderInput, Save } from 'lucide-react';
+import { ChevronDown, Download, FolderInput, FolderOpen, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,32 +9,40 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  imageExportFormatSelection,
+  IMAGE_EXPORT_FORMAT_LABELS,
+  ImageExportFormat,
+  useImageExportFormat,
+} from '@/lib/ffx/image-export-selection';
 
 /**
- * "Exportar como" do painel: dois destinos diferentes no mesmo menu.
+ * "Exportar como" do painel: usa o formato selecionado no seletor de formato.
  *
- *  - `.dds` / `.png`  → "salvar como" (selectImageSavePath): destino LIVRE
- *    no disco, UM formato, imagem aberta.
- *  - `.dds + .png`    → extração para a pasta de trabalho `mods/images/`
- *    (mesmo fluxo do antigo botão "Extrair .dds + .png"): grava OS DOIS
- *    formatos com o caminho interno preservado; em data/ abre o diálogo de
- *    alcance (só esta / todas as cópias), em .vbf extrai direto.
+ *  - `Exportar` (item do menu) → salva no formato selecionado (DDS, PNG ou DDS+PNG)
+ *    direto em mods/images (sem diálogo).
+ *  - `Exportar para...`        → abre seletor de pasta nativo e extrai no formato
+ *    selecionado para destino customizado.
  *
  * O .dds é o padrão sem perda (volta no repack); o .png é só para
- * visualizar/distribuir.
+ * visualizar/distribuir. DDS+PNG gera os dois formatos.
  */
 export function ImageExportMenu({
   disabled,
   readOnly,
-  onSave,
-  onExtract,
+  onExport,
+  onExtractTo,
 }: {
   disabled: boolean;
   /** true = textura veio do .vbf (extração não abre diálogo de alcance). */
   readOnly: boolean;
-  onSave: (format: 'dds' | 'png') => void;
-  onExtract: () => void;
+  /** Exporta no formato selecionado para mods/images (sem diálogo). */
+  onExport: (format: ImageExportFormat) => void;
+  /** Exporta no formato selecionado para pasta customizada (com diálogo). */
+  onExtractTo: (format: ImageExportFormat) => void;
 }) {
+  const { format } = useImageExportFormat();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -42,7 +50,7 @@ export function ImageExportMenu({
           size="sm"
           variant="outline"
           disabled={disabled}
-          title="Exportar — salvar como .dds/.png em pasta livre, ou extrair os dois formatos para mods/"
+          title="Exportar — salva no formato selecionado em mods/images, ou escolha pasta customizada"
         >
           <Save size={16} />
           Exportar
@@ -51,29 +59,23 @@ export function ImageExportMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
-        className="min-w-44"
+        className="min-w-56"
       >
-        <DropdownMenuItem onClick={() => onSave('dds')}>
+        <DropdownMenuItem
+          onClick={() => onExport(format)}
+          title={`Exporta como ${IMAGE_EXPORT_FORMAT_LABELS[format]} para mods/images (sem diálogo)`}
+        >
           <Save size={14} />
-          .dds
-          <span className="ml-auto pl-3 text-xs opacity-60">padrão</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onSave('png')}>
-          <Download size={14} />
-          .png
+          Exportar
+          <span className="ml-auto pl-3 text-xs opacity-60">mods/</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={onExtract}
-          title={
-            readOnly
-              ? 'Extrai esta imagem do .vbf como .dds e .png, preservando o caminho interno (mods/images)'
-              : 'Gera .dds e .png na pasta de imagens de trabalho — o diálogo pergunta se é só esta ou todas as cópias'
-          }
+          onClick={() => onExtractTo(format)}
+          title="Escolhe a pasta de destino e exporta no formato selecionado, preservando o caminho interno"
         >
-          <FolderInput size={14} />
-          .dds + .png
-          <span className="ml-auto pl-3 text-xs opacity-60">mods/</span>
+          <FolderOpen size={14} />
+          Exportar para…
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

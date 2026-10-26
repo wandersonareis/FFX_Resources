@@ -10,6 +10,7 @@ import (
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/fileFormats/ddsphyre"
+	"ffxresources/backend/uilog"
 )
 
 // IMAGENS (.dds.phyre)
@@ -220,10 +221,22 @@ func (s *MetadataService) ExtractImage(kind, id string, version common.GameVersi
 	if !ddsphyre.ValidID(id) {
 		return nil, fmt.Errorf("textura desconhecida: %s", id)
 	}
+
+	uilog.Info("Export", "Iniciando extração de 1 imagem(ns) de data/")
+
 	paths, err := ddsphyre.Extract(version, id)
 	if err != nil {
 		return nil, err
 	}
+
+	for _, p := range paths {
+		if strings.HasSuffix(strings.ToLower(p), ".dds") {
+			uilog.File("Export", p, uilog.StatusOk, "extraído como dds")
+		} else if strings.HasSuffix(strings.ToLower(p), ".png") {
+			uilog.File("Export", p, uilog.StatusOk, "extraído como png")
+		}
+	}
+
 	// Atualiza o view (fonte passa a ser o .dds em disco).
 	if s != nil && s.notifier != nil {
 		s.notifier.NotifyInfo(fmt.Sprintf("Imagem exportada: ddsphyre/%s", id))
@@ -244,6 +257,9 @@ func (s *MetadataService) ImportImage(kind, id, ddsPath string, version common.G
 	if !ddsphyre.ValidID(id) {
 		return fmt.Errorf("textura desconhecida: %s", id)
 	}
+
+	uilog.Info("Import", "%s: importando", id)
+
 	if err := ddsphyre.Import(version, id, ddsPath); err != nil {
 		return err
 	}
@@ -259,6 +275,10 @@ func (s *MetadataService) ImportImage(kind, id, ddsPath string, version common.G
 	if _, err := ddsphyre.ExtractEffective(version, id); err != nil {
 		common.LogWarning("images %s/%s: import ok, mas não atualizei os .dds/.png extraídos: %v", version, id, err)
 	}
+
+	// Log the written path in mods/
+	modsPath := ddsphyre.RelPath(version, id)
+	uilog.File("Import", modsPath, uilog.StatusOk, "importado de um dds")
 	return nil
 }
 
@@ -679,12 +699,21 @@ func (s *MetadataService) SaveImage(kind, id, format, destPath string, version c
 	if !ddsphyre.ValidID(id) {
 		return fmt.Errorf("textura desconhecida: %s", id)
 	}
+
+	formatLower := strings.ToLower(strings.TrimSpace(format))
+	uilog.Info("Export", "%s: exportando", id)
+
 	// Trava de gravação: export escolhido pelo usuário, mas nunca por cima
 	// do .vbf (fonte somente leitura) nem em data/ dentro da árvore.
 	if err := common.CheckWritablePath(destPath); err != nil {
 		return err
 	}
-	return ddsphyre.Save(version, id, format, destPath)
+	if err := ddsphyre.Save(version, id, format, destPath); err != nil {
+		return err
+	}
+
+	uilog.File("Export", destPath, uilog.StatusOk, fmt.Sprintf("exportado como %s", formatLower))
+	return nil
 }
 
 // ImageWorkDir devolve o diretório de trabalho da textura em
@@ -708,6 +737,30 @@ func ImageWorkDir(version common.GameVersion, id string) string {
 		return root
 	}
 	return dir
+}
+
+// ImageExportPath devolve o caminho padrão de exportação (.dds ou .png) em
+// mods/images/<raiz>/<id> para o formato pedido. É o mesmo caminho que o
+// Extract usa, mas só para UM formato — usado pelo "Exportar" direto sem diálogo.
+func (s *MetadataService) ImageExportPath(kind, id, format string, version common.GameVersion) (string, error) {
+	if !isImageKind(kind) {
+		return "", fmt.Errorf("kind desconhecido: %s", kind)
+	}
+	if err := ensureVersionReady(version); err != nil {
+		return "", err
+	}
+	if !ddsphyre.ValidID(id) {
+		return "", fmt.Errorf("textura desconhecida: %s", id)
+	}
+	formatLower := strings.ToLower(strings.TrimSpace(format))
+	if formatLower != "dds" && formatLower != "png" {
+		return "", fmt.Errorf("formato %q inválido (esperado dds ou png)", format)
+	}
+	ddsPath, pngPath := ddsphyre.ExportPaths(version, id)
+	if formatLower == "dds" {
+		return ddsPath, nil
+	}
+	return pngPath, nil
 }
 
 func isImageKind(kind string) bool {

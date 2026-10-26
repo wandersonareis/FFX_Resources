@@ -20,6 +20,7 @@ import {
   ExtractImageSelection,
   GetImageEntry,
   ImageDuplicates,
+  ImageExportPath,
   ImageSelectionCopies,
   ImageExists,
   ImportImage,
@@ -415,6 +416,20 @@ export function selectImageSavePath(
     suggestedName,
     id,
     version as Parameters<typeof SelectImageSavePath>[3]
+  );
+}
+
+/** Caminho padrão de exportação (.dds ou .png) em mods/images para export direto sem diálogo. */
+export function imageExportPath(
+  id: string,
+  format: 'dds' | 'png',
+  version: GameVersionId
+): Promise<string> {
+  return ImageExportPath(
+    'images',
+    id,
+    format,
+    version as Parameters<typeof ImageExportPath>[3]
   );
 }
 

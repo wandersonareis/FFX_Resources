@@ -151,3 +151,13 @@ func (s *VbfService) ExportVbfSelection(vbfPath, format string, paths []string, 
 	}
 	return s.meta.ExportVbfSelection(vbfPath, format, paths, langs)
 }
+
+// VbfImageExportPath devolve o caminho padrão de exportação (.dds ou .png) em
+// mods/images/<raiz>/<id> para a textura do .vbf — usado pelo "Exportar"
+// direto sem diálogo.
+func (s *VbfService) VbfImageExportPath(vbfPath, innerPath, format string) (string, error) {
+	if s.meta == nil {
+		return "", fmt.Errorf("metadata service not initialized")
+	}
+	return s.meta.VbfImageExportPath(vbfPath, innerPath, format)
+}

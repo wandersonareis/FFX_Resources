@@ -140,6 +140,15 @@ export function SelectVbfImageExtractDir(): $CancellablePromise<string> {
     return $Call.ByID(2533874608);
 }
 
+/**
+ * VbfImageExportPath devolve o caminho padrão de exportação (.dds ou .png) em
+ * mods/images/<raiz>/<id> para a textura do .vbf — usado pelo "Exportar"
+ * direto sem diálogo.
+ */
+export function VbfImageExportPath(vbfPath: string, innerPath: string, format: string): $CancellablePromise<string> {
+    return $Call.ByID(609557501, vbfPath, innerPath, format);
+}
+
 // Private type creation functions
 const $$createType0 = $Create.Array($Create.Any);
 const $$createType1 = dto$0.BatchResult.createFrom;

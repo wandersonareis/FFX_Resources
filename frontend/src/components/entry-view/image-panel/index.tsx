@@ -75,8 +75,9 @@ export function ImagePanel({ view }: { view: EntryView }) {
     confirmImportImages,
     closeImportImages,
     openAction,
-    onSave,
+    onExport,
     onImport,
+    onExtractTo,
     runImport,
     onRefresh,
   } = useImageActions({
@@ -158,8 +159,8 @@ export function ImagePanel({ view }: { view: EntryView }) {
           flipped={preview.flipped}
           duplicateCount={duplicates.length}
           infoHidden={infoHidden}
-          onExtract={() => openAction('extract')}
-          onSave={(format) => void onSave(format)}
+          onExport={(format) => void onExport(format)}
+          onExtractTo={(format) => void onExtractTo(format)}
           onImport={() => void onImport()}
           onImportTranslated={() => void openImportImages()}
           onReplicate={() => openAction('replicate')}

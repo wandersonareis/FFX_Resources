@@ -101,6 +101,15 @@ export function ImageExists(kind: string, id: string, version: common$0.GameVers
 }
 
 /**
+ * ImageExportPath devolve o caminho padrão de exportação (.dds ou .png) em
+ * mods/images/<raiz>/<id> para o formato pedido — usado pelo "Exportar"
+ * direto sem diálogo.
+ */
+export function ImageExportPath(kind: string, id: string, format: string, version: common$0.GameVersion): $CancellablePromise<string> {
+    return $Call.ByID(888094280, kind, id, format, version);
+}
+
+/**
  * ImageSelectionCopies retorna, sem decodificar imagens, a união única das
  * cópias adicionais dos ids selecionados.
  */

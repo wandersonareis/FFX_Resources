@@ -13,6 +13,7 @@ import {
   SelectVbfExtractDir,
   SelectVbfImageExtractDir,
   SaveVbfImage,
+  VbfImageExportPath,
 } from '@/bindings/ffxresources/vbfservice';
 import * as dto from '@/bindings/ffxresources/backend/dto/models';
 import type { ExportFormat } from './export-selection';
@@ -237,4 +238,13 @@ export function exportVbfSelection(
   langs: string[] = []
 ): Promise<string[]> {
   return ExportVbfSelection(root, format, paths, langs);
+}
+
+/** Caminho padrão de exportação (.dds ou .png) em mods/images para textura do .vbf — export direto sem diálogo. */
+export function vbfImageExportPath(
+  root: string,
+  path: string,
+  format: 'dds' | 'png'
+): Promise<string> {
+  return VbfImageExportPath(root, path, format);
 }

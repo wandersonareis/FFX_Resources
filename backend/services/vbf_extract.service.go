@@ -38,6 +38,7 @@ import (
 	jsonfmt "ffxresources/backend/formatters/json"
 	"ffxresources/backend/loggingService"
 	"ffxresources/backend/progress"
+	"ffxresources/backend/uilog"
 )
 
 // vbfDefaultExtractRoot é o destino de "Extrair binário": a árvore data/
@@ -317,6 +318,8 @@ func (s *MetadataService) ExtractVbfImagesSelection(vbfPath string, paths []stri
 		return dto.BatchResult{}, fmt.Errorf("criando destino %s: %w", destRoot, err)
 	}
 
+	uilog.Info("Export", "Iniciando extração de %d imagem(ns) de %s", len(images), base)
+
 	prog, step := s.progressStep(fmt.Sprintf("Extraindo %d imagem(ns) de %s", len(images), base), len(images))
 	defer prog.End()
 	for _, entry := range images {
@@ -348,9 +351,13 @@ func (s *MetadataService) ExtractVbfImagesSelection(vbfPath string, paths []stri
 			err = fmt.Errorf("caminho de imagem inválido no .vbf: %s", entry.Path)
 		} else {
 			stem := entry.Path[:len(entry.Path)-len(ddsphyre.Suffix)]
-			err = writeVbfImageArtifact(destRoot, stem+".dds", dds)
+			ddsPath, err := writeVbfImageArtifact(destRoot, stem+".dds", dds)
 			if err == nil {
-				err = writeVbfImageArtifact(destRoot, stem+".png", png)
+				pngPath, err := writeVbfImageArtifact(destRoot, stem+".png", png)
+				if err == nil {
+					uilog.File("Export", ddsPath, uilog.StatusOk, "extraído como dds")
+					uilog.File("Export", pngPath, uilog.StatusOk, "extraído como png")
+				}
 			}
 		}
 		if err != nil {
@@ -364,18 +371,18 @@ func (s *MetadataService) ExtractVbfImagesSelection(vbfPath string, paths []stri
 	return out, nil
 }
 
-func writeVbfImageArtifact(destRoot, innerPath string, data []byte) error {
+func writeVbfImageArtifact(destRoot, innerPath string, data []byte) (string, error) {
 	target, err := vbfExtractTarget(destRoot, innerPath, true)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := common.CheckWritablePath(target); err != nil {
-		return err
+		return "", err
 	}
 	if err := os.WriteFile(target, data, 0o644); err != nil {
-		return fmt.Errorf("gravando %s: %w", filepath.Base(target), err)
+		return "", fmt.Errorf("gravando %s: %w", filepath.Base(target), err)
 	}
-	return nil
+	return target, nil
 }
 
 // ExportVbfSelection decodifica os kinds de TEXTO da seleção e grava os

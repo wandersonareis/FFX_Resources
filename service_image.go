@@ -147,6 +147,16 @@ func (s *ImageService) SaveImage(kind, id, format, destPath string, version comm
 	return s.meta.SaveImage(kind, id, format, destPath, version)
 }
 
+// ImageExportPath devolve o caminho padrão de exportação (.dds ou .png) em
+// mods/images/<raiz>/<id> para o formato pedido — usado pelo "Exportar"
+// direto sem diálogo.
+func (s *ImageService) ImageExportPath(kind, id, format string, version common.GameVersion) (string, error) {
+	if s.meta == nil {
+		return "", fmt.Errorf("metadata service not initialized")
+	}
+	return s.meta.ImageExportPath(kind, id, format, version)
+}
+
 // SelectImageFile abre o seletor nativo para escolher um .dds a importar,
 // começando no diretório de trabalho da textura (mods/images/<raiz>/<dir do
 // id>) — o lugar onde o .dds extraído dela já mora. Só .dds: é o único

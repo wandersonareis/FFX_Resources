@@ -12,22 +12,25 @@ import {
   refreshImageDuplicates,
   saveImage,
   selectImageFile,
-  selectImageSavePath,
+  imageExportPath,
 } from '@/lib/ffx/tree-data';
 import {
   extractVbfImagesSelection,
   importVbfImage,
   invalidateVbfImage,
   saveVbfImage,
+  selectVbfImageExtractDir,
+  vbfImageExportPath,
 } from '@/lib/ffx/vbf';
 import { parseError } from '@/lib/ffx/error-handler';
 import type { EntryView } from '@/components/entry-view/entry-view-store';
 
 export type ImageBusy =
   | 'extract'
+  | 'extractTo'
+  | 'export'
   | 'import'
   | 'importBatch'
-  | 'save'
   | 'refresh'
   | null;
 
@@ -133,19 +136,52 @@ export function useImageActions({
     });
   };
 
-  const onSave = async (format: 'dds' | 'png') => {
+  const onExport = async (format: 'dds' | 'png' | 'dds+png') => {
     if (!entry) return;
-    const name = entry.id.split('/').pop() ?? 'textura';
-    setBusy('save');
+    setBusy('export');
     try {
-      const dest = await selectImageSavePath(format, `${name}.${format}`, entry.id, version);
-      if (!dest) return;
-      if (entry.vbf) {
-        await saveVbfImage(entry.vbf.root, entry.vbf.path, format, dest);
-      } else {
-        await saveImage(entry.id, format, dest, version);
+      const formats = format === 'dds+png' ? (['dds', 'png'] as const) : [format];
+      const dests: string[] = [];
+
+      for (const fmt of formats) {
+        let dest: string;
+        if (entry.vbf) {
+          dest = await vbfImageExportPath(entry.vbf.root, entry.vbf.path, fmt);
+          await saveVbfImage(entry.vbf.root, entry.vbf.path, fmt, dest);
+        } else {
+          dest = await imageExportPath(entry.id, fmt, version);
+          await saveImage(entry.id, fmt, dest, version);
+        }
+        dests.push(dest);
       }
-      toast.success(`Imagem salva: ${dest}`);
+
+      if (dests.length === 1) {
+        toast.success(`Imagem exportada: ${dests[0]}`);
+      } else {
+        toast.success(`Imagem exportada como DDS e PNG: ${dests.join(', ')}`);
+      }
+    } catch (error) {
+      toast.error(parseError(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onExtractTo = async (format: 'dds' | 'png' | 'dds+png') => {
+    if (!entry || !entry.vbf) return;
+    setBusy('extractTo');
+    try {
+      const destRoot = await selectVbfImageExtractDir();
+      if (!destRoot) return; // usuário cancelou
+      const result = await extractVbfImagesSelection(entry.vbf.root, [entry.vbf.path], destRoot);
+      if (result.failed.length > 0) {
+        toast.warning(`Extraídas ${result.done.length} de ${result.total} imagens.`, {
+          description: result.failed.slice(0, 3).join('; '),
+        });
+      } else if (result.total > 0) {
+        const fmtLabel = format === 'dds+png' ? '.dds e .png' : `.${format}`;
+        toast.success(`Imagem extraída como ${fmtLabel} em ${destRoot}`);
+      }
     } catch (error) {
       toast.error(parseError(error));
     } finally {
@@ -298,7 +334,8 @@ export function useImageActions({
     confirmImportImages,
     closeImportImages: () => setPendingBatch(null),
     openAction,
-    onSave,
+    onExport,
+    onExtractTo,
     onImport,
     runImport,
     onRefresh,
