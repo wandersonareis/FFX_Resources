@@ -48,6 +48,17 @@ export const translateDir =
   cfg?.Locations?.TranslateLocation?.trim() ||
   path.join(gameFiles, 'mods', 'translated');
 
+/** Raiz de IMAGENS traduzidas — o que o modal de importação de imagens varre. */
+export const translatedImagesDir = path.join(translateDir, 'images');
+
+/**
+ * Existe algum .dds.phyre na pasta traduzida: com ela o modal do import de
+ * imagens tem linhas para marcar; sem ela, só o estado vazio é testável.
+ */
+export const hasTranslatedImages =
+  fs.existsSync(translatedImagesDir) &&
+  findFirstPhyre(translatedImagesDir) !== null;
+
 /** Executável do jogo configurado ('' = sem raízes .vbf na sidebar). */
 export const gameExe = cfg?.GameExeLocation?.trim() ?? '';
 
@@ -89,6 +100,36 @@ function findFirstPhyre(root: string): string | null {
     return null;
   };
   return walk(root);
+}
+
+/**
+ * Primeiros .dds.phyre de uma árvore de versão (ffx_data, ffx-2_data) — o
+ * spec do modal de importação semeia a pasta traduzida COM ELES quando a
+ * máquina não tem translated/images, para o fluxo de seleção rodar em
+ * qualquer fixture. `id` é relativo à raiz da versão (gamedata/ps3data/…).
+ */
+export function firstPhyreIds(
+  tree: string,
+  count: number
+): Array<{ id: string; abs: string }> {
+  const out: Array<{ id: string; abs: string }> = [];
+  const root = path.join(gameFiles, tree);
+  if (!fs.existsSync(root)) return out;
+  const walk = (dir: string): boolean => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (walk(full)) return true;
+      } else if (/\.dds\.phyre$/i.test(entry.name) && out.length < count) {
+        const rel = path.relative(root, full);
+        out.push({ id: rel.split(path.sep).join('/').replace(/\.dds\.phyre$/i, ''), abs: full });
+        if (out.length >= count) return true;
+      }
+    }
+    return false;
+  };
+  walk(root);
+  return out;
 }
 
 /**

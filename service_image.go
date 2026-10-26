@@ -186,22 +186,23 @@ func (s *ImageService) SelectImageSavePath(format, suggestedName, id string, ver
 	)
 }
 
-// PreviewImportImages varre a raiz de imagens traduzidas
-// (<TranslateLocation>/images) e resume o lote SEM gravar: devolve os
-// diretórios logo após ps3data (events, map, menu…) para o diálogo marcar e
-// quantos candidatos diferem do que já está em mods/.
-func (s *ImageService) PreviewImportImages(version common.GameVersion, subdirs []string) (dto.ImageBatch, error) {
+// PreviewImportImages varre <TranslateLocation>/images e devolve o resumo
+// do import: uma entrada por .dds.phyre encontrado (novas, iguais ao
+// binário e inválidas), com as cópias ausentes do grupo anexadas à
+// primeira entrada exibida de cada grupo. Nada é gravado.
+func (s *ImageService) PreviewImportImages(version common.GameVersion) (dto.ImageImportPreview, error) {
 	if s.meta == nil {
-		return dto.ImageBatch{}, fmt.Errorf("metadata service not initialized")
+		return dto.ImageImportPreview{}, fmt.Errorf("metadata service not initialized")
 	}
-	return s.meta.PreviewImportImages(version, subdirs)
+	return s.meta.PreviewImportImages(version)
 }
 
-// ImportImages grava sobre mods/ apenas os .dds.phyre diferentes dos já
-// presentes (idênticos são pulados) e atualiza os artefatos de trabalho.
-func (s *ImageService) ImportImages(version common.GameVersion, subdirs []string) (dto.ImageBatch, error) {
+// ImportImages aplica a SELEÇÃO do modal: grava em mods/ apenas as imagens
+// marcadas e as cópias marcadas de cada uma (inclusive a regravação de uma
+// idêntica ao binário) e atualiza os artefatos de trabalho.
+func (s *ImageService) ImportImages(version common.GameVersion, selection dto.ImageImportSelection) (dto.ImageImportResult, error) {
 	if s.meta == nil {
-		return dto.ImageBatch{}, fmt.Errorf("metadata service not initialized")
+		return dto.ImageImportResult{}, fmt.Errorf("metadata service not initialized")
 	}
-	return s.meta.ImportImages(version, subdirs)
+	return s.meta.ImportImages(version, selection)
 }

@@ -79,6 +79,14 @@ diálogo de Configurações, confere o erro e devolve o valor original.
   menus Exportar/Importar, import translated, editor (cancelar não suja),
   painel de imagem (extrair/deletar/importar traduzidas/replicar) — cada
   um contido na viewport (**sem estouro de conteúdo**);
+- `import-images-dialog.spec` — **o modal de importação de imagens
+  traduzidas** (`mods/translated/images`): abre pelo dropdown Importar do
+  painel, mostra a origem completa, o "Todas" em 3 estados e a legenda das
+  cores; lista os caminhos relativos à raiz (com extensão, sem o caminho
+  absoluto); as iguais ao binário nascem desmarcadas; desmarcar uma cópia
+  do collapse deixa a linha indeterminada e o "Todas" consolida; confirma
+  gravando **só a seleção** em `mods/` (com backup/restauração do fixture)
+  — a seleção só é exercitada quando há `.dds.phyre` na pasta traduzida;
 - `mods-toggle-navigation.spec` — **alternar o toggle "Preferir binários
   traduzidos (mods)" e seguir navegando**: com um texto já aberto (a
   seleção cai na recarga automática e a mesma entrada reabre, trocando

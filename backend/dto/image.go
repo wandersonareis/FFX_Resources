@@ -110,21 +110,89 @@ func NewImageMetadata(id string, version common.GameVersion) Metadata {
 	}
 }
 
-// ImageBatch descreve um import em lote de .dds.phyre a partir da raiz de
-// imagens traduzidas (<TranslateLocation>/images).
-type ImageBatch struct {
-	// Root é a varredura.
+// ImageImportPreviewCopy descreve uma cópia AUSENTE na pasta traduzida
+// para o collapse do modal: mesmo payload original, mas sem arquivo
+// traduzido — o import pode propagar os bytes da imagem para ela.
+type ImageImportPreviewCopy struct {
+	// ID é o id da cópia (caminho sem sufixo .dds.phyre).
+	ID string `json:"id"`
+	// DisplayPath é o caminho relativo à raiz traduzida, COM extensão
+	// (ex.: "gamedata/ps3data/events/evt_01.dds.phyre").
+	DisplayPath string `json:"display_path"`
+	// InMods indica que a cópia tem substituição em mods/.
+	InMods bool `json:"in_mods"`
+	// Identical indica que o payload efetivo (o que o jogo carrega) é o
+	// mesmo da imagem — cópia ainda sincronizada.
+	Identical bool `json:"identical"`
+	// Selected é o estado do checkbox no modal. Default: acompanha a
+	// imagem (marcado quando a imagem é nova).
+	Selected bool `json:"selected"`
+}
+
+// ImageImportPreviewEntry descreve uma imagem candidata ao import vinda de
+// mods/translated/images, com detalhes para o modal de confirmação.
+type ImageImportPreviewEntry struct {
+	// ID da textura (caminho relativo sem sufixo .dds.phyre).
+	ID string `json:"id"`
+	// DisplayPath é o caminho relativo à raiz traduzida
+	// (mods/translated/images), COM extensão — semelhante ao caminho
+	// interno do .vbf e sem o prefixo absoluto, que alongaria o modal
+	// (ex.: "gamedata/ps3data/event/obj/bl/bltz0201/tex_us/d3d11/461728_256_1.dds.phyre").
+	DisplayPath string `json:"display_path"`
+	// Differs indica se o .dds.phyre difere do que já está em mods/.
+	// False = igual ao binário (hoje pulada): vem desmarcada e com cor de
+	// texto distinta no modal — marcar força a regravação do binário.
+	Differs bool `json:"differs"`
+	// CopyCount é o número de OUTRAS cópias de mesmo payload original (do
+	// índice de duplicatas). 0 = imagem única.
+	CopyCount int `json:"copy_count"`
+	// CopyMissingCount quantas cópias do grupo original estão AUSENTES na
+	// pasta traduzida (info diz N, pasta tem M, faltam N-M).
+	CopyMissingCount int `json:"copy_missing_count"`
+	// Copies são as cópias AUSENTES na pasta traduzida — o conteúdo do
+	// collapse. Só vem preenchido na PRIMEIRA entrada exibida do grupo.
+	Copies []ImageImportPreviewCopy `json:"copies,omitempty"`
+	// ValidationError erro de validação que impede o import (formato DX,
+	// dimensões, mipmaps, IO, formato inválido). Vazio = sem erro.
+	ValidationError string `json:"validation_error,omitempty"`
+	// Selected é o estado do checkbox da imagem (estado do modal): só as
+	// novas e válidas nascem marcadas.
+	Selected bool `json:"selected"`
+}
+
+// ImageImportPreview é o resumo devolvido pelo preview do import de
+// imagens traduzidas — uma entrada por .dds.phyre encontrado na raiz.
+type ImageImportPreview struct {
+	// Root é a varredura (ex.: "C:/.../mods/translated/images").
 	Root string `json:"root"`
-	// Subdirs são os diretórios disponíveis logo após ps3data (events, map,
-	// menu…). Voltam sempre, mesmo sem seleção — é o que o diálogo oferece
-	// para marcar.
-	Subdirs []string `json:"subdirs"`
-	// Picked são os subdiretórios efetivamente selecionados.
-	Picked []string `json:"picked"`
-	// Max é o total de candidatos no escopo; NewCount quantos diferem do que
-	// já está em mods/ (no preview) ou foram gravados (na aplicação).
-	Max      int `json:"max"`
+	// Entries são TODAS as imagens candidatas (uma por .dds.phyre encontrado).
+	Entries []ImageImportPreviewEntry `json:"entries"`
+	// Max é o total de candidatos.
+	Max int `json:"max"`
+	// NewCount quantos diferem do que já está em mods/ (nascem marcados).
 	NewCount int `json:"new_count"`
-	// Errors agrega as falhas por textura; o lote segue nos demais.
+	// IdenticalCount quantos são IGUAIS ao binário em mods/ (nascem
+	// desmarcados, com cor distinta — marcar regrava o binário).
+	IdenticalCount int `json:"identical_count"`
+	// Errors agrega as falhas de validação por textura (formato DX,
+	// dimensões, mipmaps, IO, formato inválido) — estas não importam.
 	Errors []string `json:"errors"`
+}
+
+// ImageImportSelectionEntry é a decisão do modal para UMA imagem da
+// seleção: gravar (ou regravar) o container dela e/ou propagar os bytes
+// para as cópias marcadas.
+type ImageImportSelectionEntry struct {
+	// ID da imagem de origem (o .dds.phyre da pasta traduzida).
+	ID string `json:"id"`
+	// Image grava o container da própria imagem. Falso = só as cópias.
+	Image bool `json:"image"`
+	// Copies são os ids das cópias a receber os mesmos bytes.
+	Copies []string `json:"copies,omitempty"`
+}
+
+// ImageImportSelection é a seleção do modal: só o que está aqui é
+// aplicado — nunca a pasta traduzida inteira.
+type ImageImportSelection struct {
+	Entries []ImageImportSelectionEntry `json:"entries"`
 }

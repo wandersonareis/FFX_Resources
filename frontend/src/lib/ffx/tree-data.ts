@@ -219,31 +219,28 @@ export function importImageGroup(
 }
 
 /**
- * Varre <TranslateLocation>/images e resume o lote SEM gravar: devolve os
- * diretórios após ps3data (events, map…) e quantos candidatos são NOVOS
- * (diferentes do container já em mods/).
+ * Varre <TranslateLocation>/images e devolve o resumo do import: uma entrada
+ * por .dds.phyre encontrado (novas, iguais ao binário e inválidas), com as
+ * cópias ausentes do grupo anexadas à primeira entrada exibida de cada grupo.
  */
 export function previewImportImages(
-  version: GameVersionId,
-  subdirs: string[]
-): Promise<dto.ImageBatch> {
-  return PreviewImportImages(
-    version as Parameters<typeof PreviewImportImages>[0],
-    subdirs
-  );
+  version: GameVersionId
+): Promise<dto.ImageImportPreview> {
+  return PreviewImportImages(version as Parameters<typeof PreviewImportImages>[0]);
 }
 
 /**
- * Grava sobre mods/ apenas os .dds.phyre diferentes dos já presentes —
- * idênticos são pulados.
+ * Aplica a SELEÇÃO do modal: grava em mods/ apenas as imagens marcadas e as
+ * cópias marcadas de cada uma (inclusive a regravação de uma idêntica ao
+ * binário).
  */
 export function importImages(
   version: GameVersionId,
-  subdirs: string[]
-): Promise<dto.ImageBatch> {
+  selection: dto.ImageImportSelection
+): Promise<dto.ImageImportResult> {
   return ImportImages(
     version as Parameters<typeof ImportImages>[0],
-    subdirs
+    selection
   );
 }
 

@@ -254,16 +254,27 @@ test.describe('Diálogos', () => {
       await expect(deleteDialog).toBeHidden();
     });
 
-    test('diálogo de importar imagens traduzidas (marcar diretórios)', async ({ page }) => {
+    test('diálogo de importar imagens traduzidas (seleção por imagem)', async ({ page }) => {
       await gotoApp(page);
       await openFirstImageEntry(page);
 
+      // Dropdown Importar do painel → item do lote translated/images.
       await page
-        .getByRole('button', { name: 'Importar traduzidas…' })
+        .locator('main')
+        .getByRole('button', { name: /^Importar/ })
         .click();
+      await page
+        .getByRole('menu')
+        .getByRole('menuitem', { name: /Importar mods\/translated\/images/ })
+        .click();
+
       const importDialog = dialog(page);
       await expect(
         importDialog.getByText('Importar imagens traduzidas')
+      ).toBeVisible({ timeout: 60_000 });
+      // O sumário lista caminhos relativos à raiz, com o "Todas" em 3 estados.
+      await expect(
+        importDialog.getByRole('checkbox', { name: 'Marcar todas as imagens' })
       ).toBeVisible();
       await expectDialogWithinViewport(page);
       await importDialog.getByRole('button', { name: 'Cancelar' }).click();

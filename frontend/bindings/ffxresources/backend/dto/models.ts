@@ -147,85 +147,6 @@ export class FileEntry {
 }
 
 /**
- * ImageBatch descreve um import em lote de .dds.phyre a partir da raiz de
- * imagens traduzidas (<TranslateLocation>/images).
- */
-export class ImageBatch {
-    /**
-     * Root é a varredura.
-     */
-    "root": string;
-
-    /**
-     * Subdirs são os diretórios disponíveis logo após ps3data (events, map,
-     * menu…). Voltam sempre, mesmo sem seleção — é o que o diálogo oferece
-     * para marcar.
-     */
-    "subdirs": string[];
-
-    /**
-     * Picked são os subdiretórios efetivamente selecionados.
-     */
-    "picked": string[];
-
-    /**
-     * Max é o total de candidatos no escopo; NewCount quantos diferem do que
-     * já está em mods/ (no preview) ou foram gravados (na aplicação).
-     */
-    "max": number;
-    "new_count": number;
-
-    /**
-     * Errors agrega as falhas por textura; o lote segue nos demais.
-     */
-    "errors": string[];
-
-    /** Creates a new ImageBatch instance. */
-    constructor($$source: Partial<ImageBatch> = {}) {
-        if (!("root" in $$source)) {
-            this["root"] = "";
-        }
-        if (!("subdirs" in $$source)) {
-            this["subdirs"] = [];
-        }
-        if (!("picked" in $$source)) {
-            this["picked"] = [];
-        }
-        if (!("max" in $$source)) {
-            this["max"] = 0;
-        }
-        if (!("new_count" in $$source)) {
-            this["new_count"] = 0;
-        }
-        if (!("errors" in $$source)) {
-            this["errors"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new ImageBatch instance from a string or object.
-     */
-    static createFrom($$source: any = {}): ImageBatch {
-        const $$createField1_0 = $$createType0;
-        const $$createField2_0 = $$createType0;
-        const $$createField5_0 = $$createType0;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("subdirs" in $$parsedSource) {
-            $$parsedSource["subdirs"] = $$createField1_0($$parsedSource["subdirs"]);
-        }
-        if ("picked" in $$parsedSource) {
-            $$parsedSource["picked"] = $$createField2_0($$parsedSource["picked"]);
-        }
-        if ("errors" in $$parsedSource) {
-            $$parsedSource["errors"] = $$createField5_0($$parsedSource["errors"]);
-        }
-        return new ImageBatch($$parsedSource as Partial<ImageBatch>);
-    }
-}
-
-/**
  * ImageDuplicate é uma cópia de mesma imagem (payload original igual).
  */
 export class ImageDuplicate {
@@ -462,6 +383,240 @@ export class ImageEntry {
 }
 
 /**
+ * ImageImportPreview é o resumo devolvido pelo preview do import de
+ * imagens traduzidas — uma entrada por .dds.phyre encontrado na raiz.
+ */
+export class ImageImportPreview {
+    /**
+     * Root é a varredura (ex.: "C:/.../mods/translated/images").
+     */
+    "root": string;
+
+    /**
+     * Entries são TODAS as imagens candidatas (uma por .dds.phyre encontrado).
+     */
+    "entries": ImageImportPreviewEntry[];
+
+    /**
+     * Max é o total de candidatos.
+     */
+    "max": number;
+
+    /**
+     * NewCount quantos diferem do que já está em mods/ (nascem marcados).
+     */
+    "new_count": number;
+
+    /**
+     * IdenticalCount quantos são IGUAIS ao binário em mods/ (nascem
+     * desmarcados, com cor distinta — marcar regrava o binário).
+     */
+    "identical_count": number;
+
+    /**
+     * Errors agrega as falhas de validação por textura (formato DX,
+     * dimensões, mipmaps, IO, formato inválido) — estas não importam.
+     */
+    "errors": string[];
+
+    /** Creates a new ImageImportPreview instance. */
+    constructor($$source: Partial<ImageImportPreview> = {}) {
+        if (!("root" in $$source)) {
+            this["root"] = "";
+        }
+        if (!("entries" in $$source)) {
+            this["entries"] = [];
+        }
+        if (!("max" in $$source)) {
+            this["max"] = 0;
+        }
+        if (!("new_count" in $$source)) {
+            this["new_count"] = 0;
+        }
+        if (!("identical_count" in $$source)) {
+            this["identical_count"] = 0;
+        }
+        if (!("errors" in $$source)) {
+            this["errors"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ImageImportPreview instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ImageImportPreview {
+        const $$createField1_0 = $$createType9;
+        const $$createField5_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("entries" in $$parsedSource) {
+            $$parsedSource["entries"] = $$createField1_0($$parsedSource["entries"]);
+        }
+        if ("errors" in $$parsedSource) {
+            $$parsedSource["errors"] = $$createField5_0($$parsedSource["errors"]);
+        }
+        return new ImageImportPreview($$parsedSource as Partial<ImageImportPreview>);
+    }
+}
+
+/**
+ * ImageImportPreviewCopy descreve uma cópia AUSENTE na pasta traduzida
+ * para o collapse do modal: mesmo payload original, mas sem arquivo
+ * traduzido — o import pode propagar os bytes da imagem para ela.
+ */
+export class ImageImportPreviewCopy {
+    /**
+     * ID é o id da cópia (caminho sem sufixo .dds.phyre).
+     */
+    "id": string;
+
+    /**
+     * DisplayPath é o caminho relativo à raiz traduzida, COM extensão
+     * (ex.: "gamedata/ps3data/events/evt_01.dds.phyre").
+     */
+    "display_path": string;
+
+    /**
+     * InMods indica que a cópia tem substituição em mods/.
+     */
+    "in_mods": boolean;
+
+    /**
+     * Identical indica que o payload efetivo (o que o jogo carrega) é o
+     * mesmo da imagem — cópia ainda sincronizada.
+     */
+    "identical": boolean;
+
+    /**
+     * Selected é o estado do checkbox no modal. Default: acompanha a
+     * imagem (marcado quando a imagem é nova).
+     */
+    "selected": boolean;
+
+    /** Creates a new ImageImportPreviewCopy instance. */
+    constructor($$source: Partial<ImageImportPreviewCopy> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("display_path" in $$source)) {
+            this["display_path"] = "";
+        }
+        if (!("in_mods" in $$source)) {
+            this["in_mods"] = false;
+        }
+        if (!("identical" in $$source)) {
+            this["identical"] = false;
+        }
+        if (!("selected" in $$source)) {
+            this["selected"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ImageImportPreviewCopy instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ImageImportPreviewCopy {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ImageImportPreviewCopy($$parsedSource as Partial<ImageImportPreviewCopy>);
+    }
+}
+
+/**
+ * ImageImportPreviewEntry descreve uma imagem candidata ao import vinda de
+ * mods/translated/images, com detalhes para o modal de confirmação.
+ */
+export class ImageImportPreviewEntry {
+    /**
+     * ID da textura (caminho relativo sem sufixo .dds.phyre).
+     */
+    "id": string;
+
+    /**
+     * DisplayPath é o caminho relativo à raiz traduzida
+     * (mods/translated/images), COM extensão — semelhante ao caminho
+     * interno do .vbf e sem o prefixo absoluto, que alongaria o modal
+     * (ex.: "gamedata/ps3data/event/obj/bl/bltz0201/tex_us/d3d11/461728_256_1.dds.phyre").
+     */
+    "display_path": string;
+
+    /**
+     * Differs indica se o .dds.phyre difere do que já está em mods/.
+     * False = igual ao binário (hoje pulada): vem desmarcada e com cor de
+     * texto distinta no modal — marcar força a regravação do binário.
+     */
+    "differs": boolean;
+
+    /**
+     * CopyCount é o número de OUTRAS cópias de mesmo payload original (do
+     * índice de duplicatas). 0 = imagem única.
+     */
+    "copy_count": number;
+
+    /**
+     * CopyMissingCount quantas cópias do grupo original estão AUSENTES na
+     * pasta traduzida (info diz N, pasta tem M, faltam N-M).
+     */
+    "copy_missing_count": number;
+
+    /**
+     * Copies são as cópias AUSENTES na pasta traduzida — o conteúdo do
+     * collapse. Só vem preenchido na PRIMEIRA entrada exibida do grupo.
+     */
+    "copies"?: ImageImportPreviewCopy[];
+
+    /**
+     * ValidationError erro de validação que impede o import (formato DX,
+     * dimensões, mipmaps, IO, formato inválido). Vazio = sem erro.
+     */
+    "validation_error"?: string;
+
+    /**
+     * Selected é o estado do checkbox da imagem (estado do modal): só as
+     * novas e válidas nascem marcadas.
+     */
+    "selected": boolean;
+
+    /** Creates a new ImageImportPreviewEntry instance. */
+    constructor($$source: Partial<ImageImportPreviewEntry> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("display_path" in $$source)) {
+            this["display_path"] = "";
+        }
+        if (!("differs" in $$source)) {
+            this["differs"] = false;
+        }
+        if (!("copy_count" in $$source)) {
+            this["copy_count"] = 0;
+        }
+        if (!("copy_missing_count" in $$source)) {
+            this["copy_missing_count"] = 0;
+        }
+        if (!("selected" in $$source)) {
+            this["selected"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ImageImportPreviewEntry instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ImageImportPreviewEntry {
+        const $$createField5_0 = $$createType11;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("copies" in $$parsedSource) {
+            $$parsedSource["copies"] = $$createField5_0($$parsedSource["copies"]);
+        }
+        return new ImageImportPreviewEntry($$parsedSource as Partial<ImageImportPreviewEntry>);
+    }
+}
+
+/**
  * ImageImportResult é o resultado de uma importação em lote: o que entrou,
  * o que falhou (id: motivo) e o total considerado.
  */
@@ -499,6 +654,81 @@ export class ImageImportResult {
             $$parsedSource["failed"] = $$createField1_0($$parsedSource["failed"]);
         }
         return new ImageImportResult($$parsedSource as Partial<ImageImportResult>);
+    }
+}
+
+/**
+ * ImageImportSelection é a seleção do modal: só o que está aqui é
+ * aplicado — nunca a pasta traduzida inteira.
+ */
+export class ImageImportSelection {
+    "entries": ImageImportSelectionEntry[];
+
+    /** Creates a new ImageImportSelection instance. */
+    constructor($$source: Partial<ImageImportSelection> = {}) {
+        if (!("entries" in $$source)) {
+            this["entries"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ImageImportSelection instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ImageImportSelection {
+        const $$createField0_0 = $$createType13;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("entries" in $$parsedSource) {
+            $$parsedSource["entries"] = $$createField0_0($$parsedSource["entries"]);
+        }
+        return new ImageImportSelection($$parsedSource as Partial<ImageImportSelection>);
+    }
+}
+
+/**
+ * ImageImportSelectionEntry é a decisão do modal para UMA imagem da
+ * seleção: gravar (ou regravar) o container dela e/ou propagar os bytes
+ * para as cópias marcadas.
+ */
+export class ImageImportSelectionEntry {
+    /**
+     * ID da imagem de origem (o .dds.phyre da pasta traduzida).
+     */
+    "id": string;
+
+    /**
+     * Image grava o container da própria imagem. Falso = só as cópias.
+     */
+    "image": boolean;
+
+    /**
+     * Copies são os ids das cópias a receber os mesmos bytes.
+     */
+    "copies"?: string[];
+
+    /** Creates a new ImageImportSelectionEntry instance. */
+    constructor($$source: Partial<ImageImportSelectionEntry> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
+        if (!("image" in $$source)) {
+            this["image"] = false;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ImageImportSelectionEntry instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ImageImportSelectionEntry {
+        const $$createField2_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("copies" in $$parsedSource) {
+            $$parsedSource["copies"] = $$createField2_0($$parsedSource["copies"]);
+        }
+        return new ImageImportSelectionEntry($$parsedSource as Partial<ImageImportSelectionEntry>);
     }
 }
 
@@ -805,10 +1035,10 @@ export class ImportSummary {
      */
     static createFrom($$source: any = {}): ImportSummary {
         const $$createField4_0 = $$createType0;
-        const $$createField9_0 = $$createType9;
-        const $$createField10_0 = $$createType11;
+        const $$createField9_0 = $$createType15;
+        const $$createField10_0 = $$createType17;
         const $$createField11_0 = $$createType0;
-        const $$createField12_0 = $$createType13;
+        const $$createField12_0 = $$createType19;
         const $$createField13_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("languages" in $$parsedSource) {
@@ -953,7 +1183,7 @@ export class RefLink {
      * Creates a new RefLink instance from a string or object.
      */
     static createFrom($$source: any = {}): RefLink {
-        const $$createField2_0 = $$createType14;
+        const $$createField2_0 = $$createType20;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("originals" in $$parsedSource) {
             $$parsedSource["originals"] = $$createField2_0($$parsedSource["originals"]);
@@ -1054,9 +1284,9 @@ export class TextRow {
      * Creates a new TextRow instance from a string or object.
      */
     static createFrom($$source: any = {}): TextRow {
-        const $$createField4_0 = $$createType14;
-        const $$createField5_0 = $$createType14;
-        const $$createField6_0 = $$createType14;
+        const $$createField4_0 = $$createType20;
+        const $$createField5_0 = $$createType20;
+        const $$createField6_0 = $$createType20;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hash" in $$parsedSource) {
             $$parsedSource["hash"] = $$createField4_0($$parsedSource["hash"]);
@@ -1233,10 +1463,16 @@ const $$createType4 = RefLink.createFrom;
 const $$createType5 = $Create.Map($Create.Any, $$createType4);
 const $$createType6 = ImageDuplicate.createFrom;
 const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = ImportEntryInfo.createFrom;
+const $$createType8 = ImageImportPreviewEntry.createFrom;
 const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = ImportUsage.createFrom;
+const $$createType10 = ImageImportPreviewCopy.createFrom;
 const $$createType11 = $Create.Array($$createType10);
-const $$createType12 = ImportRowIssue.createFrom;
+const $$createType12 = ImageImportSelectionEntry.createFrom;
 const $$createType13 = $Create.Array($$createType12);
-const $$createType14 = $Create.Map($Create.Any, $Create.Any);
+const $$createType14 = ImportEntryInfo.createFrom;
+const $$createType15 = $Create.Array($$createType14);
+const $$createType16 = ImportUsage.createFrom;
+const $$createType17 = $Create.Array($$createType16);
+const $$createType18 = ImportRowIssue.createFrom;
+const $$createType19 = $Create.Array($$createType18);
+const $$createType20 = $Create.Map($Create.Any, $Create.Any);

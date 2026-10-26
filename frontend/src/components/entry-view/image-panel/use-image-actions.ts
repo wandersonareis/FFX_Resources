@@ -15,6 +15,10 @@ import {
   imageExportPath,
 } from '@/lib/ffx/tree-data';
 import {
+  buildImageImportSelection,
+  nextAllSelected,
+} from './import-selection';
+import {
   extractVbfImagesSelection,
   importVbfImage,
   invalidateVbfImage,
@@ -61,13 +65,14 @@ export function useImageActions({
   const [pendingImport, setPendingImport] = useState<string | null>(null);
 
   /**
-   * Import em lote de <TranslateLocation>/images: `pendingBatch` guarda o
-   * resumo da varredura (null = diálogo fechado) e `pickedDirs` os
-   * diretórios após ps3data que o usuário marcou — cada marcação refaz a
-   * varredura para atualizar quantas texturas são novas.
+   * Import de <TranslateLocation>/images: `pendingPreview` guarda o resumo
+   * da varredura (null = diálogo fechado). A seleção (imagens e cópias
+   * marcadas) vive dentro do preview — quem aplica é o confirm, com o
+   * payload montado por buildImageImportSelection.
    */
-  const [pendingBatch, setPendingBatch] = useState<dto.ImageBatch | null>(null);
-  const [pickedDirs, setPickedDirs] = useState<string[]>([]);
+  const [pendingPreview, setPendingPreview] = useState<dto.ImageImportPreview | null>(
+    null
+  );
 
   /**
    * Textura aberta pelo navegador de .vbf: o container é somente leitura;
@@ -270,51 +275,52 @@ export function useImageActions({
   };
 
   /**
-   * Import em lote de mods/translated/images: abre varrendo sem seleção
-   * (para descobrir os diretórios disponíveis), reanexa a cada marcação e
-   * aplica só os containers diferentes dos de mods/.
+   * Import de mods/translated/images: abre varrendo a raiz (sem seleção
+   * prévia) e mostra o sumário. Cada marcação mexe SÓ no estado do preview
+   * (imagens e cópias) — nada regrava o binário aqui.
    */
   const openImportImages = async () => {
     try {
-      setPickedDirs([]);
-      setPendingBatch(await previewImportImages(version, []));
+      setPendingPreview(await previewImportImages(version));
     } catch (error) {
       toast.error(parseError(error));
     }
   };
 
-  const toggleImportDir = async (dir: string) => {
-    const next = pickedDirs.includes(dir)
-      ? pickedDirs.filter((d) => d !== dir)
-      : [...pickedDirs, dir];
-    setPickedDirs(next);
-    try {
-      setPendingBatch(await previewImportImages(version, next));
-    } catch (error) {
-      toast.error(parseError(error));
-    }
-  };
-
+  /**
+   * Aplica a seleção do modal: monta o payload (imagens + cópias marcadas,
+   * com a regra da imagem igual ao binário sendo reimportada junto com as
+   * cópias) e chama o backend. Só o que está marcado é gravado.
+   */
   const confirmImportImages = async () => {
+    if (!pendingPreview) return;
+    const selection = buildImageImportSelection(pendingPreview);
     setBusy('importBatch');
     const toastId = 'importImages';
     toast.loading('Importando imagens…', { id: toastId });
     try {
-      const result = await importImages(version, pickedDirs);
-      setPendingBatch(null);
-      if (result.new_count === 0) {
-        toast.info('Nada novo para importar.', { id: toastId });
-      } else {
-        const pulados =
-          result.errors.length > 0
-            ? ` (${result.errors.length} pulada(s))`
+      const result = await importImages(version, selection);
+      setPendingPreview(null);
+      if (result.updated.length === 0) {
+        const motivo =
+          result.failed.length > 0
+            ? ` (${result.failed.length} falharam)`
             : '';
-        toast.success(
-          `${result.new_count} de ${result.max} nova(s) importada(s).${pulados}`,
-          { id: toastId }
-        );
-        await actions.reload();
+        toast.info(`Nada foi gravado em mods/.${motivo}`, { id: toastId });
+        return;
       }
+      const falhas =
+        result.failed.length > 0 ? ` (${result.failed.length} falharam)` : '';
+      toast.success(
+        `${result.updated.length} de ${result.total} imagem(ns) gravada(s) em mods/.${falhas}`,
+        {
+          id: toastId,
+          ...(result.failed.length > 0
+            ? { description: result.failed.slice(0, 3).join('; ') }
+            : {}),
+        }
+      );
+      await actions.reload();
     } catch (error) {
       toast.error(parseError(error), { id: toastId });
     } finally {
@@ -322,22 +328,80 @@ export function useImageActions({
     }
   };
 
+  /**
+   * "Todas": marcado/indeterminate marca tudo (imagens e cópias
+   * selecionáveis — inclusive as iguais ao binário, que forçam a
+   * regravação); marcado desmarca tudo.
+   */
+  const toggleAllEntries = () => {
+    setPendingPreview((prev) => {
+      if (!prev) return prev;
+      const next = nextAllSelected(prev);
+      return {
+        ...prev,
+        entries: prev.entries.map((e) =>
+          e.validation_error
+            ? e
+            : {
+                ...e,
+                selected: next,
+                copies: (e.copies ?? []).map((c) => ({ ...c, selected: next })),
+              }
+        ),
+      };
+    });
+  };
+
+  /** Checkbox da linha: controla SÓ a imagem. */
+  const toggleEntry = (entryId: string) => {
+    setPendingPreview((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        entries: prev.entries.map((e) =>
+          e.id === entryId ? { ...e, selected: !e.selected } : e
+        ),
+      };
+    });
+  };
+
+  /** Checkbox do collapse: controla SÓ a cópia. */
+  const toggleCopy = (entryId: string, copyId: string) => {
+    setPendingPreview((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        entries: prev.entries.map((e) =>
+          e.id === entryId
+            ? {
+                ...e,
+                copies: (e.copies ?? []).map((c) =>
+                  c.id === copyId ? { ...c, selected: !c.selected } : c
+                ),
+              }
+            : e
+        ),
+      };
+    });
+  };
+
   return {
     busy,
     readOnly,
     pendingImport,
     setPendingImport,
-    pendingBatch,
-    pickedDirs,
+    pendingPreview,
     openImportImages,
-    toggleImportDir,
     confirmImportImages,
-    closeImportImages: () => setPendingBatch(null),
+    closeImportImages: () => setPendingPreview(null),
     openAction,
     onExport,
     onExtractTo,
     onImport,
     runImport,
     onRefresh,
+    toggleAllEntries,
+    toggleEntry,
+    toggleCopy,
   };
 }

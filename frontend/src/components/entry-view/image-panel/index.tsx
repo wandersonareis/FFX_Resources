@@ -19,7 +19,7 @@ import { ImageToolbar } from './toolbar';
 import { ImagePreview } from './image-preview';
 import { ImageInfoPanel } from './image-info-panel';
 import { ImageImportDialog } from './import-dialog';
-import { ImportImagesDialog } from './import-images-dialog';
+import { ImportImagesDetailedDialog } from './import-images-detailed-dialog';
 import { useImagePreview } from './use-image-preview';
 import { useImageActions } from './use-image-actions';
 
@@ -68,10 +68,8 @@ export function ImagePanel({ view }: { view: EntryView }) {
     readOnly,
     pendingImport,
     setPendingImport,
-    pendingBatch,
-    pickedDirs,
+    pendingPreview,
     openImportImages,
-    toggleImportDir,
     confirmImportImages,
     closeImportImages,
     openAction,
@@ -80,6 +78,9 @@ export function ImagePanel({ view }: { view: EntryView }) {
     onExtractTo,
     runImport,
     onRefresh,
+    toggleAllEntries,
+    toggleEntry,
+    toggleCopy,
   } = useImageActions({
     view,
     entry,
@@ -91,7 +92,7 @@ export function ImagePanel({ view }: { view: EntryView }) {
   const panelIdle =
     entry !== null &&
     pendingImport === null &&
-    pendingBatch === null &&
+    pendingPreview === null &&
     imageAction === null &&
     menuTarget === null &&
     busy === null;
@@ -240,16 +241,17 @@ export function ImagePanel({ view }: { view: EntryView }) {
           onImportAll={() => pendingImport && void runImport(pendingImport, true)}
         />
 
-        <ImportImagesDialog
-          open={pendingBatch !== null}
-          batch={pendingBatch}
-          selected={pickedDirs}
+        <ImportImagesDetailedDialog
+          open={pendingPreview !== null}
+          preview={pendingPreview}
           busy={busy === 'importBatch'}
-          onToggle={(dir) => void toggleImportDir(dir)}
           onOpenChange={(open) => {
             if (!open) closeImportImages();
           }}
           onConfirm={() => void confirmImportImages()}
+          onToggleAll={() => void toggleAllEntries()}
+          onToggleEntry={toggleEntry}
+          onToggleCopy={toggleCopy}
         />
       </div>
     </EntryActionsMenu>
