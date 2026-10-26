@@ -12,6 +12,7 @@ import (
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/fileFormats/ddsphyre"
+	"ffxresources/backend/uilog"
 )
 
 // ps3DataPrefix é o trecho do caminho interno a partir do qual o id da
@@ -154,6 +155,9 @@ func (s *MetadataService) importImagesBatch(version common.GameVersion, subdirs 
 		return batch, nil
 	}
 
+	// Linha de ação no formato de lote do export
+	uilog.Info(importAction, "Iniciando import de %d imagem(ns) de %s", batch.NewCount, root)
+
 	// O rotulo carrega "N de MAX N novas" (a leitura pedida na UI): o total
 	// e o numero de candidatos varridos, entao a barra cobre o lote inteiro,
 	// nao so os que mudam.
@@ -173,7 +177,9 @@ func (s *MetadataService) importImagesBatch(version common.GameVersion, subdirs 
 			batch.Errors = append(batch.Errors, fmt.Sprintf("%s: %s", c.id, rerr.Error()))
 			continue
 		}
+		modsPath := imageModsPath(version, c.id)
 		if ierr := ddsphyre.ImportContainer(version, c.id, raw); ierr != nil {
+			uilog.File(importAction, modsPath, uilog.StatusFailed, ierr.Error())
 			batch.Errors = append(batch.Errors, fmt.Sprintf("%s: %s", c.id, ierr.Error()))
 			continue
 		}
@@ -186,6 +192,8 @@ func (s *MetadataService) importImagesBatch(version common.GameVersion, subdirs 
 		if _, eerr := ddsphyre.ExtractEffective(version, c.id); eerr != nil {
 			common.LogWarning("images %s/%s: container gravado, mas nao atualizei os .dds/.png extraidos: %v", version, c.id, eerr)
 		}
+		// Origem = c.srcPath (o .dds.phyre na raiz traduzida)
+		uilog.File(importAction, modsPath, uilog.StatusOk, "importado de "+c.srcPath)
 	}
 
 	// Varios containers mudaram numa leva so: o indice de duplicatas em

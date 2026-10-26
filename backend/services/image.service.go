@@ -13,6 +13,12 @@ import (
 	"ffxresources/backend/uilog"
 )
 
+// imageModsPath devolve o caminho ABSOLUTO do container em mods/
+// (como o import de texto mostra no log: mods/ffx_ps2/...).
+func imageModsPath(version common.GameVersion, id string) string {
+	return filepath.Join(common.GameFilesRoot, common.ModsFolder, ddsphyre.RelPath(version, id))
+}
+
 // IMAGENS (.dds.phyre)
 //
 // O kind KindImages não é texto: não tem rows, não participa de
@@ -258,9 +264,11 @@ func (s *MetadataService) ImportImage(kind, id, ddsPath string, version common.G
 		return fmt.Errorf("textura desconhecida: %s", id)
 	}
 
-	uilog.Info("Import", "%s: importando", id)
+	uilog.Info(importAction, "%s: importando", id)
 
+	modsPath := imageModsPath(version, id)
 	if err := ddsphyre.Import(version, id, ddsPath); err != nil {
+		uilog.File(importAction, modsPath, uilog.StatusFailed, err.Error())
 		return err
 	}
 	// O payload efetivo desta textura mudou: o índice de duplicatas em
@@ -276,9 +284,7 @@ func (s *MetadataService) ImportImage(kind, id, ddsPath string, version common.G
 		common.LogWarning("images %s/%s: import ok, mas não atualizei os .dds/.png extraídos: %v", version, id, err)
 	}
 
-	// Log the written path in mods/
-	modsPath := ddsphyre.RelPath(version, id)
-	uilog.File("Import", modsPath, uilog.StatusOk, "importado de um dds")
+	uilog.File(importAction, modsPath, uilog.StatusOk, "importado de "+ddsPath)
 	return nil
 }
 
@@ -305,13 +311,17 @@ func (s *MetadataService) ImportImageGroup(kind, id, ddsPath string, targets []s
 		return dto.ImageImportResult{}, err
 	}
 
+	uilog.Info(importAction, "%s: importando em %d textura(s) idêntica(s)", id, len(list))
+
 	res := dto.ImageImportResult{
 		Updated: []string{},
 		Failed:  []string{},
 		Total:   len(list),
 	}
 	for _, t := range list {
+		modsPath := imageModsPath(version, t)
 		if ierr := ddsphyre.Import(version, t, ddsPath); ierr != nil {
+			uilog.File(importAction, modsPath, uilog.StatusFailed, ierr.Error())
 			res.Failed = append(res.Failed, t+": "+ierr.Error())
 			continue
 		}
@@ -319,6 +329,7 @@ func (s *MetadataService) ImportImageGroup(kind, id, ddsPath string, targets []s
 		if _, eerr := ddsphyre.ExtractEffective(version, t); eerr != nil {
 			common.LogWarning("images %s/%s: import ok, mas não atualizei os .dds/.png extraídos: %v", version, t, eerr)
 		}
+		uilog.File(importAction, modsPath, uilog.StatusOk, "importado de "+ddsPath)
 		res.Updated = append(res.Updated, t)
 	}
 	if len(res.Updated) > 0 {

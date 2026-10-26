@@ -747,7 +747,7 @@ func (s *MetadataService) ImportVbfImage(vbfPath, innerPath, ddsPath string) err
 		return err
 	}
 
-	uilog.Info("Import", "%s: importando", target.ID)
+	uilog.Info(importAction, "%s: importando", target.ID)
 
 	original, err := a.Read(cleanVbfPath(innerPath))
 	if err != nil {
@@ -757,7 +757,9 @@ func (s *MetadataService) ImportVbfImage(vbfPath, innerPath, ddsPath string) err
 	if err != nil {
 		return fmt.Errorf("lendo %s: %w", filepath.Base(ddsPath), err)
 	}
+	modsPath := imageModsPath(target.Version, target.ID)
 	if err := ddsphyre.ImportPayloadFrom(target.Version, target.ID, original, dds); err != nil {
+		uilog.File(importAction, modsPath, uilog.StatusFailed, err.Error())
 		return err
 	}
 	ddsphyre.InvalidateIndex(target.Version)
@@ -768,9 +770,7 @@ func (s *MetadataService) ImportVbfImage(vbfPath, innerPath, ddsPath string) err
 	}
 	vbfSessionResetAll()
 
-	// The import writes to mods/ - log the written path
-	modsPath := ddsphyre.RelPath(target.Version, target.ID)
-	uilog.File("Import", modsPath, uilog.StatusOk, "importado de um dds")
+	uilog.File(importAction, modsPath, uilog.StatusOk, "importado de "+ddsPath)
 	return nil
 }
 

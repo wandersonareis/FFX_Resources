@@ -62,7 +62,26 @@ Com `Path`: o resultado de **um** arquivo. Contrato do renderizador:
 | Importar (toolbar, 1 artefato) | `MetadataService.ImportFile` | ação (azul) → uma linha por binário → resumo (verde) |
 | Importar em lote (`mods/translated`) | `MetadataService.ImportTranslated` | ação (azul) por artefato → uma linha por binário → resumo do lote |
 | Importar edição da entrada | `MetadataService.ImportEntry` | ação (azul) → uma linha por binário |
-| Menu nativo ▸ Importar | `appmenu/actions.go` | uma linha por binário apontado (`path — status: destino/motivo`) |
+| Menu nativo ▸ Importar (texto) | `appmenu/actions.go` | uma linha por binário apontado (`path — status: destino/motivo`) |
+| Importar 1 textura de `data/` | `MetadataService.ImportImage` | ação (azul) → 1 linha de arquivo (verde) com `importado de <.dds>` |
+| Importar 1 textura de `.vbf` | `MetadataService.ImportVbfImage` | ação (azul) → 1 linha de arquivo (verde) com `importado de <.dds>` |
+| Importar textura + cópias idênticas | `MetadataService.ImportImageGroup` | ação (azul) → 1 linha de arquivo por textura (alvo + cópias) |
+| Importar em lote (`mods/translated/images`) | `MetadataService.ImportImages` | ação em lote (azul) → 1 linha de arquivo por container diferente |
+| Menu nativo ▸ Imagem ▸ Importar .dds | `appmenu/actions.go` | ação com nome do .dds → 1 linha de arquivo por container gravado |
+
+**Estilo de imagem (diferente do texto):**
+- **Sem `common.RecordWrites`**: o container `.dds.phyre` é gravado por `ddsphyre` com `os.WriteFile`; a narração é **explícita** (`uilog.Info` + `uilog.File` por container).
+- **Uma linha de arquivo por container gravado** — o destino é o caminho **absoluto em `mods/`** (via `imageModsPath(version, id)` = `GameFilesRoot/mods/<RelPath>`), igual ao import de texto.
+- **Detalhe = `importado de <caminho-da-fonte>`** — mostra a origem do .dds escolhido ou do .dds.phyre traduzido.
+- **SEM linha de resumo** (`Success`/`Warn`): quem fecha a operação é o frontend (toast), igual ao Export/Extract de imagem.
+
+**Helper `imageModsPath`** (`backend/services/image.service.go`):
+```go
+func imageModsPath(version common.GameVersion, id string) string {
+    return filepath.Join(common.GameFilesRoot, common.ModsFolder, ddsphyre.RelPath(version, id))
+}
+```
+Converte o id da textura no caminho real do container em `mods/` (ex.: `C:\...\gamefiles\mods\ffx-2_data\gamedata\...\x.dds.phyre`).
 
 ## Regras ao mexer no assunto
 

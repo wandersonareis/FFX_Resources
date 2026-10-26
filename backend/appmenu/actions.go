@@ -352,6 +352,20 @@ func (c *Controller) onImportImage() {
 		}
 	}
 
+	// Log para janela de logs: ação + arquivo por container
+	uilog.Info("Import", "%s: importando", filepath.Base(dds))
+	for _, o := range outcomes {
+		dest := o.Output
+		if dest == "" {
+			dest = o.Input
+		}
+		if o.Status == appcore.StatusFailed || o.Status == appcore.StatusMismatch {
+			uilog.File("Import", dest, uilog.StatusFailed, o.Reason)
+		} else {
+			uilog.File("Import", dest, uilog.StatusOk, "importado de "+dds)
+		}
+	}
+
 	c.reportImport("Importar imagem", outcomes)
 }
 
