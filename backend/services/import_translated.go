@@ -116,8 +116,12 @@ func (s *MetadataService) importTranslatedBatch(version common.GameVersion, kind
 	}
 
 	if apply {
-		uilog.Info("Import", "lote translated/ — %d arquivo(s) candidato(s), kinds: %s",
-			len(files), strings.Join(kinds, ", "))
+		// Detectar formato (assumir strings se tiver .strings, senão json)
+		format := "json"
+		if len(files) > 0 && strings.HasSuffix(strings.ToLower(files[0]), ".strings") {
+			format = "strings"
+		}
+		uilog.Info("Import", "Iniciando import de %d arquivo(s) de um %s", len(files), format)
 	}
 
 	found := make(map[string]bool, len(want))
@@ -161,10 +165,15 @@ func (s *MetadataService) importTranslatedBatch(version common.GameVersion, kind
 		if !apply || len(plan.merged) == 0 {
 			continue
 		}
-		// Cabeçalho do artefato (azul) e, abaixo dele, UMA linha por binário
-		// gravado em mods/ — destino na linha, motivo na falha.
-		uilog.Info(importAction, "%s — %d texto(s) em %s", name, plan.summary.ChangedTexts, plan.kind)
-		sum, aerr := applyRecorded(version, func() error {
+
+		// Detectar formato do primeiro arquivo (todos têm mesmo formato no lote)
+		format := detectImportFormat(name)
+
+		// Linha por arquivo (padrão export)
+		uilog.Info("Import", "%s: importando", name)
+
+		// applyRecorded loga uma linha por binário com detalhe "importado de um <format>"
+		sum, aerr := applyRecorded(version, format, func() error {
 			return s.ApplyTextCollection(plan.kind, version, plan.merged)
 		})
 		if aerr != nil {

@@ -1074,11 +1074,15 @@ func (s *MetadataService) ImportFile(path string, version common.GameVersion) (i
 		uilog.Warn("Import", "%s: nada a importar", filepath.Base(path))
 		return 0, fmt.Errorf("nada a importar")
 	}
-	uilog.Info("Import", "%s — aplicando %d texto(s) em %s (%s)",
-		filepath.Base(path), plan.summary.ChangedTexts, plan.kind, version.String())
-	// O log da janela é POR BINÁRIO: quais foram recompilados e onde caíram
-	// em mods/ (uma linha por binário, com o destino e o motivo da falha).
-	sum, err := applyRecorded(version, func() error {
+
+	// Detectar formato do artefato para o log (json/strings)
+	format := detectImportFormat(path)
+
+	// Linha de início + linha por arquivo (padrão export)
+	uilog.Info("Import", "Iniciando import de 1 arquivo de um %s", format)
+	uilog.Info("Import", "%s: importando", filepath.Base(path))
+
+	sum, err := applyRecorded(version, format, func() error {
 		return s.ApplyTextCollection(plan.kind, version, plan.merged)
 	})
 	if err != nil {
@@ -1093,6 +1097,15 @@ func (s *MetadataService) ImportFile(path string, version common.GameVersion) (i
 	uilog.Success("Import", "%s — %d texto(s) em %d binário(s) gravado(s) em mods/",
 		filepath.Base(path), plan.summary.ChangedTexts, sum.Written)
 	return plan.summary.ChangedTexts, nil
+}
+
+// detectImportFormat extrai o formato do artefato pela extensão.
+func detectImportFormat(path string) string {
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext == ".strings" {
+		return "strings"
+	}
+	return "json" // .json, .csv, .xlsx → json (formato base)
 }
 
 // ExportJSON dobrou em ExportArtifactBatch (export_formats.go): a

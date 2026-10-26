@@ -2,7 +2,7 @@ package services
 
 // Teste fim-a-fim do log por binário no import de events: o artefato editado
 // é aplicado e a janela de logs ganha UMA linha por binário recompilado, com
-// o destino em mods/ e o status "gravado" — em vez do par azul/verde que
+// o destino em mods/ e o status "ok" — em vez do par azul/verde que
 // não dizia onde o binário foi parar.
 
 import (
@@ -81,11 +81,12 @@ func TestImportFileLogPorBinario(t *testing.T) {
 	for _, e := range fileLines {
 		if e.Path == us {
 			found = true
-			if e.Status != "gravado" {
-				t.Errorf("status = %q, queria gravado", e.Status)
+			if e.Status != uilog.StatusOk {
+				t.Errorf("status = %q, queria %s", e.Status, uilog.StatusOk)
 			}
-			if !strings.Contains(e.Message, "8 localizações") {
-				t.Errorf("detalhe %q deveria contar as 8 localizações", e.Message)
+			// Detalhe agora é "importado de um json" (padrão export)
+			if !strings.Contains(e.Message, "importado de um json") {
+				t.Errorf("detalhe %q deveria ser 'importado de um json'", e.Message)
 			}
 		}
 		// Toda linha de arquivo do import aponta para dentro de mods/.

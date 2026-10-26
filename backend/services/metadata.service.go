@@ -603,7 +603,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		if _, err := applyRecorded(version, func() error {
+		if _, err := applyRecorded(version, "json", func() error {
 			return builders.ApplyEventsDTO(version, read, []string{id})
 		}); err != nil {
 			return nil, err
@@ -621,7 +621,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		}
 		for _, key := range read.SortedKeys() {
 			entry := read[key]
-			if _, err := applyRecorded(version, func() error {
+			if _, err := applyRecorded(version, "json", func() error {
 				return s.applyObjectsEntry(version, key, entry)
 			}); err != nil {
 				return nil, err
@@ -638,7 +638,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		if _, err := applyRecorded(version, func() error {
+		if _, err := applyRecorded(version, "json", func() error {
 			return builders.ApplyMacroDTO(version, read)
 		}); err != nil {
 			return nil, err
@@ -654,7 +654,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		if _, err := applyRecorded(version, func() error {
+		if _, err := applyRecorded(version, "json", func() error {
 			return builders.ApplyLockitDTO(version, read)
 		}); err != nil {
 			return nil, err
@@ -679,7 +679,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 			return nil, err
 		}
 		stripHelpRowNames(read)
-		if _, err := applyRecorded(version, func() error {
+		if _, err := applyRecorded(version, "json", func() error {
 			return builders.ApplyHelpDTO(version, read, read.SortedKeys())
 		}); err != nil {
 			return nil, err
@@ -695,7 +695,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		if _, err := applyRecorded(version, func() error {
+		if _, err := applyRecorded(version, "json", func() error {
 			return builders.ApplyTableDTO(kind, version, read)
 		}); err != nil {
 			return nil, err

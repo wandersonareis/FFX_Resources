@@ -42,7 +42,7 @@ func TestNarrateImportWritesUmaLinhaPorBinario(t *testing.T) {
 		})
 	}
 
-	summary := narrateImportWrites(version, records)
+	summary := narrateImportWrites(version, "strings", records)
 
 	if summary.Written != 1 || summary.Failed != 0 {
 		t.Fatalf("summary = %+v, queria 1 gravado e 0 falha", summary)
@@ -58,14 +58,12 @@ func TestNarrateImportWritesUmaLinhaPorBinario(t *testing.T) {
 	if e.Path != usDestino {
 		t.Errorf("path = %q, queria o destino do 'us' (%q)", e.Path, usDestino)
 	}
-	if e.Status != "gravado" {
-		t.Errorf("status = %q, queria gravado", e.Status)
+	if e.Status != uilog.StatusOk {
+		t.Errorf("status = %q, queria %s", e.Status, uilog.StatusOk)
 	}
-	if !strings.Contains(e.Message, "8 localizações") {
-		t.Errorf("detalhe %q deveria contar as localizações", e.Message)
-	}
-	if !strings.Contains(e.Message, "8.0 KB") {
-		t.Errorf("detalhe %q deveria trazer o total gravado", e.Message)
+	// Detalhe agora é "importado de um strings" (padrão export)
+	if !strings.Contains(e.Message, "importado de um strings") {
+		t.Errorf("detalhe %q deveria ser 'importado de um strings'", e.Message)
 	}
 	if e.Level != uilog.LevelSuccess {
 		t.Errorf("nível = %q, queria success (verde)", e.Level)
@@ -84,7 +82,7 @@ func TestNarrateImportWritesVariosBinariosOrdenados(t *testing.T) {
 		{Path: modsPath(t, version, "us", "event/obj_ps3/ev/ev001/ev001.bin"), Bytes: 20},
 	}
 
-	summary := narrateImportWrites(version, records)
+	summary := narrateImportWrites(version, "strings", records)
 	if summary.Written != 2 {
 		t.Fatalf("summary = %+v, queria 2 gravados", summary)
 	}
@@ -113,7 +111,7 @@ func TestNarrateImportWritesFalhaComDestino(t *testing.T) {
 		{Path: modsPath(t, version, "jp", pattern), Bytes: 5},
 	}
 
-	summary := narrateImportWrites(version, records)
+	summary := narrateImportWrites(version, "strings", records)
 	if summary.Written != 0 || summary.Failed != 1 {
 		t.Fatalf("summary = %+v, queria 0 gravado e 1 falha", summary)
 	}
@@ -154,7 +152,7 @@ func TestNarrateImportWritesFalhaTotalDeTodasAsLocalizacoes(t *testing.T) {
 		{Path: modsPath(t, version, "de", pattern), Err: errors.New("disco cheio")},
 	}
 
-	summary := narrateImportWrites(version, records)
+	summary := narrateImportWrites(version, "strings", records)
 	if summary.Failed != 1 || summary.Written != 0 {
 		t.Fatalf("summary = %+v, queria 1 falha", summary)
 	}
@@ -199,7 +197,7 @@ func TestApplyRecordedDevolveErroDoApply(t *testing.T) {
 	withGameFilesRootTest(t, root)
 
 	boom := errors.New("apply quebrou")
-	summary, err := applyRecorded(common.GameVersionFFX, func() error {
+	summary, err := applyRecorded(common.GameVersionFFX, "json", func() error {
 		if werr := common.WriteBytesToFile(
 			filepath.Join(root, common.ModsFolder, "menu", "macrodic.dcp"), []byte("x"),
 		); werr != nil {
@@ -214,8 +212,12 @@ func TestApplyRecordedDevolveErroDoApply(t *testing.T) {
 		t.Fatalf("summary = %+v, queria 1 gravado", summary)
 	}
 	h := uilog.History()
-	if len(h) != 1 || h[0].Status != "gravado" {
-		t.Fatalf("histórico = %+v, queria 1 linha gravada", h)
+	if len(h) != 1 || h[0].Status != uilog.StatusOk {
+		t.Fatalf("histórico = %+v, queria 1 linha com status %s", h, uilog.StatusOk)
+	}
+	// Detalhe deve ser "importado de um json"
+	if !strings.Contains(h[0].Message, "importado de um json") {
+		t.Errorf("detalhe %q deveria conter 'importado de um json'", h[0].Message)
 	}
 	if _, serr := os.Stat(filepath.Join(root, common.ModsFolder, "menu", "macrodic.dcp")); serr != nil {
 		t.Fatalf("arquivo deveria existir: %v", serr)

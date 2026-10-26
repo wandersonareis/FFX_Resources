@@ -10,13 +10,13 @@ package services
 // common.WriteBytesToFile), e é com esses registros que a janela ganha a
 // linha por binário:
 //
-//	[Import] mods/ffx_ps2/ffx2/master/new_uspc/event/obj_ps3/ev/ev001/ev001.bin — gravado: 8 localizações
+//	[Import] mods/ffx_ps2/ffx2/master/new_uspc/event/obj_ps3/ev/ev001/ev001.bin — ok: importado de um strings
 //
 // Um binário lógico existe em uma linha por localização (o mesmo padrão nas
 // 8 raízes de idioma; twin bins de eventtable também dividem o padrão por
 // raiz). A linha é POR BINÁRIO: o destino exibido é o da localização padrão
-// ('us') e o detalhe conta as demais — um import completo de FFX-2 gera
-// ~400 linhas em vez de ~3200.
+// ('us') e o detalhe diz "importado de um <format>" — um import completo
+// de FFX-2 gera ~400 linhas em vez de ~3200.
 
 import (
 	"fmt"
@@ -30,13 +30,6 @@ import (
 // importAction é o rótulo da operação nas linhas do log — o mesmo do menu.
 const importAction = "Import"
 
-// Rótulos de status das linhas de arquivo. uilog deriva a cor deles
-// (levelForStatus): "gravado" é sucesso (verde), "falha" é erro (vermelho).
-const (
-	writeStatusGravado = "gravado"
-	writeStatusFalha   = "falha"
-)
-
 // writeSummary é o resultado da narração: quantos binários foram gravados e
 // quantos falharam (uma localização que falha marca o binário inteiro).
 // Alimenta a linha de resumo da operação. Não é exportado de propósito: é
@@ -48,20 +41,22 @@ type writeSummary struct {
 
 // applyRecorded roda o apply do import sob o gravador de gravações, narra o
 // resultado por binário e devolve o erro do apply intacto.
-func applyRecorded(version common.GameVersion, apply func() error) (writeSummary, error) {
+// format é o formato do artefato ("json" ou "strings") para o detalhe da linha.
+func applyRecorded(version common.GameVersion, format string, apply func() error) (writeSummary, error) {
 	var err error
 	records := common.RecordWrites(func() { err = apply() })
-	return narrateImportWrites(version, records), err
+	return narrateImportWrites(version, format, records), err
 }
 
 // narrateImportWrites emite uma linha por binário gravado (ou tentado)
 // durante o import e devolve a contagem para a linha de resumo.
-func narrateImportWrites(version common.GameVersion, records []common.WriteRecord) writeSummary {
+// format é o formato do artefato ("json" ou "strings") para o detalhe.
+func narrateImportWrites(version common.GameVersion, format string, records []common.WriteRecord) writeSummary {
 	var summary writeSummary
 	for _, bin := range groupWritesByBinary(version, records) {
-		status, detail := bin.result()
+		status, detail := bin.result(format)
 		uilog.File(importAction, bin.path, status, detail)
-		if status == writeStatusGravado {
+		if status == uilog.StatusOk {
 			summary.Written++
 			continue
 		}
@@ -120,7 +115,8 @@ func groupWritesByBinary(version common.GameVersion, records []common.WriteRecor
 }
 
 // result resume o grupo no status e no detalhe da linha do log.
-func (g binaryWrite) result() (status, detail string) {
+// format é o formato do artefato ("json" ou "strings") para o detalhe.
+func (g binaryWrite) result(format string) (status, detail string) {
 	var failed, bytes int
 	var firstErr error
 	var failedPath string
@@ -137,15 +133,11 @@ func (g binaryWrite) result() (status, detail string) {
 
 	switch {
 	case failed == 0:
-		if len(g.entries) > 1 {
-			return writeStatusGravado,
-				fmt.Sprintf("%s · %s", locCount(len(g.entries)), humanBytes(bytes))
-		}
-		return writeStatusGravado, humanBytes(bytes)
+		return uilog.StatusOk, fmt.Sprintf("importado de um %s", format)
 	case failed == len(g.entries):
-		return writeStatusFalha, failureDetail(firstErr, failedPath, g.path)
+		return uilog.StatusFailed, failureDetail(firstErr, failedPath, g.path)
 	default:
-		return writeStatusFalha, fmt.Sprintf("%d de %s falhou: %s",
+		return uilog.StatusFailed, fmt.Sprintf("%d de %s falhou: %s",
 			failed, locCount(len(g.entries)), failureDetail(firstErr, failedPath, g.path))
 	}
 }
