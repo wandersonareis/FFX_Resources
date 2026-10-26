@@ -603,7 +603,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		if _, err := applyRecorded(version, "json", func() error {
+		if _, err := applyRecorded(version, "Import", "importado de um json", func() error {
 			return builders.ApplyEventsDTO(version, read, []string{id})
 		}); err != nil {
 			return nil, err
@@ -621,7 +621,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		}
 		for _, key := range read.SortedKeys() {
 			entry := read[key]
-			if _, err := applyRecorded(version, "json", func() error {
+			if _, err := applyRecorded(version, "Import", "importado de um json", func() error {
 				return s.applyObjectsEntry(version, key, entry)
 			}); err != nil {
 				return nil, err
@@ -638,7 +638,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		if _, err := applyRecorded(version, "json", func() error {
+		if _, err := applyRecorded(version, "Import", "importado de um json", func() error {
 			return builders.ApplyMacroDTO(version, read)
 		}); err != nil {
 			return nil, err
@@ -654,7 +654,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		if _, err := applyRecorded(version, "json", func() error {
+		if _, err := applyRecorded(version, "Import", "importado de um json", func() error {
 			return builders.ApplyLockitDTO(version, read)
 		}); err != nil {
 			return nil, err
@@ -679,7 +679,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 			return nil, err
 		}
 		stripHelpRowNames(read)
-		if _, err := applyRecorded(version, "json", func() error {
+		if _, err := applyRecorded(version, "Import", "importado de um json", func() error {
 			return builders.ApplyHelpDTO(version, read, read.SortedKeys())
 		}); err != nil {
 			return nil, err
@@ -695,7 +695,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		if _, err := applyRecorded(version, "json", func() error {
+		if _, err := applyRecorded(version, "Import", "importado de um json", func() error {
 			return builders.ApplyTableDTO(kind, version, read)
 		}); err != nil {
 			return nil, err
@@ -776,44 +776,52 @@ func (s *MetadataService) ApplyTextCollection(kind string, version common.GameVe
 		return err
 	}
 
-	switch kind {
-	case KindEvents:
-		if err := s.ensureEventsLoaded(version); err != nil {
-			return err
+	// Log start (padrão export: "Kind: salvando")
+	uilog.Info("Save", "%s: salvando", kind)
+
+	// Wrap com applyRecorded para capturar gravações e narrar por binário
+	// detailFormat = "salvo" (save não tem formato de artefato como import/export)
+	_, err := applyRecorded(version, "Save", "salvo", func() error {
+		switch kind {
+		case KindEvents:
+			if err := s.ensureEventsLoaded(version); err != nil {
+				return err
+			}
+			return builders.ApplyEventsDTO(version, c, c.SortedKeys())
+
+		case KindObjects:
+			// Aplica as rows de todas as entradas antes de salvar cada binário:
+			// entradas repetidas (mesmo arquivo) recebem todas as suas rows.
+			return applyObjectsCollection(version, c)
+
+		case KindMacro:
+			// Aplica sobre o DTO completo para não perder os outros chunks.
+			full, err := builders.BuildMacroDTO(version, nil)
+			if err != nil {
+				return err
+			}
+			return applyMacroCollection(version, full, c)
+
+		case KindLockit:
+			return builders.ApplyLockitDTO(version, c)
+
+		case KindHelp:
+			if err := ensureHelpLoaded(version); err != nil {
+				return err
+			}
+			return builders.ApplyHelpDTO(version, c, c.SortedKeys())
+
+		case KindBattleText, KindCloud, KindTutorial, KindMenuMain:
+			if !eventtableKindUsable(kind, version) {
+				return nil
+			}
+			return builders.ApplyTableDTO(kind, version, c)
+
+		default:
+			return fmt.Errorf("unknown kind: %s", kind)
 		}
-		return builders.ApplyEventsDTO(version, c, c.SortedKeys())
-
-	case KindObjects:
-		// Aplica as rows de todas as entradas antes de salvar cada binário:
-		// entradas repetidas (mesmo arquivo) recebem todas as suas rows.
-		return applyObjectsCollection(version, c)
-
-	case KindMacro:
-		// Aplica sobre o DTO completo para não perder os outros chunks.
-		full, err := builders.BuildMacroDTO(version, nil)
-		if err != nil {
-			return err
-		}
-		return applyMacroCollection(version, full, c)
-
-	case KindLockit:
-		return builders.ApplyLockitDTO(version, c)
-
-	case KindHelp:
-		if err := ensureHelpLoaded(version); err != nil {
-			return err
-		}
-		return builders.ApplyHelpDTO(version, c, c.SortedKeys())
-
-	case KindBattleText, KindCloud, KindTutorial, KindMenuMain:
-		if !eventtableKindUsable(kind, version) {
-			return nil
-		}
-		return builders.ApplyTableDTO(kind, version, c)
-
-	default:
-		return fmt.Errorf("unknown kind: %s", kind)
-	}
+	})
+	return err
 }
 
 // applyObjectsCollection aplica um lote de entradas de objects e persiste

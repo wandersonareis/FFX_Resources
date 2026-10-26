@@ -39,23 +39,25 @@ type writeSummary struct {
 	Failed  int
 }
 
-// applyRecorded roda o apply do import sob o gravador de gravações, narra o
-// resultado por binário e devolve o erro do apply intacto.
-// format é o formato do artefato ("json" ou "strings") para o detalhe da linha.
-func applyRecorded(version common.GameVersion, format string, apply func() error) (writeSummary, error) {
+// applyRecorded roda uma operação sob o gravador de gravações, narra o
+// resultado por binário e devolve o erro da operação intacto.
+// action é o nome da ação no log ("Import", "Save", "Export").
+// detailFormat é o texto de detalhe para linhas de sucesso (ex: "salvo", "importado de um json", "exportado como strings").
+func applyRecorded(version common.GameVersion, action string, detailFormat string, apply func() error) (writeSummary, error) {
 	var err error
 	records := common.RecordWrites(func() { err = apply() })
-	return narrateImportWrites(version, format, records), err
+	return narrateWrites(version, action, detailFormat, records), err
 }
 
-// narrateImportWrites emite uma linha por binário gravado (ou tentado)
-// durante o import e devolve a contagem para a linha de resumo.
-// format é o formato do artefato ("json" ou "strings") para o detalhe.
-func narrateImportWrites(version common.GameVersion, format string, records []common.WriteRecord) writeSummary {
+// narrateWrites emite uma linha por binário gravado (ou tentado) para qualquer action
+// e devolve a contagem para a linha de resumo.
+// action: nome da ação no log ("Import", "Save", "Export").
+// detailFormat: texto de detalhe para linhas de sucesso (ex: "salvo", "importado de um json", "exportado como strings").
+func narrateWrites(version common.GameVersion, action string, detailFormat string, records []common.WriteRecord) writeSummary {
 	var summary writeSummary
 	for _, bin := range groupWritesByBinary(version, records) {
-		status, detail := bin.result(format)
-		uilog.File(importAction, bin.path, status, detail)
+		status, detail := bin.result(detailFormat)
+		uilog.File(action, bin.path, status, detail)
 		if status == uilog.StatusOk {
 			summary.Written++
 			continue
@@ -63,6 +65,12 @@ func narrateImportWrites(version common.GameVersion, format string, records []co
 		summary.Failed++
 	}
 	return summary
+}
+
+// narrateImportWrites mantém compatibilidade com código existente do import.
+// Chama narrateWrites com action="Import" e detailFormat="importado de um <format>".
+func narrateImportWrites(version common.GameVersion, format string, records []common.WriteRecord) writeSummary {
+	return narrateWrites(version, importAction, "importado de um "+format, records)
 }
 
 // binaryWrite é um binário lógico: o padrão dele (caminho sem a raiz de
@@ -115,8 +123,8 @@ func groupWritesByBinary(version common.GameVersion, records []common.WriteRecor
 }
 
 // result resume o grupo no status e no detalhe da linha do log.
-// format é o formato do artefato ("json" ou "strings") para o detalhe.
-func (g binaryWrite) result(format string) (status, detail string) {
+// detailFormat é o texto completo para linhas de sucesso (ex: "salvo", "importado de um json", "exportado como strings").
+func (g binaryWrite) result(detailFormat string) (status, detail string) {
 	var failed, bytes int
 	var firstErr error
 	var failedPath string
@@ -133,7 +141,7 @@ func (g binaryWrite) result(format string) (status, detail string) {
 
 	switch {
 	case failed == 0:
-		return uilog.StatusOk, fmt.Sprintf("importado de um %s", format)
+		return uilog.StatusOk, detailFormat
 	case failed == len(g.entries):
 		return uilog.StatusFailed, failureDetail(firstErr, failedPath, g.path)
 	default:

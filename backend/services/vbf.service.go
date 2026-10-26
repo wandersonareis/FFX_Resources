@@ -42,6 +42,7 @@ import (
 	"ffxresources/backend/fileFormats/vbf"
 	"ffxresources/backend/interactions"
 	"ffxresources/backend/loggingService"
+	"ffxresources/backend/uilog"
 )
 
 // ---------------------------------------------------------------------------
@@ -636,7 +637,16 @@ func (s *MetadataService) ApplyVbfTextCollection(vbfPath, kind string, version c
 	if err := ensureVersionReady(version); err != nil {
 		return err
 	}
-	if err := applyVbfCollectionInSession(vbfPath, kind, version, c); err != nil {
+
+	// Log start (padrão export: "Kind: salvando")
+	uilog.Info("Save", "%s: salvando", kind)
+
+	// Wrap com applyRecorded para capturar gravações e narrar por binário
+	// detailFormat = "salvo" (save não tem formato de artefato como import/export)
+	_, err := applyRecorded(version, "Save", "salvo", func() error {
+		return applyVbfCollectionInSession(vbfPath, kind, version, c)
+	})
+	if err != nil {
 		return err
 	}
 	clearDedupViewCache() // mods mudou: cru data/, pristine e sessão de .vbf caem

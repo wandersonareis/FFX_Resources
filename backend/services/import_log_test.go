@@ -197,7 +197,7 @@ func TestApplyRecordedDevolveErroDoApply(t *testing.T) {
 	withGameFilesRootTest(t, root)
 
 	boom := errors.New("apply quebrou")
-	summary, err := applyRecorded(common.GameVersionFFX, "json", func() error {
+	summary, err := applyRecorded(common.GameVersionFFX, "Import", "importado de um json", func() error {
 		if werr := common.WriteBytesToFile(
 			filepath.Join(root, common.ModsFolder, "menu", "macrodic.dcp"), []byte("x"),
 		); werr != nil {

@@ -1082,7 +1082,7 @@ func (s *MetadataService) ImportFile(path string, version common.GameVersion) (i
 	uilog.Info("Import", "Iniciando import de 1 arquivo de um %s", format)
 	uilog.Info("Import", "%s: importando", filepath.Base(path))
 
-	sum, err := applyRecorded(version, format, func() error {
+	sum, err := applyRecorded(version, "Import", "importado de um "+format, func() error {
 		return s.ApplyTextCollection(plan.kind, version, plan.merged)
 	})
 	if err != nil {

@@ -173,7 +173,7 @@ func (s *MetadataService) importTranslatedBatch(version common.GameVersion, kind
 		uilog.Info("Import", "%s: importando", name)
 
 		// applyRecorded loga uma linha por binário com detalhe "importado de um <format>"
-		sum, aerr := applyRecorded(version, format, func() error {
+		sum, aerr := applyRecorded(version, "Import", "importado de um "+format, func() error {
 			return s.ApplyTextCollection(plan.kind, version, plan.merged)
 		})
 		if aerr != nil {
