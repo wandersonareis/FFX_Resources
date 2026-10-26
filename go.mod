@@ -1,13 +1,13 @@
 module ffxresources
 
-go 1.26.0
+go 1.27.2
 
 require (
 	github.com/bouine-cache/xxhash/v3 v3.0.1
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
 	github.com/rs/zerolog v1.35.1
-	github.com/wailsapp/wails/v3 v3.0.0-beta.34
+	github.com/wailsapp/wails/v3 v3.0.0
 	github.com/woozymasta/bcn v0.7.0
 	github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2
 	golang.org/x/sys v0.49.0
