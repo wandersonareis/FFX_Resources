@@ -231,7 +231,7 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
             <ChevronDown size={12} />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-56">
+        <DropdownMenuContent align="end" className="w-70">
           <DropdownMenuItem onSelect={() => void runExport(servedKinds)}>
             <Download size={14} />
             Exportar
@@ -271,7 +271,7 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
             <ChevronDown size={12} />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-56">
+        <DropdownMenuContent align="end" className="w-70">
           <DropdownMenuLabel className="text-muted-foreground">
             Tipos
           </DropdownMenuLabel>

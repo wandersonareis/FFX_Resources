@@ -39,7 +39,7 @@ export function ImageImportMenu({
           <ChevronDown size={12} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-64">
+      <DropdownMenuContent align="start" className="w-70">
         {/* 1. Padrão = mods/translated/images (primeiro item, como no texto) */}
         <DropdownMenuItem
           onSelect={() => onImportTranslated()}
