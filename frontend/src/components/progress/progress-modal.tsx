@@ -83,7 +83,11 @@ function BatchResult({ batch }: { batch: ProgressBatch }) {
   const failed = batch.failed ?? false;
   const withIssues = batch.issueCount > 0;
   return (
-    <div className="space-y-2 py-2" role="status">
+    // min-w-0: o BatchResult é um ITEM do grid do DialogContent, e item de
+    // grid nasce com min-width:auto (mínimo = min-content). Sem isso o
+    // destino longo abaixo empurraria a coluna e o modal "cresceria" além
+    // do sm:max-w-md do chamador.
+    <div className="min-w-0 space-y-2 py-2" role="status">
       <div className="flex justify-center">
         {failed ? (
           <XCircle className="size-14 text-destructive" aria-label="Operação falhou" />
@@ -101,7 +105,15 @@ function BatchResult({ batch }: { batch: ProgressBatch }) {
             : 'Processamento concluído.'}
       </p>
       {batch.written && batch.written > 0 ? (
-        <p className="text-center text-xs tabular-nums text-muted-foreground">
+        // wrap-anywhere (e não o wrap-break-word usado nos diálogos de
+        // import): o destino pode ser UM caminho absoluto sem espaços —
+        // export de um kind só, o caso da aba Eternal Calm, que exporta
+        // apenas Eventos e por isso mostra o path completo do artefato em
+        // vez de "N arquivos em <pasta>". Palavra sem espaço não quebra com
+        // break-word sem estourar o grid: anywhere quebra em qualquer
+        // carácter E reduz o min-content, então o modal mantém a largura e
+        // o texto desce para a linha de baixo.
+        <p className="text-center text-xs tabular-nums text-muted-foreground wrap-anywhere">
           {fmt(batch.written)} arquivo(s)
           {batch.destination ? ` — ${batch.destination}` : ''}
         </p>

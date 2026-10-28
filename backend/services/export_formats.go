@@ -11,6 +11,7 @@ import (
 
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
+	"ffxresources/backend/fileFormats/event"
 	"ffxresources/backend/formatters"
 	"ffxresources/backend/uilog"
 	_ "ffxresources/backend/formatters/csv"
@@ -160,19 +161,42 @@ func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, v
 			ids = nil
 		}
 	}
+	// scope fica com o PEDIDO (normalizado, como antes) e é o que nomeia o
+	// artefato — bulk / uma entrada / subconjunto. A extração pode filtrar
+	// o universo sem mudar o nome: o escopo é do pedido, não do resultado.
+	scope := ids
 	if kind == KindEvents || kind == KindMacro {
-		ids = s.normalizeIDs(ids)
+		scope = s.normalizeIDs(scope)
 	}
-	if kind == KindEvents && len(ids) == 0 {
-		// Export bulk: carrega TODOS os eventos, não só os já visitados.
-		if err := s.ensureAllEventsLoaded(version); err != nil {
-			return nil, err
+
+	// Universo da EXTRAÇÃO. Events é o único kind com régua de versão: os
+	// grupos "sc" (Eternal Calm) e "lm" (Last Mission) moram na árvore do
+	// jogo-pai e cada aba serve só o seu (mesma lista de ListEntries, que
+	// a árvore exibe). Sem esse filtro o export da aba Eternal Calm
+	// varria o bucket inteiro do datastore e gravava TODOS os eventos do
+	// FFX — e o export do FFX levava os arquivos do Eternal Calm.
+	extract := scope
+	if kind == KindEvents {
+		if len(scope) == 0 {
+			// Bulk: carrega TODOS os eventos, não só os já visitados.
+			if err := s.ensureAllEventsLoaded(version); err != nil {
+				return nil, err
+			}
+			extract = filterEventIDsForVersion(event.GetAllEventIDs(version), version)
+		} else {
+			extract = filterEventIDsForVersion(scope, version)
+		}
+		if len(extract) == 0 {
+			// Universo vazio NÃO pode significar "tudo": ids vazio é o
+			// contrato de bulk dos builders e desandaria no balde do
+			// jogo-pai. Sem eventos da versão, o export não tem alvo.
+			return nil, fmt.Errorf("nenhum evento de %s na árvore desta versão", version)
 		}
 	}
 	r.Begin("", 0) // total indeterminado: os builders fazem SetTotal
 	defer r.End()
 
-	c, err := s.GetCollection(kind, version, helpExportIDs(kind, ids), r)
+	c, err := s.GetCollection(kind, version, helpExportIDs(kind, extract), r)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +217,7 @@ func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, v
 
 	switch kind {
 	case KindEvents:
-		path, perr := eventsExportPath(version, ids, prefix)
+		path, perr := eventsExportPath(version, scope, prefix)
 		if perr != nil {
 			return nil, perr
 		}
@@ -205,7 +229,7 @@ func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, v
 		}
 		return []string{p}, werr
 	case KindMacro:
-		path, perr := macroExportPath(version, ids, prefix)
+		path, perr := macroExportPath(version, scope, prefix)
 		if perr != nil {
 			return nil, perr
 		}
