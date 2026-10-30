@@ -18,6 +18,7 @@ arquivo por formato. Cada página descreve o **layout binário** e as
 | Texturas `.dds.phyre` | [texturas-phyre.md](formatos/texturas-phyre.md) | Container PhyreEngine DX11 com payload DDS |
 | Exportação JSON / Strings (`.json` / `.strings`) | [exportacao-json-strings.md](formatos/exportacao-json-strings.md) | Artefatos de texto do editor: estrutura do DTO, dedup `$hash`, round-trip |
 | Exportação CSV / XLSX (`.csv` / `.xlsx`) | [exportacao-csv-xlsx.md](formatos/exportacao-csv-xlsx.md) | Tabela de tradução externa: colunas, dedup `$hash`, proteção de metadata |
+| Exportação / importação PO (`.po`) | [exportacao-po.md](formatos/exportacao-po.md) | Intercâmbio com CAT: msgid/msgstr do slot `us`, metadados em `#. import:`, referências dos outros idiomas |
 
 ## Motor compartilhado
 
@@ -42,7 +43,7 @@ o mesmo texto, inclusive CJK) — é documentada em
 - O texto flui pela app como DTO (`backend/dto`): os pacotes de formato
   leem/escrevem binário; os builders (`backend/builders`) montam/aplicam o
   DTO; os formatters (`backend/formatters`) serializam
-  JSON/.strings/CSV/XLSX.
+  JSON/.strings/CSV/XLSX/PO.
 - Edits são sempre salvos em `mods/<localização>/...`, nunca em `data/`.
 
 ## Outros guias

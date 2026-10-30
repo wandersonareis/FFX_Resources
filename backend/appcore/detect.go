@@ -53,7 +53,8 @@ const (
 	FormatArtifactStrings
 	FormatArtifactCSV
 	FormatArtifactXLSX
-	FormatVBF // container (somente leitura — não é entrada de menu)
+	FormatArtifactPO // artefato PO (gettext) — o artefato das ferramentas CAT
+	FormatVBF        // container (somente leitura — não é entrada de menu)
 )
 
 // String devolve o rótulo do formato (usado nos dialogs/erros).
@@ -83,6 +84,8 @@ func (f Format) String() string {
 		return "artefato CSV"
 	case FormatArtifactXLSX:
 		return "artefato XLSX"
+	case FormatArtifactPO:
+		return "artefato PO"
 	case FormatVBF:
 		return "container .vbf"
 	default:
@@ -112,7 +115,7 @@ func (f Format) TextKind() string {
 
 // artifactRegistryKey devolve a chave canônica do registry de formatters
 // (formatters.Get) para o artefato detectado — "" quando não é artefato
-// de texto (.json/.strings/.csv/.xlsx).
+// de texto (.json/.strings/.csv/.xlsx/.po).
 func (f Format) artifactRegistryKey() string {
 	switch f {
 	case FormatArtifactJSON:
@@ -123,6 +126,8 @@ func (f Format) artifactRegistryKey() string {
 		return "csv"
 	case FormatArtifactXLSX:
 		return "xlsx"
+	case FormatArtifactPO:
+		return "po"
 	}
 	return ""
 }
@@ -237,6 +242,12 @@ func DetectBytes(path string, head []byte) (Detection, error) {
 			return Detection{}, Incompatible(path, "artefato XLSX", "", "conteúdo não é XLSX válido (assinatura PK)")
 		}
 		return Detection{Format: FormatArtifactXLSX, Detail: "artefato XLSX"}, nil
+
+	case filepath.Ext(base) == ".po":
+		if !looksLikePO(head) {
+			return Detection{}, Incompatible(path, "artefato PO", "", "conteúdo não parece um artefato PO (msgid/msgstr)")
+		}
+		return Detection{Format: FormatArtifactPO, Detail: "artefato PO"}, nil
 
 	case filepath.Ext(base) == ".vbf":
 		return Detection{}, Incompatible(path, "", "container .vbf", "container é somente leitura — use o navegador de .vbf do app")
@@ -605,4 +616,11 @@ func looksLikeXLSX(head []byte) bool {
 		(head[2] == 0x03 && head[3] == 0x04 ||
 			head[2] == 0x05 && head[3] == 0x06 ||
 			head[2] == 0x07 && head[3] == 0x08))
+}
+
+// looksLikePO confere se o conteúdo tem a marca de um artefato PO: as
+// keywords msgid/msgstr (o cabeçalho PO já traz as duas).
+func looksLikePO(head []byte) bool {
+	s := string(head)
+	return strings.Contains(s, "msgid") && strings.Contains(s, "msgstr")
 }

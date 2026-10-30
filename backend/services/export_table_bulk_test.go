@@ -13,6 +13,7 @@ import (
 	"ffxresources/backend/fileFormats/eventtable"
 	"ffxresources/backend/formatters"
 	jsonfmt "ffxresources/backend/formatters/json"
+	pofmt "ffxresources/backend/formatters/po"
 	strfmt "ffxresources/backend/formatters/strings"
 	"ffxresources/testData/tempdir"
 )
@@ -262,8 +263,8 @@ func TestExportTableKindsBulkSingleFile(t *testing.T) {
 // ---- round-trip export bulk → import bulk → binário ---------------------------
 //
 // TestExportBulkImportRoundtripBinary: o ciclo completo do "exportar tudo →
-// importar tudo" com I/O real e conferência de BINÁRIO byte-a-byte, nos dois
-// formatos (JSON e .strings):
+// importar tudo" com I/O real e conferência de BINÁRIO byte-a-byte, nos três
+// formatos (JSON, .strings e PO):
 //
 //  1. export completo do kind (bulk único em edits/) lendo os binários de data/;
 //  2. ImportFile do artefato SEM edição — nada muda: changed=0 e nenhum
@@ -275,6 +276,7 @@ func TestExportTableKindsBulkSingleFile(t *testing.T) {
 func TestExportBulkImportRoundtripBinary(t *testing.T) {
 	t.Run("json", func(t *testing.T) { bulkImportRoundtripScenario(t, "json") })
 	t.Run("strings", func(t *testing.T) { bulkImportRoundtripScenario(t, "strings") })
+	t.Run("po", func(t *testing.T) { bulkImportRoundtripScenario(t, "po") })
 }
 
 // bulkImportRoundtripScenario roda o ciclo em um GameFilesRoot temporário
@@ -391,6 +393,12 @@ func parseBulkArtifact(t *testing.T, format, path string) dto.Collection {
 			t.Fatalf("parse json: %v", err)
 		}
 		return c
+	case "po":
+		c, err := pofmt.POFormatter{}.Unmarshal(raw)
+		if err != nil {
+			t.Fatalf("parse po: %v", err)
+		}
+		return c
 	}
 	c, err := strfmt.StringsFormatter{}.Unmarshal(raw)
 	if err != nil {
@@ -407,6 +415,12 @@ func marshalBulkArtifact(t *testing.T, format string, c dto.Collection) []byte {
 		raw, err := jsonfmt.JSONFormatter{}.Marshal(c)
 		if err != nil {
 			t.Fatalf("marshal json: %v", err)
+		}
+		return raw
+	case "po":
+		raw, err := pofmt.POFormatter{}.Marshal(c)
+		if err != nil {
+			t.Fatalf("marshal po: %v", err)
 		}
 		return raw
 	}

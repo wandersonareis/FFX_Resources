@@ -54,6 +54,8 @@ func Build(a *application.App, c *Controller) *application.Menu {
 			OnClick(func(*application.Context) { c.onExportText(k.kind, appcore.FormatCSV) })
 		kindMenu.Add("Exportar XLSX").
 			OnClick(func(*application.Context) { c.onExportText(k.kind, appcore.FormatXLSX) })
+		kindMenu.Add("Exportar PO (gettext)").
+			OnClick(func(*application.Context) { c.onExportText(k.kind, appcore.FormatPO) })
 	}
 
 	// ---- Importar (mesmos kinds do Texto) -------------------------------
@@ -68,6 +70,8 @@ func Build(a *application.App, c *Controller) *application.Menu {
 			OnClick(func(*application.Context) { c.onImportText(k.kind, appcore.FormatCSV) })
 		kindMenu.Add("Importar XLSX").
 			OnClick(func(*application.Context) { c.onImportText(k.kind, appcore.FormatXLSX) })
+		kindMenu.Add("Importar PO (gettext)").
+			OnClick(func(*application.Context) { c.onImportText(k.kind, appcore.FormatPO) })
 	}
 
 	// ---- Ajuda ----------------------------------------------------------

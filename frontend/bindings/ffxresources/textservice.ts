@@ -52,7 +52,7 @@ export function CountChangedTexts(imported: dto$0.Collection, store: dto$0.Colle
  * ExportArtifactBatch exporta o lote como UMA operação agrupada: um step
  * por kind no modal de progresso (eventos, sistema, dicionário...), cada
  * um com a própria barra. items: [{kind, ids}] — ids vazio = tudo do kind;
- * format: "json" | "strings" | "csv" | "xlsx". O progresso sai pelos
+ * format: "json" | "strings" | "csv" | "xlsx" | "po". O progresso sai pelos
  * eventos ProgressStart/Update/End; o resumo (arquivos + destino) fica no
  * estado final do modal.
  */
@@ -205,7 +205,7 @@ export function SearchTextEntries(version: common$0.GameVersion, query: string):
 
 /**
  * SelectImportFile abre o seletor nativo de arquivo para importar
- * (.json / .strings / .csv / .xlsx). Devolve "" quando o usuário cancela.
+ * (.json / .strings / .csv / .xlsx / .po). Devolve "" quando o usuário cancela.
  */
 export function SelectImportFile(): $CancellablePromise<string> {
     return $Call.ByID(2853090985);

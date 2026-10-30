@@ -144,7 +144,7 @@ func (s *TextService) ListLanguages() []common.Language {
 // ExportArtifactBatch exporta o lote como UMA operação agrupada: um step
 // por kind no modal de progresso (eventos, sistema, dicionário...), cada
 // um com a própria barra. items: [{kind, ids}] — ids vazio = tudo do kind;
-// format: "json" | "strings" | "csv" | "xlsx". O progresso sai pelos
+// format: "json" | "strings" | "csv" | "xlsx" | "po". O progresso sai pelos
 // eventos ProgressStart/Update/End; o resumo (arquivos + destino) fica no
 // estado final do modal.
 func (s *TextService) ExportArtifactBatch(items []services.ExportPlanItem, version common.GameVersion, langs []string, format string) ([]string, error) {
@@ -155,14 +155,15 @@ func (s *TextService) ExportArtifactBatch(items []services.ExportPlanItem, versi
 }
 
 // SelectImportFile abre o seletor nativo de arquivo para importar
-// (.json / .strings / .csv / .xlsx). Devolve "" quando o usuário cancela.
+// (.json / .strings / .csv / .xlsx / .po). Devolve "" quando o usuário cancela.
 func (s *TextService) SelectImportFile() string {
 	return pickFile("Selecionar arquivo para importar", "",
-		application.FileFilter{DisplayName: "Arquivos de importação (*.json; *.strings; *.csv; *.xlsx)", Pattern: "*.json;*.strings;*.csv;*.xlsx"},
+		application.FileFilter{DisplayName: "Arquivos de importação (*.json; *.strings; *.csv; *.xlsx; *.po)", Pattern: "*.json;*.strings;*.csv;*.xlsx;*.po"},
 		application.FileFilter{DisplayName: "JSON (*.json)", Pattern: "*.json"},
 		application.FileFilter{DisplayName: "Strings (*.strings)", Pattern: "*.strings"},
 		application.FileFilter{DisplayName: "CSV (*.csv)", Pattern: "*.csv"},
 		application.FileFilter{DisplayName: "XLSX (*.xlsx)", Pattern: "*.xlsx"},
+		application.FileFilter{DisplayName: "PO (*.po)", Pattern: "*.po"},
 		application.FileFilter{DisplayName: "Todos os arquivos (*.*)", Pattern: "*.*"},
 	)
 }

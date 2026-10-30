@@ -4,13 +4,14 @@ import { useSelector } from '@tanstack/react-store';
 import type { EntryKind } from './display-names';
 import type { GameVersionId } from './game-version';
 
-export type ExportFormat = 'json' | 'strings' | 'csv' | 'xlsx';
+export type ExportFormat = 'json' | 'strings' | 'csv' | 'xlsx' | 'po';
 
 export const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
   json: 'JSON',
   strings: 'Strings',
   csv: 'CSV',
   xlsx: 'XLSX (Excel)',
+  po: 'PO (gettext)',
 };
 
 const FORMAT_STORAGE_KEY = 'ffx.export-format';
@@ -22,7 +23,8 @@ function loadStoredFormat(): ExportFormat {
       stored === 'json' ||
       stored === 'strings' ||
       stored === 'csv' ||
-      stored === 'xlsx'
+      stored === 'xlsx' ||
+      stored === 'po'
     ) {
       return stored;
     }

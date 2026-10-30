@@ -15,6 +15,7 @@ import (
 	"ffxresources/backend/formatters"
 	_ "ffxresources/backend/formatters/csv"
 	jsonfmt "ffxresources/backend/formatters/json"
+	_ "ffxresources/backend/formatters/po"
 	_ "ffxresources/backend/formatters/strings"
 	_ "ffxresources/backend/formatters/xlsx"
 	"ffxresources/backend/progress"
@@ -52,14 +53,14 @@ var kindStepLabels = map[string]string{
 
 // ExportArtifactBatch exporta o lote como UMA operação agrupada: um step
 // por kind, cada um com a própria barra (extração tick a tick — p.ex.
-// "Eventos 0→301/301"). Formato: "json" | "strings" | "csv" | "xlsx".
-// O progresso sai pelos eventos do wails (ProgressStart/Update/End) — o
-// frontend só renderiza o modal; erro após o início do batch aparece lá.
+// "Eventos 0→301/301"). Formato: "json" | "strings" | "csv" | "xlsx" |
+// "po". O progresso sai pelos eventos do wails (ProgressStart/Update/End) —
+// o frontend só renderiza o modal; erro após o início do batch aparece lá.
 func (s *MetadataService) ExportArtifactBatch(items []ExportPlanItem, version common.GameVersion, langs []string, format string) (paths []string, retErr error) {
 	// Validação ANTES do batch: erros daqui ainda são toast do frontend.
 	format = strings.ToLower(strings.TrimSpace(format))
 	switch format {
-	case "json", "strings", "csv", "xlsx":
+	case "json", "strings", "csv", "xlsx", "po":
 	default:
 		return nil, fmt.Errorf("formato de export desconhecido: %s", format)
 	}
@@ -116,6 +117,8 @@ func exportFormatLabel(format string) string {
 		return "CSV"
 	case "XLSX":
 		return "XLSX"
+	case "PO":
+		return "PO"
 	}
 	return format
 }

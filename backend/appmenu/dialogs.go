@@ -186,15 +186,16 @@ func textBinaryFilters() []application.FileFilter {
 	}
 }
 
-// artifactFilters filtra artefatos pelo formato (json/strings/csv/xlsx).
+// artifactFilters filtra artefatos pelo formato (json/strings/csv/xlsx/po).
 func artifactFilters(format appcore.ArtifactFormat, both bool) []application.FileFilter {
 	if both {
 		return []application.FileFilter{
-			{DisplayName: "Artefatos de texto (*.json; *.strings; *.csv; *.xlsx)", Pattern: "*.json;*.strings;*.csv;*.xlsx"},
+			{DisplayName: "Artefatos de texto (*.json; *.strings; *.csv; *.xlsx; *.po)", Pattern: "*.json;*.strings;*.csv;*.xlsx;*.po"},
 			{DisplayName: "JSON (*.json)", Pattern: "*.json"},
 			{DisplayName: "Strings (*.strings)", Pattern: "*.strings"},
 			{DisplayName: "CSV (*.csv)", Pattern: "*.csv"},
 			{DisplayName: "XLSX (*.xlsx)", Pattern: "*.xlsx"},
+			{DisplayName: "PO (*.po)", Pattern: "*.po"},
 			{DisplayName: "Todos os arquivos (*.*)", Pattern: "*.*"},
 		}
 	}

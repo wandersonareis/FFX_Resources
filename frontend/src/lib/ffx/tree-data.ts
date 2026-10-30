@@ -460,7 +460,7 @@ export async function importEntry(
 
 /** Exporta o lote como UMA operação agrupada: um item {kind, ids} por ação
  * (ids vazio = tudo do kind), no formato pedido (json | strings | csv |
- * xlsx). O modal de progresso (steps por kind, barra própria por ação) é
+ * xlsx | po). O modal de progresso (steps por kind, barra própria por ação) é
  * dirigido pelos eventos do backend — o caller não mexe em toast.
  *
  * `complete: true` marca a seleção TOTAL do kind (checkbox da raiz na
@@ -496,7 +496,7 @@ export function exportDestination(paths: string[]): string {
   return `${list.length} arquivos em ${dir}`;
 }
 
-/** Seletor nativo de arquivo (.json/.strings/.csv/.xlsx). "" = cancelado. */
+/** Seletor nativo de arquivo (.json/.strings/.csv/.xlsx/.po). "" = cancelado. */
 export function selectImportFile(): Promise<string> {
   return SelectImportFile();
 }

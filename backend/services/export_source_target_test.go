@@ -49,7 +49,7 @@ func writeEventBinary(t *testing.T, version common.GameVersion, mods bool, id st
 }
 
 // TestExportSourceTargetAllFormats é o contrato do export para CAT:
-// `text`/`source` vêm SEMPRE de data/ e `target` de mods/ — nos quatro
+// `text`/`source` vêm SEMPRE de data/ e `target` de mods/ — nos cinco
 // formatos e independente do toggle EnableMods (common.DisableMods).
 func TestExportSourceTargetAllFormats(t *testing.T) {
 	seedEventsTempRoot(t)
@@ -70,7 +70,7 @@ func TestExportSourceTargetAllFormats(t *testing.T) {
 	svc := NewMetadataService(nil)
 	for _, disabled := range []bool{true, false} {
 		common.DisableMods = disabled
-		for _, format := range []string{"json", "strings", "csv", "xlsx"} {
+		for _, format := range []string{"json", "strings", "csv", "xlsx", "po"} {
 			paths, err := svc.ExportArtifactBatch(
 				[]ExportPlanItem{{Kind: KindEvents, IDs: []string{id}}},
 				common.GameVersionFFX2, []string{common.DefaultLocalization}, format)

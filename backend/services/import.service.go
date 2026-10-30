@@ -1,6 +1,6 @@
 package services
 
-// Importação em lote (.json/.strings/.csv/.xlsx) do artefato de CAT:
+// Importação em lote (.json/.strings/.csv/.xlsx/.po) do artefato de CAT:
 // parse → detecção de kind/versão → store → casamento por COORDENADA →
 // merge do 'us' → capacidade uint16.
 //
@@ -850,8 +850,10 @@ func (s *MetadataService) prepareImport(path string, version common.GameVersion)
 		format = "strings"
 	case ".csv", ".xlsx":
 		format = strings.TrimPrefix(ext, ".")
+	case ".po":
+		format = "po"
 	default:
-		return nil, fmt.Errorf("extensão não suportada: %s (use .json, .strings, .csv ou .xlsx)", ext)
+		return nil, fmt.Errorf("extensão não suportada: %s (use .json, .strings, .csv, .xlsx ou .po)", ext)
 	}
 	f, ok := formatters.Get(format)
 	if !ok {
@@ -1084,6 +1086,8 @@ func detectImportFormat(path string) string {
 	switch ext := strings.ToLower(filepath.Ext(path)); ext {
 	case ".strings":
 		return "strings"
+	case ".po":
+		return "po"
 	}
 	return "json" // .json, .csv, .xlsx → json (formato base)
 }

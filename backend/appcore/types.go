@@ -46,9 +46,10 @@ const (
 	FormatStrings
 	FormatCSV
 	FormatXLSX
+	FormatPO
 )
 
-// String devolve o rótulo curto ("json" / "strings" / "csv" / "xlsx").
+// String devolve o rótulo curto ("json" / "strings" / "csv" / "xlsx" / "po").
 func (f ArtifactFormat) String() string {
 	switch f {
 	case FormatJSON:
@@ -59,6 +60,8 @@ func (f ArtifactFormat) String() string {
 		return "csv"
 	case FormatXLSX:
 		return "xlsx"
+	case FormatPO:
+		return "po"
 	default:
 		return "unknown"
 	}
@@ -75,6 +78,8 @@ func (f ArtifactFormat) Ext() string {
 		return ".csv"
 	case FormatXLSX:
 		return ".xlsx"
+	case FormatPO:
+		return ".po"
 	default:
 		return ""
 	}

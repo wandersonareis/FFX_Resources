@@ -1,4 +1,4 @@
-// ImportText: artefato de texto APONTADO (.json/.strings/.csv/.xlsx) +
+// ImportText: artefato de texto APONTADO (.json/.strings/.csv/.xlsx/.po) +
 // binários APONTADOS (multi-seleção) → binários reconstruídos em imported/
 // ao lado de CADA binário. O import é ON THE FLY: tudo acontece apenas ali —
 // nenhum store do frontend é mutado, nada vai para mods/.
@@ -63,7 +63,7 @@ func ImportText(ctx context.Context, req ImportRequest) (ImportResult, error) {
 }
 
 // importCollection aplica uma Collection já parseada nos binários do pedido.
-// É o caminho ÚNICO de import por arquivo: ImportText (JSON/CSV/XLSX) lê o
+// É o caminho ÚNICO de import por arquivo: ImportText (JSON/CSV/XLSX/PO) lê o
 // artefato e chama aqui. O DTO do artefato traz o texto alvo em Target — os
 // appliers avulsos consomem Text[us], daí a projeção ApplyTargetAsText.
 func importCollection(ctx context.Context, req ImportRequest, art dto.Collection) (ImportResult, error) {
@@ -183,7 +183,7 @@ func readArtifact(path string) (dto.Collection, error) {
 	}
 	format := d.Format.artifactRegistryKey()
 	if format == "" {
-		return nil, Incompatible(path, "artefato de texto", d.Format.String(), "arquivo não é .json, .strings, .csv nem .xlsx")
+		return nil, Incompatible(path, "artefato de texto", d.Format.String(), "arquivo não é .json, .strings, .csv, .xlsx nem .po")
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {

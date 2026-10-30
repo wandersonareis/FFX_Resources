@@ -19,6 +19,7 @@ import (
 	"ffxresources/backend/formatters"
 	_ "ffxresources/backend/formatters/csv"
 	_ "ffxresources/backend/formatters/json"
+	_ "ffxresources/backend/formatters/po"
 	_ "ffxresources/backend/formatters/strings"
 	_ "ffxresources/backend/formatters/xlsx"
 	"ffxresources/backend/services"

@@ -19,7 +19,7 @@ import {
 
 /**
  * Seletor de formato de exportação (header, à esquerda do seletor de
- * idiomas): define o formato (JSON | Strings | CSV | XLSX) usado por
+ * idiomas): define o formato (JSON | Strings | CSV | XLSX | PO) usado por
  * TODAS as exportações do app. A store módulo `exportSelection` é a
  * única fonte — o formato fica persistido no localStorage
  * (`ffx.export-format`). Sem props, como no header original.

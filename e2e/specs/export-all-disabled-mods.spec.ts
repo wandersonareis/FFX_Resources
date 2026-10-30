@@ -75,7 +75,7 @@ test.describe('Exportar todo o texto com mods desativados', () => {
 
       // ---- 2. formato Strings (artefatos .strings) ----
       const formatButton = page.getByRole('button', {
-        name: /^(JSON|Strings|CSV|XLSX \(Excel\))$/,
+        name: /^(JSON|Strings|CSV|XLSX \(Excel\)|PO \(gettext\))$/,
       });
       await formatButton.click();
       await page.getByRole('menuitemradio', { name: 'Strings' }).click();
