@@ -7,8 +7,8 @@
 // viram cor/itálico/parágrafo no parser e nunca podem virar chip.
 import { Extension } from '@tiptap/core';
 import { Plugin } from '@tiptap/pm/state';
-import type { ChipValidator } from '@/lib/ffx/tag-catalog';
 import { extractChipLabel, isLockedTagInner } from '@/lib/ffx/game-text-tags';
+import type { ChipValidator } from '@/lib/ffx/tag-catalog';
 
 const TAG_TEXT_RE = /\{([^{}]+)\}/g;
 
@@ -16,11 +16,7 @@ const TAG_TEXT_RE = /\{([^{}]+)\}/g;
 export function isFormattingTagText(inner: string): boolean {
   const upper = inner.trim().toUpperCase();
   if (upper.startsWith('CLR:') || upper.startsWith('COLOR:')) return true;
-  return (
-    upper === 'TEXT_ITALIC' ||
-    upper === 'TEXT_NORMAL' ||
-    upper === 'TEXT_NEWLINE'
-  );
+  return upper === 'TEXT_ITALIC' || upper === 'TEXT_NORMAL' || upper === 'TEXT_NEWLINE';
 }
 
 export function createTypedTagExtension(validate: ChipValidator): Extension {
@@ -31,11 +27,10 @@ export function createTypedTagExtension(validate: ChipValidator): Extension {
       return [
         new Plugin({
           appendTransaction: (_transactions, _oldState, newState) => {
-            const gameTag = newState.schema.nodes['gameTag'];
+            const gameTag = newState.schema.nodes.gameTag;
             if (!gameTag) return null;
 
-            const targets: Array<{ from: number; to: number; inner: string }> =
-              [];
+            const targets: Array<{ from: number; to: number; inner: string }> = [];
             newState.doc.descendants((node, pos) => {
               if (!node.isText || !node.text) return true;
               TAG_TEXT_RE.lastIndex = 0;
@@ -65,7 +60,7 @@ export function createTypedTagExtension(validate: ChipValidator): Extension {
                   label: extractChipLabel(inner),
                   locked: isLockedTagInner(inner),
                   invalid: !validate(inner),
-                })
+                }),
               );
             }
             return tr;

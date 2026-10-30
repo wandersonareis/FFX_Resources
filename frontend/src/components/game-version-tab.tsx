@@ -1,38 +1,30 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { useSelector } from "@tanstack/react-store";
-import { SetUnsavedEdits } from "@/bindings/ffxresources/app";
-import { KIND_LABELS } from "@/lib/ffx/display-names";
-import type { GameVersionId } from "@/lib/ffx/game-version";
-import { useEditDraft } from "@/lib/ffx/edit-draft";
-import { useWailsEvent } from "@/lib/ffx/use-wails-event";
-import { saveAllDrafts } from "@/lib/ffx/save-all";
-import { onEnableModsChanged } from "@/lib/ffx/config-store";
-import { setActiveFile } from "@/lib/ffx/active-file-store";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { LAYOUT_DEFAULTS_PX } from "@/lib/ffx/layout-storage";
-import { usePersistedLayout } from "@/lib/ffx/use-persisted-layout";
-import { invalidateTextSearchResults } from "@/lib/ffx/search-store";
-import { warmTextSearch } from "@/lib/ffx/tree-data";
-import {
-  createEntryView,
-  type EntryView,
-} from "@/components/entry-view/entry-view-store";
-import { ContentTree } from "@/components/entry-view/content-tree";
-import { EntryTable } from "@/components/entry-view/entry-table";
-import { TableBar } from "@/components/entry-view/entry-table/table-bar";
-import { useEntryFind } from "@/components/entry-view/find/use-entry-find";
-import { FindBar } from "@/components/entry-view/find/find-bar";
-import { ImageActionDialogs } from "@/components/dialogs/image-action-dialogs";
-import { ImagePanel } from "@/components/entry-view/image-panel";
-import { TranslationDialog } from "@/components/dialogs/translation-dialog";
-import { PreloadVersions } from "@/bindings/ffxresources/app";
-import { GAME_VERSIONS } from "@/lib/ffx/game-version";
+import { useSelector } from '@tanstack/react-store';
+import { useEffect, useMemo, useState } from 'react';
+import { PreloadVersions, SetUnsavedEdits } from '@/bindings/ffxresources/app';
+import { ImageActionDialogs } from '@/components/dialogs/image-action-dialogs';
+import { TranslationDialog } from '@/components/dialogs/translation-dialog';
+import { ContentTree } from '@/components/entry-view/content-tree';
+import { EntryTable } from '@/components/entry-view/entry-table';
+import { TableBar } from '@/components/entry-view/entry-table/table-bar';
+import { createEntryView, type EntryView } from '@/components/entry-view/entry-view-store';
+import { FindBar } from '@/components/entry-view/find/find-bar';
+import { useEntryFind } from '@/components/entry-view/find/use-entry-find';
+import { ImagePanel } from '@/components/entry-view/image-panel';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import { setActiveFile } from '@/lib/ffx/active-file-store';
+import { onEnableModsChanged } from '@/lib/ffx/config-store';
+import { KIND_LABELS } from '@/lib/ffx/display-names';
+import { useEditDraft } from '@/lib/ffx/edit-draft';
+import type { GameVersionId } from '@/lib/ffx/game-version';
+import { GAME_VERSIONS } from '@/lib/ffx/game-version';
+import { LAYOUT_DEFAULTS_PX } from '@/lib/ffx/layout-storage';
+import { saveAllDrafts } from '@/lib/ffx/save-all';
+import { invalidateTextSearchResults } from '@/lib/ffx/search-store';
+import { warmTextSearch } from '@/lib/ffx/tree-data';
+import { usePersistedLayout } from '@/lib/ffx/use-persisted-layout';
+import { useWailsEvent } from '@/lib/ffx/use-wails-event';
 
 /**
  * Aba de uma versão do jogo: só orquestra. O estado compartilhado entre
@@ -51,9 +43,9 @@ export function GameVersionTab({ version }: { version: GameVersionId }) {
   // find-store por versão; os matches derivam das rows aqui montadas.
   const find = useEntryFind(view);
   // A barra só faz sentido com um arquivo de TEXTO aberto (images não tem rows).
-  const showFind = find.open && !!selectedEntry && activeKind !== "images";
+  const showFind = find.open && !!selectedEntry && activeKind !== 'images';
   // Largura da sidebar persistida (percentual do grupo por id de painel).
-  const { defaultLayout, onLayoutChanged } = usePersistedLayout("sidebar");
+  const { defaultLayout, onLayoutChanged } = usePersistedLayout('sidebar');
 
   const hasDirty = snapshot.hasDirty;
 
@@ -81,9 +73,7 @@ export function GameVersionTab({ version }: { version: GameVersionId }) {
       // Índice de busca da aba aquecido em background: o primeiro Ctrl+K
       // não paga a construção síncrona do índice.
       warmTextSearch(version);
-      void PreloadVersions(
-        GAME_VERSIONS.filter((t) => t.id !== version).map((t) => t.id),
-      );
+      void PreloadVersions(GAME_VERSIONS.filter((t) => t.id !== version).map((t) => t.id));
     });
   }, [view, version]);
 
@@ -98,7 +88,7 @@ export function GameVersionTab({ version }: { version: GameVersionId }) {
   );
 
   // Após importar, o backend emite ImportDone → recarrega árvore e tabela.
-  useWailsEvent("ImportDone", () => {
+  useWailsEvent('ImportDone', () => {
     invalidateTextSearchResults(version);
     void view.actions.reload();
   });
@@ -108,10 +98,7 @@ export function GameVersionTab({ version }: { version: GameVersionId }) {
   // da sidebar. Os caches do backend caíram dentro de SetEnableMods
   // (antes do eco), então a recarga lê com a preferência nova: a
   // tradução liga/desliga de fato, nada fica no estado anterior.
-  useEffect(
-    () => onEnableModsChanged(() => void view.actions.coldReload()),
-    [view]
-  );
+  useEffect(() => onEnableModsChanged(() => void view.actions.coldReload()), [view]);
 
   const onSaveAll = () => {
     void saveAllDrafts(() => saving, setSaving);
@@ -144,7 +131,7 @@ export function GameVersionTab({ version }: { version: GameVersionId }) {
               hasDirty={hasDirty}
               saving={saving}
               onSave={() => void onSaveAll()}
-              onOpenFind={activeKind !== "images" ? find.openFind : undefined}
+              onOpenFind={activeKind !== 'images' ? find.openFind : undefined}
             />
             {/* Busca & substituição local: fora do rolante (shrink-0), abaixo
                 da save bar — digita já destaca e salta ao 1º match da tabela. */}
@@ -152,25 +139,23 @@ export function GameVersionTab({ version }: { version: GameVersionId }) {
             {/* Único rolante da aba: a barra está fora do overflow, então só
                 as linhas rolam (o cabeçalho gruda em top-0 desse wrapper). */}
             <div className="min-h-0 flex-1 overflow-y-auto">
-            {selectedEntry ? (
-              // images não tem rows: ocupa o lugar da tabela a pré-visualização
-              // + ações (extrair/salvar/importar) da textura.
-              activeKind === "images" ? (
-                <ImagePanel view={view} />
+              {selectedEntry ? (
+                // images não tem rows: ocupa o lugar da tabela a pré-visualização
+                // + ações (extrair/salvar/importar) da textura.
+                activeKind === 'images' ? (
+                  <ImagePanel view={view} />
+                ) : (
+                  <EntryTable
+                    view={view}
+                    matchesByRow={find.matchesByRow}
+                    activeRowKey={find.activeMatch?.rowKey ?? null}
+                  />
+                )
+              ) : loading ? (
+                <p className="mt-4 opacity-70">Carregando…</p>
               ) : (
-                <EntryTable
-                  view={view}
-                  matchesByRow={find.matchesByRow}
-                  activeRowKey={find.activeMatch?.rowKey ?? null}
-                />
-              )
-            ) : loading ? (
-              <p className="mt-4 opacity-70">Carregando…</p>
-            ) : (
-              <p className="mt-4 opacity-70">
-                Selecione um arquivo no sidebar.
-              </p>
-            )}
+                <p className="mt-4 opacity-70">Selecione um arquivo no sidebar.</p>
+              )}
             </div>
           </main>
         </ResizablePanel>

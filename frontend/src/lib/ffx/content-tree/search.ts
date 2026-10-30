@@ -1,6 +1,6 @@
-import * as services from "@/bindings/ffxresources/backend/services/models";
-import type { EntryKind } from "../display-names";
-import type { SideNode } from "./model";
+import type * as services from '@/bindings/ffxresources/backend/services/models';
+import type { EntryKind } from '../display-names';
+import type { SideNode } from './model';
 
 /**
  * Lógica PURA da lista de resultados do modal de busca. Nada aqui toca
@@ -60,11 +60,7 @@ export function searchTreeNames(
       if (hits.length >= limit) return;
       if (node.entry) {
         const { label, id, key } = node.entry;
-        if (
-          [label, id, key].some((value) =>
-            foldDiacritics(value).includes(normalized),
-          )
-        ) {
+        if ([label, id, key].some((value) => foldDiacritics(value).includes(normalized))) {
           hits.push(node);
         }
         continue;
@@ -102,7 +98,7 @@ export function buildSearchItems(
     });
     for (const [position, match] of result.rows.entries()) {
       items.push({
-        key: `${leafId}|row|${match.index}|${match.name ?? ""}|${position}`,
+        key: `${leafId}|row|${match.index}|${match.name ?? ''}|${position}`,
         leafId,
         kind,
         label: result.id,

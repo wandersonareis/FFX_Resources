@@ -1,30 +1,20 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import { Editor } from '@tiptap/core';
-import StarterKit from '@tiptap/starter-kit';
-import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
-import { ChevronDown, DoorOpen, Eraser, Italic, Palette, RotateCcw, Undo2, Redo2 } from 'lucide-react';
-import { gameTextParser } from '@/lib/ffx/game-text-parser';
+import { TextStyle } from '@tiptap/extension-text-style';
+import StarterKit from '@tiptap/starter-kit';
 import {
-  splitLeadingPadding,
-  summarizePadding,
-} from '@/lib/ffx/leading-padding';
-import { KNOWN_COLORS, extractChipLabel, isLockedTagInner } from '@/lib/ffx/game-text-tags';
-import {
-  getChipValidator,
-  loadTagCatalog,
-  type TagCatalog,
-} from '@/lib/ffx/tag-catalog';
-import type { GameVersionId } from '@/lib/ffx/game-version';
-import { GameTagExtension } from './game-tag.extension';
-import { LockedTagsExtension } from './locked-tags.extension';
-import { CleanMarksExtension } from './clean-marks.extension';
-import { createDoubleClickSelectionExtension } from './double-click-selection.extension';
-import { createPasteHandlerExtension } from './paste-handler.extension';
-import { createTagAutocompleteExtension } from './tag-autocomplete.extension';
-import { createTypedTagExtension } from './typed-tag.extension';
+  ChevronDown,
+  DoorOpen,
+  Eraser,
+  Italic,
+  Palette,
+  Redo2,
+  RotateCcw,
+  Undo2,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -33,11 +23,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { gameTextParser } from '@/lib/ffx/game-text-parser';
+import { extractChipLabel, isLockedTagInner, KNOWN_COLORS } from '@/lib/ffx/game-text-tags';
+import type { GameVersionId } from '@/lib/ffx/game-version';
+import { splitLeadingPadding, summarizePadding } from '@/lib/ffx/leading-padding';
+import { getChipValidator, loadTagCatalog, type TagCatalog } from '@/lib/ffx/tag-catalog';
+import { CleanMarksExtension } from './clean-marks.extension';
+import { createDoubleClickSelectionExtension } from './double-click-selection.extension';
+import { GameTagExtension } from './game-tag.extension';
+import { LockedTagsExtension } from './locked-tags.extension';
+import { createPasteHandlerExtension } from './paste-handler.extension';
+import { createTagAutocompleteExtension } from './tag-autocomplete.extension';
+import { createTypedTagExtension } from './typed-tag.extension';
 
 interface TemplateItem {
   /** Tag completa, ex: {BUTTON:31:X}. */
@@ -79,14 +77,26 @@ const DPAD_ITEMS: TemplateItem[] = [
   { value: '{BUTTON:44:Direcional DOWN}', cls: ['gb-arrow-down'] },
   { value: '{BUTTON:45:Direcional Up+Down}', cls: ['gb-arrow-up', 'gb-arrow-down'] },
   { value: '{BUTTON:46:Direcional Down+Right}', cls: ['gb-arrow-down', 'gb-arrow-right'] },
-  { value: '{BUTTON:47:Direcional Up+Right+Down}', cls: ['gb-arrow-up', 'gb-arrow-right', 'gb-arrow-down'] },
+  {
+    value: '{BUTTON:47:Direcional Up+Right+Down}',
+    cls: ['gb-arrow-up', 'gb-arrow-right', 'gb-arrow-down'],
+  },
   { value: '{BUTTON:48:Direcional LEFT}', cls: ['gb-arrow-left'] },
   { value: '{BUTTON:49:Direcional Up+Left}', cls: ['gb-arrow-up', 'gb-arrow-left'] },
   { value: '{BUTTON:4A:Direcional Left+Right}', cls: ['gb-arrow-left', 'gb-arrow-right'] },
-  { value: '{BUTTON:4B:Direcional Up+Left+Right}', cls: ['gb-arrow-up', 'gb-arrow-left', 'gb-arrow-right'] },
+  {
+    value: '{BUTTON:4B:Direcional Up+Left+Right}',
+    cls: ['gb-arrow-up', 'gb-arrow-left', 'gb-arrow-right'],
+  },
   { value: '{BUTTON:4C:Direcional Left+Down}', cls: ['gb-arrow-left', 'gb-arrow-down'] },
-  { value: '{BUTTON:4D:Direcional Up+Left+Down}', cls: ['gb-arrow-up', 'gb-arrow-left', 'gb-arrow-down'] },
-  { value: '{BUTTON:4E:Direcional Left+Down+Right}', cls: ['gb-arrow-left', 'gb-arrow-down', 'gb-arrow-right'] },
+  {
+    value: '{BUTTON:4D:Direcional Up+Left+Down}',
+    cls: ['gb-arrow-up', 'gb-arrow-left', 'gb-arrow-down'],
+  },
+  {
+    value: '{BUTTON:4E:Direcional Left+Down+Right}',
+    cls: ['gb-arrow-left', 'gb-arrow-down', 'gb-arrow-right'],
+  },
   { value: '{BUTTON:4F:Direcional All}', cls: ['gb-cursor'] },
 ];
 
@@ -111,11 +121,7 @@ export interface GameTextEditorProps {
   version: GameVersionId;
 }
 
-export function GameTextEditor({
-  value,
-  onValueChange,
-  version,
-}: GameTextEditorProps) {
+export function GameTextEditor({ value, onValueChange, version }: GameTextEditorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   /** Wrapper do editor: container de montagem do popup de sugestões. */
   const popupContainerRef = useRef<HTMLDivElement | null>(null);
@@ -134,9 +140,7 @@ export function GameTextEditor({
   const [, setTick] = useState(0);
   // undefined = catálogo ainda carregando (o editor só nasce com ele pronto:
   // parse, colagem e tags digitadas precisam do MESMO validador).
-  const [catalog, setCatalog] = useState<TagCatalog | null | undefined>(
-    undefined
-  );
+  const [catalog, setCatalog] = useState<TagCatalog | null | undefined>(undefined);
 
   useEffect(() => {
     onValueChangeRef.current = onValueChange;
@@ -184,18 +188,13 @@ export function GameTextEditor({
         createTagAutocompleteExtension(catalog, () => popupContainerRef.current),
         createPasteHandlerExtension(gameTextParser, validate),
       ],
-      content: gameTextParser.parseGameTextToHTML(
-        splitLeadingPadding(value).body,
-        validate
-      ),
+      content: gameTextParser.parseGameTextToHTML(splitLeadingPadding(value).body, validate),
       onUpdate: ({ editor: updated }) => {
         suppressUpdate.current = true;
         try {
           // Padding do valor ATUAL (o editor vive além da linha aberta).
           const { padding } = splitLeadingPadding(valueRef.current);
-          const next =
-            padding +
-            gameTextParser.serializeJSONToGameText(updated.getJSON());
+          const next = padding + gameTextParser.serializeJSONToGameText(updated.getJSON());
           lastEmittedValue.current = next;
           onValueChangeRef.current(next);
         } finally {
@@ -212,7 +211,7 @@ export function GameTextEditor({
     };
     // O editor nasce com o catálogo da versão e nunca é recriado depois.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog]);
+  }, [catalog, value]);
 
   useEffect(() => {
     if (!editor || suppressUpdate.current || catalog === undefined) return;
@@ -221,7 +220,7 @@ export function GameTextEditor({
     if (value === lastEmittedValue.current) return;
     const html = gameTextParser.parseGameTextToHTML(
       splitLeadingPadding(value).body,
-      getChipValidator(catalog)
+      getChipValidator(catalog),
     );
     editor.commands.setContent(html, { emitUpdate: false });
     lastEmittedValue.current = value;
@@ -250,10 +249,7 @@ export function GameTextEditor({
   const colors = Object.values(KNOWN_COLORS).filter((c) => c.name !== 'WHITE');
 
   return (
-    <div
-      ref={popupContainerRef}
-      className="relative flex min-h-0 flex-1 flex-col gap-2"
-    >
+    <div ref={popupContainerRef} className="relative flex min-h-0 flex-1 flex-col gap-2">
       <div
         className="flex shrink-0 flex-wrap items-center justify-between gap-1 rounded border border-border px-2 py-1"
         role="toolbar"
@@ -315,15 +311,13 @@ export function GameTextEditor({
 
         <Separator orientation="vertical" className="my-1 w-px" />
 
-        <span
-          className="inline-flex items-center gap-0.5"
-          role="group"
+        <fieldset
+          className="m-0 inline-flex items-center gap-0.5 border-0 p-0"
           aria-label="Cores ({CLR:…})"
         >
           <Palette size={20} aria-label="Cores ({CLR:…}, {CLR:WHITE} reseta)" />
           {colors.map((c) => {
-            const isActive =
-              editor?.isActive('textStyle', { color: c.hex }) ?? false;
+            const isActive = editor?.isActive('textStyle', { color: c.hex }) ?? false;
             return (
               <Tooltip key={c.name}>
                 <TooltipTrigger asChild>
@@ -356,7 +350,7 @@ export function GameTextEditor({
             </TooltipTrigger>
             <TooltipContent>Resetar cor ({'{CLR:WHITE}'})</TooltipContent>
           </Tooltip>
-        </span>
+        </fieldset>
 
         <Separator orientation="vertical" className="my-1 w-px" />
 
@@ -479,27 +473,17 @@ function SpriteTemplateDropdown({
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" aria-label={ariaLabel}>
               {triggerCls.map((cls) => (
-                <span
-                  key={cls}
-                  className={`gb-sprite gb-trigger-ico ${cls}`}
-                  aria-hidden="true"
-                />
+                <span key={cls} className={`gb-sprite gb-trigger-ico ${cls}`} aria-hidden="true" />
               ))}
               <ChevronDown size={14} />
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
-        <DropdownMenuContent
-          align="start"
-          className="max-h-85 overflow-y-auto"
-        >
+        <DropdownMenuContent align="start" className="max-h-85 overflow-y-auto">
           {items.map((t) => (
             <DropdownMenuItem key={t.value} onSelect={() => onSelect(t)}>
               {t.cls.map((cls) => (
-                <span
-                  key={cls}
-                  className={`gb-sprite gb-menu-item ${cls}`}
-                />
+                <span key={cls} className={`gb-sprite gb-menu-item ${cls}`} />
               ))}
             </DropdownMenuItem>
           ))}

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { useHotkey } from '@tanstack/react-hotkeys';
+import { useState } from 'react';
 import { hotkeyLabel, SHORTCUTS } from '@/lib/ffx/shortcuts';
 
 /**
@@ -37,9 +37,7 @@ export function useImagePreview({
    * painel). O nível é o multiplicador do tamanho NATIVO da textura (1× = 1
    * pixel da textura por pixel da tela).
    */
-  const [zoom, setZoom] = useState<{ id: string; level: 'fit' | number } | null>(
-    null,
-  );
+  const [zoom, setZoom] = useState<{ id: string; level: 'fit' | number } | null>(null);
   /**
    * Renderização pixelada (nearest-neighbor) — preferência da sessão. É o
    * jeito de distinguir embaçamento da EXIBIÇÃO (escala bilinear do browser
@@ -95,15 +93,11 @@ export function useImagePreview({
   useHotkey('3', () => setZoomLevel(3), { enabled, ignoreInputs: true });
   useHotkey('4', () => setZoomLevel(4), { enabled, ignoreInputs: true });
   // Ctrl+Alt+V: espelha a pré-visualização — a mesma ação do botão Flip.
-  useHotkey(
-    SHORTCUTS.imageFlip.keys,
-    toggleFlip,
-    {
-      enabled,
-      ignoreInputs: true,
-      meta: { name: SHORTCUTS.imageFlip.label, group: 'Painel de imagem' },
-    }
-  );
+  useHotkey(SHORTCUTS.imageFlip.keys, toggleFlip, {
+    enabled,
+    ignoreInputs: true,
+    meta: { name: SHORTCUTS.imageFlip.label, group: 'Painel de imagem' },
+  });
 
   return {
     flipped,

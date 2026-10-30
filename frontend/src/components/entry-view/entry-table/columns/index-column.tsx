@@ -1,15 +1,12 @@
-import { rowKey } from '@/lib/ffx/edit-draft';
 import type { EntryKind } from '@/lib/ffx/display-names';
+import { rowKey } from '@/lib/ffx/edit-draft';
 import { columnHelper } from '../table-types';
 
 /**
  * Coluna "#": o índice técnico do backend, ou — no lockit — a numeração
  * própria por grupo (game/utf8), que não expõe o índice do backend.
  */
-export function buildIndexColumn(
-  activeKind: EntryKind,
-  lockitSeq: Map<string, number>
-) {
+export function buildIndexColumn(activeKind: EntryKind, lockitSeq: Map<string, number>) {
   return columnHelper.accessor('index', {
     header: '#',
     cell: (info) => {

@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { AlertTriangle } from 'lucide-react';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import { parseError } from '@/lib/ffx/error-handler';
-import { imageDuplicates } from '@/lib/ffx/tree-data';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useEffect, useState } from 'react';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import type { EntryView, ImageActionState } from '@/components/entry-view/entry-view-store';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { parseError } from '@/lib/ffx/error-handler';
+import { loggedToast as toast } from '@/lib/ffx/toast-logged';
+import { imageDuplicates } from '@/lib/ffx/tree-data';
 
 export type ActionProps = { view: EntryView; action: ImageActionState };
 
@@ -21,11 +21,12 @@ export type ActionProps = { view: EntryView; action: ImageActionState };
  */
 export function useActionDuplicates(
   view: EntryView,
-  action: ImageActionState
+  action: ImageActionState,
 ): dto.ImageDuplicate[] | null {
-  const [state, setState] = useState<{ id: string; list: dto.ImageDuplicate[] | null }>(
-    { id: action.id, list: action.duplicates }
-  );
+  const [state, setState] = useState<{ id: string; list: dto.ImageDuplicate[] | null }>({
+    id: action.id,
+    list: action.duplicates,
+  });
 
   useEffect(() => {
     // Veio pronta do chamador: nada a buscar.
@@ -52,17 +53,12 @@ export function useActionDuplicates(
 }
 
 /** Toast de uma operação em lote (extrair / replicar / deletar). */
-export function reportBatch(
-  res: dto.BatchResult,
-  singular: string,
-  plural: string
-): void {
+export function reportBatch(res: dto.BatchResult, singular: string, plural: string): void {
   // Mensagem na ordem "4 texturas apagadas.": a contagem vem antes e o
   // participio concorda com ela (a ordem antiga, "Apagadas 4 texturas.",
   // ficava invertida).
   const done = res.done.length;
-  const form = (n: number, one: string, many: string) =>
-    n === 1 ? one : many;
+  const form = (n: number, one: string, many: string) => (n === 1 ? one : many);
   if (res.failed.length > 0) {
     // Com falha parcial o substantivo é o total (quem falhou aparece na
     // descrição): "3 de 4 texturas apagadas."
@@ -71,13 +67,13 @@ export function reportBatch(
         `${form(res.total, singular, plural).toLowerCase()}.`,
       {
         description: res.failed.slice(0, 3).join('; '),
-      }
+      },
     );
     return;
   }
   toast.success(
     `${done} ${form(done, 'textura', 'texturas')} ` +
-      `${form(done, singular, plural).toLowerCase()}.`
+      `${form(done, singular, plural).toLowerCase()}.`,
   );
 }
 
@@ -116,8 +112,7 @@ export const DELETE_SCOPES: Array<{
  * aparecem nos três itens.
  */
 const DELETE_IRREVERSIBLE =
-  'Os arquivos são removidos do disco, fora da lixeira, e não há ' +
-  'como desfazer.';
+  'Os arquivos são removidos do disco, fora da lixeira, e não há ' + 'como desfazer.';
 
 const DELETE_SCOPE_NOTICES: Record<DeleteScope, string> = {
   data:
@@ -166,16 +161,12 @@ export function DeleteScopeField({
 }) {
   return (
     <fieldset className="space-y-1.5">
-      <legend className="mb-1 text-xs uppercase tracking-wide opacity-60">
-        {legend}
-      </legend>
+      <legend className="mb-1 text-xs uppercase tracking-wide opacity-60">{legend}</legend>
       {DELETE_SCOPES.map((option) => (
         <label
           key={option.value}
           className={`flex cursor-pointer items-start gap-2 rounded border p-2 text-sm ${
-            scope === option.value
-              ? 'border-primary bg-primary/5'
-              : 'border-border'
+            scope === option.value ? 'border-primary bg-primary/5' : 'border-border'
           }`}
         >
           <input

@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { isDesktop } from './env';
-import {
-  logWindowStore,
-  setLogWindowOpen,
-  toggleLogWindow,
-} from './log-window-store';
+import { logWindowStore, setLogWindowOpen, toggleLogWindow } from './log-window-store';
 
 /**
  * Testes do checkbox "Logs" no HOST WEB (server mode / browser puro): com o

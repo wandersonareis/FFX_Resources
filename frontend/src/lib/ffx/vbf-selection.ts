@@ -1,5 +1,5 @@
-import { createStore } from '@tanstack/store';
 import { useSelector } from '@tanstack/react-store';
+import { createStore } from '@tanstack/store';
 
 /**
  * Seleção de EXTRAÇÃO/EXPORT da árvore do .vbf (checkboxes).
@@ -27,7 +27,10 @@ const vbfStore = createStore<VbfSelectionSnapshot>({
 });
 
 function normalizePath(path: string): string {
-  return path.replaceAll('\\', '/').replace(/^\/+|\/+$/g, '').toLowerCase();
+  return path
+    .replaceAll('\\', '/')
+    .replace(/^\/+|\/+$/g, '')
+    .toLowerCase();
 }
 
 function pathCovers(path: string, rule: string): boolean {
@@ -58,9 +61,7 @@ function hasOverridesBelow(paths: readonly string[], path: string): boolean {
   const baseline = rulesInclude(paths, normalized);
   return paths.some((rule) => {
     const rulePath = normalizePath(rule.startsWith('!') ? rule.slice(1) : rule);
-    const below = normalized === ''
-      ? rulePath !== ''
-      : rulePath.startsWith(`${normalized}/`);
+    const below = normalized === '' ? rulePath !== '' : rulePath.startsWith(`${normalized}/`);
     return below && rule.startsWith('!') !== !baseline;
   });
 }
@@ -69,15 +70,13 @@ function hasOverridesBelow(paths: readonly string[], path: string): boolean {
 export function vbfNodeCheckState(
   paths: readonly string[],
   path: string,
-  children: readonly VbfSelectionTreeNode[] = []
+  children: readonly VbfSelectionTreeNode[] = [],
 ): boolean | 'indeterminate' {
   if (children.length === 0) {
-    return hasOverridesBelow(paths, path)
-      ? 'indeterminate'
-      : rulesInclude(paths, path);
+    return hasOverridesBelow(paths, path) ? 'indeterminate' : rulesInclude(paths, path);
   }
   const states = children.map((child) =>
-    vbfNodeCheckState(paths, child.path, child.children ?? [])
+    vbfNodeCheckState(paths, child.path, child.children ?? []),
   );
   if (states.every((state) => state === true)) return true;
   if (states.some((state) => state !== false) || hasOverridesBelow(paths, path)) {
@@ -116,7 +115,7 @@ class VbfSelectionStore {
       // Um include explícito no caminho substitui exceções/regras inferiores.
       for (const rule of set) {
         const rulePath = normalizePath(rule.startsWith('!') ? rule.slice(1) : rule);
-        if (rulePath === key || (key === '' || rulePath.startsWith(`${key}/`))) {
+        if (rulePath === key || key === '' || rulePath.startsWith(`${key}/`)) {
           set.delete(rule);
         }
       }
@@ -130,18 +129,22 @@ class VbfSelectionStore {
       const hasDescendantSelection = [...set].some((rule) => {
         if (rule.startsWith('!')) return false;
         const rulePath = normalizePath(rule);
-        return rulePath !== key &&
+        return (
+          rulePath !== key &&
           (key === '' || rulePath.startsWith(`${key}/`)) &&
-          this.includes(root, rulePath);
+          this.includes(root, rulePath)
+        );
       });
-      const inheritedSelection = this.includes(root, key) && [...set].some((rule) => {
-        if (rule.startsWith('!')) return false;
-        const rulePath = normalizePath(rule);
-        return rulePath !== key && pathCovers(key, rulePath);
-      });
+      const inheritedSelection =
+        this.includes(root, key) &&
+        [...set].some((rule) => {
+          if (rule.startsWith('!')) return false;
+          const rulePath = normalizePath(rule);
+          return rulePath !== key && pathCovers(key, rulePath);
+        });
       for (const rule of set) {
         const rulePath = normalizePath(rule.startsWith('!') ? rule.slice(1) : rule);
-        if (rulePath === key || (key === '' || rulePath.startsWith(`${key}/`))) {
+        if (rulePath === key || key === '' || rulePath.startsWith(`${key}/`)) {
           set.delete(rule);
         }
       }
@@ -179,7 +182,7 @@ class VbfSelectionStore {
   checkedOf(
     root: string,
     path: string,
-    children: readonly VbfSelectionTreeNode[]
+    children: readonly VbfSelectionTreeNode[],
   ): boolean | 'indeterminate' {
     return vbfNodeCheckState(this.pathsOf(root), path, children);
   }

@@ -1,6 +1,6 @@
 import { createStore } from '@tanstack/store';
-import type { EntryProgress } from './entry-progress';
 import type { EntryKind } from './display-names';
+import type { EntryProgress } from './entry-progress';
 import type { GameVersionId } from './game-version';
 
 /**

@@ -40,7 +40,7 @@ export function GameTextView({
 }: GameTextViewProps) {
   const { paddingSummary, html } = useMemo(
     () => formatGameTextForDisplay(text, marks, { newlineChip }),
-    [text, marks, newlineChip]
+    [text, marks, newlineChip],
   );
 
   if (!text) {
@@ -52,9 +52,7 @@ export function GameTextView({
       {paddingSummary !== '' && (
         <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
           <span>␍ padding de tela:</span>
-          <code className="rounded bg-muted px-1">
-            {paddingSummary}
-          </code>
+          <code className="rounded bg-muted px-1">{paddingSummary}</code>
         </div>
       )}
       <div
@@ -66,6 +64,7 @@ export function GameTextView({
           '[&_mark.find-current]:bg-primary/30 dark:[&_mark.find-current]:bg-primary/40 ' +
           '[&_p]:mb-1 [&_p:last-child]:mb-0'
         }
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML montado por formatGameTextForDisplay, que escapa texto e atributos.
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </div>

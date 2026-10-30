@@ -94,8 +94,7 @@
   --font-sans: "Malva", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: "Malva", ui-sans-serif, system-ui, sans-serif;
-  --font-malva-medium: "Malva Medium", "Malva", ui-sans-serif, system-ui,
-    sans-serif;
+  --font-malva-medium: "Malva Medium", "Malva", ui-sans-serif, system-ui, sans-serif;
 
   /* Raio — DESIGN.md manda 4px nos controles; 0.5rem como base deixa
      rounded-md≈6px e rounded-lg≈8px, batendo com os mockups. */

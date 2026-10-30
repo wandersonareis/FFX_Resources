@@ -14,9 +14,7 @@
       "!!**/build",
       "!!**/coverage",
       "!!**/dist",
-      "!!next-env.d.ts",
-      "!**/bindings",
-      "!**/src/wailsjs"
+      "!!**/bindings"
     ]
   },
   "formatter": {
@@ -60,7 +58,6 @@
     "formatter": {
       "quoteStyle": "single",
       "jsxQuoteStyle": "double",
-      "quoteProperties": "asNeeded",
       "trailingCommas": "all",
       "semicolons": "always",
       "arrowParentheses": "always",

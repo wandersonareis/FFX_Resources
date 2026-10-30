@@ -1,7 +1,6 @@
 'use client';
 
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import { EntryKind, KIND_LABELS } from '@/lib/ffx/display-names';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { type EntryKind, KIND_LABELS } from '@/lib/ffx/display-names';
 
 interface ImportTranslatedDialogProps {
   batch: dto.ImportBatch | null;
@@ -45,9 +45,9 @@ export function ImportTranslatedDialog({
         <DialogHeader>
           <DialogTitle>Importar textos de mods/translated</DialogTitle>
           <DialogDescription>
-            Confira os tipos que serão importados antes de aplicar. Somente o
-            texto em inglês (&quot;us&quot;) é importado; ao confirmar, os
-            binários são reconstruídos e gravados em mods/.
+            Confira os tipos que serão importados antes de aplicar. Somente o texto em inglês
+            (&quot;us&quot;) é importado; ao confirmar, os binários são reconstruídos e gravados em
+            mods/.
           </DialogDescription>
         </DialogHeader>
 
@@ -70,20 +70,18 @@ export function ImportTranslatedDialog({
             <p className="break-all wrap-break-word text-xs text-muted-foreground">{batch.root}</p>
             {nada ? (
               <div className="rounded-md border border-muted bg-muted/40 p-2 text-sm wrap-break-word">
-                Nenhum arquivo compatível em {batch.root} — exporte para a
-                subpasta text/ ou use &quot;Importar de…&quot;.
+                Nenhum arquivo compatível em {batch.root} — exporte para a subpasta text/ ou use
+                &quot;Importar de…&quot;.
               </div>
             ) : null}
 
             {errors.length > 0 ? (
               <div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive">
-                <p className="font-semibold">
-                  Arquivo(s) pulado(s) ({errors.length}):
-                </p>
+                <p className="font-semibold">Arquivo(s) pulado(s) ({errors.length}):</p>
                 <ScrollArea className="mt-1 max-h-40">
                   <ul className="list-disc pl-5">
-                    {errors.map((e, i) => (
-                      <li key={`${i}:${e}`} className="break-all wrap-break-word">
+                    {errors.map((e) => (
+                      <li key={e} className="break-all wrap-break-word">
                         {e}
                       </li>
                     ))}
@@ -94,17 +92,15 @@ export function ImportTranslatedDialog({
 
             {warnings.length > 0 ? (
               <div className="rounded-md border border-warning/50 bg-warning/10 p-2 text-sm text-warning">
-                <p className="font-semibold">
-                  Entrada(s) ignorada(s) ({warnings.length}):
-                </p>
+                <p className="font-semibold">Entrada(s) ignorada(s) ({warnings.length}):</p>
                 <p className="mt-0.5">
-                  Só estas entradas ficam de fora — as demais entradas do
-                  arquivo importam normalmente.
+                  Só estas entradas ficam de fora — as demais entradas do arquivo importam
+                  normalmente.
                 </p>
                 <ScrollArea className="mt-1 max-h-40">
                   <ul className="list-disc pl-5">
-                    {warnings.map((w, i) => (
-                      <li key={`${i}:${w}`} className="break-all wrap-break-word">
+                    {warnings.map((w) => (
+                      <li key={w} className="break-all wrap-break-word">
                         {w}
                       </li>
                     ))}
@@ -116,17 +112,10 @@ export function ImportTranslatedDialog({
         ) : null}
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            disabled={importing}
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="outline" disabled={importing} onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button
-            disabled={importing || !batch || batch.kinds.length === 0}
-            onClick={onConfirm}
-          >
+          <Button disabled={importing || !batch || batch.kinds.length === 0} onClick={onConfirm}>
             {importing ? 'Importando...' : 'Importar'}
           </Button>
         </DialogFooter>

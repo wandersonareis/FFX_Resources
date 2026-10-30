@@ -1,17 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import { useHotkey } from '@tanstack/react-hotkeys';
 import { ChevronLeft, ChevronRight, ShieldAlert } from 'lucide-react';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import { SOURCE_LANG } from '@/lib/ffx/save-all';
-import {
-  missingProtectedTags,
-  newUnclosedFragment,
-  removeUnclosedFragment,
-  restoreProtectedTags,
-} from '@/lib/ffx/protected-tags';
-import type { GameVersionId } from '@/lib/ffx/game-version';
+import { useState } from 'react';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
+import { GameTextEditor } from '@/components/editor/game-text-editor';
+import { getActiveTagSuggestionPopup } from '@/components/editor/tag-suggestion-popup';
+import { GameTextView } from '@/components/game-text-view';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -19,10 +15,14 @@ import {
   DialogFooter,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { GameTextEditor } from '@/components/editor/game-text-editor';
-import { getActiveTagSuggestionPopup } from '@/components/editor/tag-suggestion-popup';
-import { GameTextView } from '@/components/game-text-view';
+import type { GameVersionId } from '@/lib/ffx/game-version';
+import {
+  missingProtectedTags,
+  newUnclosedFragment,
+  removeUnclosedFragment,
+  restoreProtectedTags,
+} from '@/lib/ffx/protected-tags';
+import { SOURCE_LANG } from '@/lib/ffx/save-all';
 
 export interface TranslationCellDialogProps {
   open: boolean;
@@ -49,9 +49,7 @@ export interface TranslationCellDialogProps {
 }
 
 /** Ação interrompida pelo gate (retomada ao restaurar/voltar). */
-type PendingAction =
-  | { kind: 'save' }
-  | { kind: 'navigate'; direction: 'prev' | 'next' };
+type PendingAction = { kind: 'save' } | { kind: 'navigate'; direction: 'prev' | 'next' };
 
 type GateState =
   | { kind: 'unclosed'; fragment: string; action: PendingAction }
@@ -119,7 +117,7 @@ export function TranslationCellDialog({
   };
 
   const restoreAndContinue = (): void => {
-    if (!gate || gate.kind !== 'protected') return;
+    if (gate?.kind !== 'protected') return;
     const restored = restoreProtectedTags(baseText, text);
     const action = gate.action;
     setGate(null);
@@ -129,7 +127,7 @@ export function TranslationCellDialog({
 
   /** Gate do `{…` aberto: corta o sufixo e reavalia a ação pendente. */
   const fixUnclosedAndContinue = (): void => {
-    if (!gate || gate.kind !== 'unclosed') return;
+    if (gate?.kind !== 'unclosed') return;
     const action = gate.action;
     const fixed = removeUnclosedFragment(text, baseText);
     setGate(null);
@@ -288,13 +286,11 @@ export function TranslationCellDialog({
               </p>
               {gate.kind === 'protected' ? (
                 <ul className="mt-2 flex max-h-24 flex-col gap-0.5 overflow-y-auto font-mono text-xs">
-                  {gate.missing.slice(0, 20).map((tag, index) => (
-                    <li key={`${tag}-${index}`}>{tag}</li>
+                  {withOccurrenceKeys(gate.missing.slice(0, 20)).map((missing) => (
+                    <li key={missing.key}>{missing.tag}</li>
                   ))}
                   {gate.missing.length > 20 ? (
-                    <li className="opacity-70">
-                      … +{gate.missing.length - 20}
-                    </li>
+                    <li className="opacity-70">… +{gate.missing.length - 20}</li>
                   ) : null}
                 </ul>
               ) : null}
@@ -332,4 +328,17 @@ export function TranslationCellDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+/**
+ * Prepara as tags para a lista com chave estável: a POSIÇÃO não serve de key
+ * (a mesma tag pode faltar mais de uma vez), então a chave é tag + ocorrência.
+ */
+function withOccurrenceKeys(tags: readonly string[]): { tag: string; key: string }[] {
+  const seen = new Map<string, number>();
+  return tags.map((tag) => {
+    const occurrence = (seen.get(tag) ?? 0) + 1;
+    seen.set(tag, occurrence);
+    return { tag, key: `${tag}#${occurrence}` };
+  });
 }

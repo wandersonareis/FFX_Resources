@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
-import { createStore } from '@tanstack/store';
 import { useSelector } from '@tanstack/react-store';
+import { createStore } from '@tanstack/store';
+import { useEffect } from 'react';
 import { ListLanguages } from '@/bindings/ffxresources/textservice';
 import { SOURCE_LANG } from './save-all';
 
@@ -93,9 +93,7 @@ class ExportLangsStore {
 
   private applyAvailable(langs: Language[]): void {
     this.available = langs;
-    const extras = new Set(
-      langs.map((l) => l.code).filter((code) => code !== DEFAULT_LANG)
-    );
+    const extras = new Set(langs.map((l) => l.code).filter((code) => code !== DEFAULT_LANG));
     // Sem storage (ou inválido) = TODOS marcados (comportamento atual);
     // com storage = só os códigos ainda válidos — o código que virou
     // default e códigos desconhecidos caem fora em silêncio.
@@ -127,10 +125,7 @@ class ExportLangsStore {
       this.checked.add(code);
     }
     try {
-      localStorage.setItem(
-        LANGS_STORAGE_KEY,
-        JSON.stringify([...this.checked].sort())
-      );
+      localStorage.setItem(LANGS_STORAGE_KEY, JSON.stringify([...this.checked].sort()));
     } catch {
       // localStorage indisponível — segue só em memória
     }

@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { AlertTriangle, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -16,14 +15,15 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { parseError } from '@/lib/ffx/error-handler';
-import { deleteImageSelection, imageSelectionCopies } from '@/lib/ffx/tree-data';
 import { exportSelection } from '@/lib/ffx/export-selection';
+import { loggedToast as toast } from '@/lib/ffx/toast-logged';
+import { deleteImageSelection, imageSelectionCopies } from '@/lib/ffx/tree-data';
 import {
+  type ActionProps,
   DeleteIrreversibleAlert,
+  type DeleteScope,
   DeleteScopeField,
   reportBatch,
-  type ActionProps,
-  type DeleteScope,
 } from './image-action-shared';
 
 const EMPTY_IMAGE_IDS: string[] = [];
@@ -91,8 +91,8 @@ export function DeleteImageSelectionDialog({ view, action }: ActionProps) {
             Deletar {ids.length} {ids.length === 1 ? 'imagem selecionada' : 'imagens selecionadas'}?
           </DialogTitle>
           <DialogDescription>
-            O escopo escolhido será aplicado a todas as imagens selecionadas.
-            As cópias só serão incluídas se a opção abaixo estiver marcada.
+            O escopo escolhido será aplicado a todas as imagens selecionadas. As cópias só serão
+            incluídas se a opção abaixo estiver marcada.
           </DialogDescription>
         </DialogHeader>
 
@@ -111,8 +111,8 @@ export function DeleteImageSelectionDialog({ view, action }: ActionProps) {
               <AlertTriangle />
               <AlertTitle>Não foi possível verificar as cópias</AlertTitle>
               <AlertDescription>
-                A confirmação ainda pode apagar somente as imagens marcadas.
-                Cópias adicionais não serão incluídas.
+                A confirmação ainda pode apagar somente as imagens marcadas. Cópias adicionais não
+                serão incluídas.
               </AlertDescription>
             </Alert>
           ) : copyIDs.length > 0 ? (
@@ -132,12 +132,10 @@ export function DeleteImageSelectionDialog({ view, action }: ActionProps) {
               {withCopies ? (
                 <Alert variant="warning">
                   <AlertTriangle />
-                  <AlertTitle>
-                    {targets.length} cópia(s) adicionais serão incluídas
-                  </AlertTitle>
+                  <AlertTitle>{targets.length} cópia(s) adicionais serão incluídas</AlertTitle>
                   <AlertDescription>
-                    Cópias podem ter sido editadas separadamente. Todas as
-                    cópias adicionais serão apagadas com o mesmo escopo.
+                    Cópias podem ter sido editadas separadamente. Todas as cópias adicionais serão
+                    apagadas com o mesmo escopo.
                   </AlertDescription>
                 </Alert>
               ) : null}

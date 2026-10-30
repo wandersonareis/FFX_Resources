@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { linkedRowText } from './hash-ref';
 
 // A anotação de link vem do backend (FileEntry.refs, chave = dto.RowKey =
@@ -42,20 +42,14 @@ describe('linkedRowText', () => {
 
   it('a chave leva o Name da row (mesma fórmula do dto.RowKey)', () => {
     const seen: Array<[string, string]> = [];
-    linkedRowText(
-      '235',
-      ref({ sourceIndex: 7, sourceName: 'npc_01' }),
-      (id, key) => {
-        seen.push([id, key]);
-        return undefined;
-      }
-    );
+    linkedRowText('235', ref({ sourceIndex: 7, sourceName: 'npc_01' }), (id, key) => {
+      seen.push([id, key]);
+      return undefined;
+    });
     expect(seen).toEqual([['235', '7:npc_01']]);
   });
 
   it('anotação sem texto entregue devolve "" — nunca "$hash"', () => {
-    expect(
-      linkedRowText('235', ref({ text: '', sourceId: '235' }), () => undefined)
-    ).toBe('');
+    expect(linkedRowText('235', ref({ text: '', sourceId: '235' }), () => undefined)).toBe('');
   });
 });

@@ -1,4 +1,4 @@
-import { gameTextParser, type GameTextMark } from './game-text-parser';
+import { type GameTextMark, gameTextParser } from './game-text-parser';
 import { splitLeadingPadding, summarizePadding } from './leading-padding';
 
 /**
@@ -38,7 +38,7 @@ export interface DisplayFormatOptions {
 export function formatGameTextForDisplay(
   text?: string,
   marks?: readonly GameTextMark[],
-  options?: DisplayFormatOptions
+  options?: DisplayFormatOptions,
 ): FormattedGameText {
   const { padding, body } = splitLeadingPadding(text ?? '');
   const shift = [...padding].length;
@@ -79,9 +79,7 @@ export interface SearchSnippetParts {
  * a quebra aparece na lista — sem união de palavras e sem depender de
  * separador CSS entre parágrafos.
  */
-export function formatGameTextSnippetForSearch(
-  parts: SearchSnippetParts
-): string {
+export function formatGameTextSnippetForSearch(parts: SearchSnippetParts): string {
   const { before, hit, after } = parts;
   const full = before + hit + after;
   if (!full) return '';
@@ -93,7 +91,7 @@ export function formatGameTextSnippetForSearch(
   const marked = markNewlines(
     [...body],
     Math.max(0, [...before].length - shift),
-    Math.max(0, [...(before + hit)].length - shift)
+    Math.max(0, [...(before + hit)].length - shift),
   );
   return gameTextParser.parseGameTextToHTML(marked.chars.join(''), undefined, {
     markStart: marked.start,
@@ -113,7 +111,7 @@ const NEWLINE_MARKER = '\\n';
 function markNewlines(
   chars: readonly string[],
   markStart: number,
-  markEnd: number
+  markEnd: number,
 ): { chars: string[]; start: number; end: number } {
   const out: string[] = [];
   let delta = 0;

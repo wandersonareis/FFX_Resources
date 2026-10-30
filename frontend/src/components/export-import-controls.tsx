@@ -1,25 +1,11 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { ChevronDown, Download, FileUp, FolderInput, ListChecks, Upload } from 'lucide-react';
-import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { Events } from '@wailsio/runtime';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import { GAME_VERSIONS, GameVersionId } from '@/lib/ffx/game-version';
-import { EntryKind, KIND_LABELS } from '@/lib/ffx/display-names';
-import { EXPORT_FORMAT_LABELS, useExportSelection } from '@/lib/ffx/export-selection';
-import { exportLangs } from '@/lib/ffx/export-langs';
-import { parseError } from '@/lib/ffx/error-handler';
-import { progressWasShown } from '@/lib/ffx/progress-store';
-import {
-  entryKindsFor,
-  exportArtifactBatch,
-  importFile,
-  importTranslated,
-  previewImport,
-  previewImportTranslated,
-  selectImportFile,
-} from '@/lib/ffx/tree-data';
+import { ChevronDown, Download, FileUp, FolderInput, ListChecks, Upload } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
+import { ImportSummaryDialog } from '@/components/dialogs/import-summary-dialog';
+import { ImportTranslatedDialog } from '@/components/dialogs/import-translated-dialog';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -30,8 +16,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ImportSummaryDialog } from '@/components/dialogs/import-summary-dialog';
-import { ImportTranslatedDialog } from '@/components/dialogs/import-translated-dialog';
+import { type EntryKind, KIND_LABELS } from '@/lib/ffx/display-names';
+import { parseError } from '@/lib/ffx/error-handler';
+import { exportLangs } from '@/lib/ffx/export-langs';
+import { EXPORT_FORMAT_LABELS, useExportSelection } from '@/lib/ffx/export-selection';
+import { GAME_VERSIONS, type GameVersionId } from '@/lib/ffx/game-version';
+import { progressWasShown } from '@/lib/ffx/progress-store';
+import { loggedToast as toast } from '@/lib/ffx/toast-logged';
+import {
+  entryKindsFor,
+  exportArtifactBatch,
+  importFile,
+  importTranslated,
+  previewImport,
+  previewImportTranslated,
+  selectImportFile,
+} from '@/lib/ffx/tree-data';
 
 /**
  * Controles Exportar/Importar da barra de abas + diálogo de resumo de import.
@@ -41,11 +41,9 @@ import { ImportTranslatedDialog } from '@/components/dialogs/import-translated-d
 export function ExportImportControls({ version }: { version: GameVersionId }) {
   // Escopo de exportação por versão (kinds marcados no dropdown Exportar).
   const [scopes, setScopes] = useState<Record<string, EntryKind[]>>(() =>
-    Object.fromEntries(GAME_VERSIONS.map((tab) => [tab.id, entryKindsFor(tab.id)]))
+    Object.fromEntries(GAME_VERSIONS.map((tab) => [tab.id, entryKindsFor(tab.id)])),
   );
-  const [importSummary, setImportSummary] = useState<dto.ImportSummary | null>(
-    null
-  );
+  const [importSummary, setImportSummary] = useState<dto.ImportSummary | null>(null);
   const [importing, setImporting] = useState(false);
 
   const servedKinds = entryKindsFor(version);
@@ -53,11 +51,8 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
 
   // Escopo do import em lote (mods/translated), separado do de exportação:
   // escolher o que exportar não decide o que importar.
-  const [importScopes, setImportScopes] = useState<Record<string, EntryKind[]>>(
-    () =>
-      Object.fromEntries(
-        GAME_VERSIONS.map((tab) => [tab.id, entryKindsFor(tab.id)])
-      )
+  const [importScopes, setImportScopes] = useState<Record<string, EntryKind[]>>(() =>
+    Object.fromEntries(GAME_VERSIONS.map((tab) => [tab.id, entryKindsFor(tab.id)])),
   );
   const [importBatch, setImportBatch] = useState<dto.ImportBatch | null>(null);
   const activeImportScope = importScopes[version] ?? servedKinds;
@@ -70,9 +65,7 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
   const toggleImportScope = (kind: EntryKind) => {
     setImportScopes((prev) => {
       const current = prev[version] ?? entryKindsFor(version);
-      const next = current.includes(kind)
-        ? current.filter((k) => k !== kind)
-        : [...current, kind];
+      const next = current.includes(kind) ? current.filter((k) => k !== kind) : [...current, kind];
       return { ...prev, [version]: next };
     });
   };
@@ -80,9 +73,7 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
   const toggleScope = (kind: EntryKind) => {
     setScopes((prev) => {
       const current = prev[version] ?? entryKindsFor(version);
-      const next = current.includes(kind)
-        ? current.filter((k) => k !== kind)
-        : [...current, kind];
+      const next = current.includes(kind) ? current.filter((k) => k !== kind) : [...current, kind];
       return { ...prev, [version]: next };
     });
   };
@@ -117,7 +108,7 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
         if (!progressWasShown()) toast.error(parseError(error));
       }
     },
-    [version, activeFormat]
+    [version, activeFormat],
   );
 
   const onImportClick = useCallback(async () => {
@@ -156,17 +147,13 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
         toast.info('Nada a importar.', { id: toastId });
       } else {
         const arquivos =
-          result.errors.length > 0
-            ? ` (${result.errors.length} arquivo(s) pulado(s))`
-            : '';
+          result.errors.length > 0 ? ` (${result.errors.length} arquivo(s) pulado(s))` : '';
         const entradas =
-          result.warnings.length > 0
-            ? ` (${result.warnings.length} entrada(s) ignorada(s))`
-            : '';
+          result.warnings.length > 0 ? ` (${result.warnings.length} entrada(s) ignorada(s))` : '';
         toast.success(
           `Importado: ${result.changed_texts} texto(s) alterado(s) em ` +
             `${result.files.length} arquivo(s).${arquivos}${entradas}`,
-          { id: toastId }
+          { id: toastId },
         );
         // Avisa a aba ativa para recarregar árvore/tabela (rascunhos preservados).
         try {
@@ -202,7 +189,7 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
       const suffix = parts.length > 0 ? ` (${parts.join(', ')})` : '';
       toast.success(
         `Importação concluída — ${changed} texto(s) atualizado(s) e salvos em binário (mods/).${suffix}`,
-        { id: toastId }
+        { id: toastId },
       );
       // Avisa a aba ativa para recarregar árvore/tabela (rascunhos preservados).
       try {
@@ -238,9 +225,7 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
             <span className="ml-auto pl-3 text-xs opacity-60">todos os tipos</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuLabel className="text-muted-foreground">
-            Escopo
-          </DropdownMenuLabel>
+          <DropdownMenuLabel className="text-muted-foreground">Escopo</DropdownMenuLabel>
           {servedKinds.map((kind) => (
             <DropdownMenuCheckboxItem
               key={kind}
@@ -272,9 +257,7 @@ export function ExportImportControls({ version }: { version: GameVersionId }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-70">
-          <DropdownMenuLabel className="text-muted-foreground">
-            Tipos
-          </DropdownMenuLabel>
+          <DropdownMenuLabel className="text-muted-foreground">Tipos</DropdownMenuLabel>
           {servedKinds.map((kind) => (
             <DropdownMenuCheckboxItem
               key={kind}

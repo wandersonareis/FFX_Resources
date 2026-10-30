@@ -1,19 +1,13 @@
 'use client';
 
+import { cn } from 'cn';
+import { AlertTriangle, Check, ChevronRight, Copy, Info, X } from 'lucide-react';
 import { useState } from 'react';
-import {
-  AlertTriangle,
-  Check,
-  ChevronRight,
-  Copy,
-  Info,
-  Minus,
-  X,
-} from 'lucide-react';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from 'cn';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Dialog,
   DialogContent,
@@ -22,14 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { allSelectedState, plannedWrites } from './import-selection';
 
 interface ImportImagesDetailedDialogProps {
@@ -48,9 +36,7 @@ interface ImportImagesDetailedDialogProps {
  * mas o desenho é o agregado imagem + cópias — por isso os 3 estados
  * (indeterminate quando um lado tem marcações e o outro não).
  */
-function rowCheckboxState(
-  entry: dto.ImageImportPreviewEntry
-): boolean | 'indeterminate' {
+function rowCheckboxState(entry: dto.ImageImportPreviewEntry): boolean | 'indeterminate' {
   const copies = entry.copies ?? [];
   const marked = copies.filter((copy) => copy.selected).length;
   if (copies.length === 0) return entry.selected;
@@ -88,7 +74,7 @@ function EntryRow({
           'flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors',
           hasError && 'bg-destructive/5 text-destructive',
           identical && !hasError && 'bg-muted/40 text-muted-foreground',
-          entry.selected && !identical && !hasError && 'bg-primary/5'
+          entry.selected && !identical && !hasError && 'bg-primary/5',
         )}
       >
         <Checkbox
@@ -110,10 +96,7 @@ function EntryRow({
             </Badge>
           ) : null}
           {entry.copy_missing_count > 0 ? (
-            <Badge
-              variant="outline"
-              className="shrink-0 border-warning/50 text-warning"
-            >
+            <Badge variant="outline" className="shrink-0 border-warning/50 text-warning">
               {entry.copy_missing_count} ausente
               {entry.copy_missing_count > 1 ? 's' : ''}
             </Badge>
@@ -128,9 +111,7 @@ function EntryRow({
       </div>
 
       {hasError ? (
-        <p className="ml-7 break-all pl-1 text-xs text-destructive">
-          {entry.validation_error}
-        </p>
+        <p className="ml-7 break-all pl-1 text-xs text-destructive">{entry.validation_error}</p>
       ) : null}
 
       {copies.length > 0 ? (
@@ -166,10 +147,7 @@ function EntryRow({
                     </Badge>
                   ) : null}
                   {copy.identical ? (
-                    <Badge
-                      variant="outline"
-                      className="shrink-0 border-success/50 text-success"
-                    >
+                    <Badge variant="outline" className="shrink-0 border-success/50 text-success">
                       sincronizada
                     </Badge>
                   ) : null}
@@ -240,8 +218,8 @@ export function ImportImagesDetailedDialog({
         <DialogHeader>
           <DialogTitle>Importar imagens traduzidas</DialogTitle>
           <DialogDescription>
-            Confira o que será importado: só as imagens e cópias marcadas são
-            gravadas em mods/. Os caminhos são relativos a mods/translated/images.
+            Confira o que será importado: só as imagens e cópias marcadas são gravadas em mods/. Os
+            caminhos são relativos a mods/translated/images.
           </DialogDescription>
         </DialogHeader>
 
@@ -269,9 +247,7 @@ export function ImportImagesDetailedDialog({
               <span className="font-medium text-success">{preview.new_count} nova(s)</span>
               <span>{preview.identical_count} igual(is) ao binário</span>
               {errors.length > 0 ? (
-                <span className="font-medium text-destructive">
-                  {errors.length} com erro
-                </span>
+                <span className="font-medium text-destructive">{errors.length} com erro</span>
               ) : null}
             </div>
           </div>
@@ -284,9 +260,8 @@ export function ImportImagesDetailedDialog({
                 Nada novo para importar.
               </p>
               <p className="mt-0.5 text-xs">
-                Todos os .dds.phyre da pasta são iguais ao que já está em mods/.
-                As linhas em cinza podem ser marcadas para forçar a regravação do
-                binário.
+                Todos os .dds.phyre da pasta são iguais ao que já está em mods/. As linhas em cinza
+                podem ser marcadas para forçar a regravação do binário.
               </p>
             </div>
           ) : null}
@@ -321,8 +296,8 @@ export function ImportImagesDetailedDialog({
               </p>
               <ScrollArea className="mt-1 max-h-40">
                 <ul className="list-disc space-y-1 pl-5">
-                  {errors.map((e, i) => (
-                    <li key={`${i}:${e}`} className="break-all">
+                  {errors.map((e) => (
+                    <li key={e} className="break-all">
                       {e}
                     </li>
                   ))}
@@ -334,36 +309,29 @@ export function ImportImagesDetailedDialog({
           {/* Legenda: o que cada cor significa. */}
           <div className="rounded-md border border-info/50 bg-info/10 p-3 text-sm text-info">
             <p className="flex items-center gap-1 font-semibold">
-              <Info size={14} />
-              O que as cores dizem:
+              <Info size={14} />O que as cores dizem:
             </p>
             <ul className="mt-1.5 list-disc space-y-1 text-xs">
               <li>
-                <span className="rounded bg-primary/10 px-1 font-mono">branco</span>{' '}
-                = imagem diferente do binário em mods/ — nasce marcada.
+                <span className="rounded bg-primary/10 px-1 font-mono">branco</span> = imagem
+                diferente do binário em mods/ — nasce marcada.
               </li>
               <li>
-                <span className="rounded bg-muted px-1 font-mono text-muted-foreground">
-                  cinza
-                </span>{' '}
-                = imagem{' '}
-                <strong>igual ao binário</strong> (sem alteração desde o último
-                import) — nasce desmarcada. Marcar força uma nova importação,
-                regravando o binário.
+                <span className="rounded bg-muted px-1 font-mono text-muted-foreground">cinza</span>{' '}
+                = imagem <strong>igual ao binário</strong> (sem alteração desde o último import) —
+                nasce desmarcada. Marcar força uma nova importação, regravando o binário.
               </li>
               <li>
                 <span className="rounded bg-destructive/10 px-1 font-mono text-destructive">
                   vermelho
                 </span>{' '}
-                = erro de validação (formato DX, dimensões, mipmaps, IO ou
-                formato inválido) — não pode ser importada; corrija o arquivo na
-                pasta traduzida.
+                = erro de validação (formato DX, dimensões, mipmaps, IO ou formato inválido) — não
+                pode ser importada; corrija o arquivo na pasta traduzida.
               </li>
               <li>
-                <span className="font-mono">cópias</span> = outras texturas de
-                mesmo payload original (a otimização do DVD) que{' '}
-                <strong>faltam arquivo</strong> na pasta traduzida. As marcadas
-                recebem os bytes desta imagem — a imagem em si é regravada
+                <span className="font-mono">cópias</span> = outras texturas de mesmo payload
+                original (a otimização do DVD) que <strong>faltam arquivo</strong> na pasta
+                traduzida. As marcadas recebem os bytes desta imagem — a imagem em si é regravada
                 quando estiver igual ao binário, para o grupo não ficar dividido.
               </li>
             </ul>
@@ -371,11 +339,7 @@ export function ImportImagesDetailedDialog({
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button disabled={busy || planned === 0} onClick={onConfirm}>

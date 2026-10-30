@@ -1,9 +1,9 @@
 import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import { editDraft, rowKey } from './edit-draft';
-import { SOURCE_LANG } from './save-all';
 import type { EntryKind } from './display-names';
+import { editDraft, rowKey } from './edit-draft';
 import type { GameVersionId } from './game-version';
 import { linkedRowText } from './hash-ref';
+import { SOURCE_LANG } from './save-all';
 import type { EntryRow } from './tree-data';
 
 /**
@@ -39,22 +39,20 @@ export interface TranslatedTextDeps {
  * Texto da célula LINKADA (row de ref): estado atual da def — rascunho dela
  * inclusive. O "$hash" do backend nunca é pintado. `undefined` = não é ref.
  */
-export function linkedValueOf(
-  row: dto.TextRow,
-  deps: TranslatedTextDeps
-): string | undefined {
+export function linkedValueOf(row: dto.TextRow, deps: TranslatedTextDeps): string | undefined {
   const link = deps.refLinks[rowKey(row)];
   if (!link) return undefined;
-  if (!deps.entry) return link.text ?? '';
-  return linkedRowText(deps.entry.id, link, (defId, defKey) =>
+  const entry = deps.entry;
+  if (!entry) return link.text ?? '';
+  return linkedRowText(entry.id, link, (defId, defKey) =>
     editDraft.editTextOf(
       deps.version,
-      deps.entry!.kind,
+      entry.kind,
       defId,
       defKey,
       SOURCE_LANG,
-      deps.entry!.vbf?.root ?? ''
-    )
+      entry.vbf?.root ?? '',
+    ),
   );
 }
 
@@ -63,29 +61,13 @@ export function linkedValueOf(
  * da busca local (os dois enxergam o mesmo texto, na mesma ordem de
  * precedência).
  */
-export function displayedTranslatedText(
-  row: dto.TextRow,
-  deps: TranslatedTextDeps
-): string {
+export function displayedTranslatedText(row: dto.TextRow, deps: TranslatedTextDeps): string {
   const entry = deps.entry;
   const edited = entry
-    ? editDraft.editOf(
-        deps.version,
-        entry.kind,
-        entry.id,
-        row,
-        SOURCE_LANG,
-        entry.vbf?.root ?? ''
-      )
+    ? editDraft.editOf(deps.version, entry.kind, entry.id, row, SOURCE_LANG, entry.vbf?.root ?? '')
     : undefined;
   const divergent = entry
-    ? editDraft.isDivergent(
-        deps.version,
-        entry.kind,
-        entry.id,
-        row,
-        entry.vbf?.root ?? ''
-      )
+    ? editDraft.isDivergent(deps.version, entry.kind, entry.id, row, entry.vbf?.root ?? '')
     : false;
   // Enquanto a escolha de divergência está no rascunho, a edição local
   // vence o link (mesma régua da coluna).
@@ -104,7 +86,7 @@ export function displayedTranslatedText(
  */
 export function translatedEditTarget(
   row: dto.TextRow,
-  deps: TranslatedTextDeps
+  deps: TranslatedTextDeps,
 ): TranslatedEditTarget | null {
   const entry = deps.entry;
   if (!entry) return null;
@@ -113,7 +95,7 @@ export function translatedEditTarget(
     entry.kind,
     entry.id,
     row,
-    entry.vbf?.root ?? ''
+    entry.vbf?.root ?? '',
   );
   if (!divergent) {
     const link = deps.refLinks[rowKey(row)];
@@ -144,7 +126,7 @@ export function translatedEditTarget(
           entry.id,
           row,
           SOURCE_LANG,
-          entry.vbf?.root ?? ''
+          entry.vbf?.root ?? '',
         )
       : undefined;
   return {
@@ -152,9 +134,6 @@ export function translatedEditTarget(
     id: entry.id,
     source: entry.vbf?.root ?? '',
     row,
-    lang:
-      deps.textLoc !== SOURCE_LANG && editedUs === undefined
-        ? deps.textLoc
-        : SOURCE_LANG,
+    lang: deps.textLoc !== SOURCE_LANG && editedUs === undefined ? deps.textLoc : SOURCE_LANG,
   };
 }

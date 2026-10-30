@@ -1,7 +1,7 @@
 'use client';
 
 import { Search } from 'lucide-react';
-import { SHORTCUTS, hotkeyLabel } from '@/lib/ffx/shortcuts';
+import { hotkeyLabel, SHORTCUTS } from '@/lib/ffx/shortcuts';
 
 /**
  * Gatilho VISUAL da busca na sidebar: parece o antigo campo (mesmo lugar,

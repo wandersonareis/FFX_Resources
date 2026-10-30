@@ -1,3 +1,4 @@
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import {
   ExportVbfSelection,
   ExtractVbfImagesSelection,
@@ -10,12 +11,11 @@ import {
   ListVbfRoots,
   PreviewVbfExtraction,
   ReplicateVbfImage,
+  SaveVbfImage,
   SelectVbfExtractDir,
   SelectVbfImageExtractDir,
-  SaveVbfImage,
   VbfImageExportPath,
 } from '@/bindings/ffxresources/vbfservice';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
 import type { ExportFormat } from './export-selection';
 
 /**
@@ -103,10 +103,7 @@ export function loadVbfDir(root: string, dir: string): Promise<VbfNode[]> {
  * Filhos virtuais de macrodic.dcp (chunk_00, chunk_01, …): o dicionário é
  * UM arquivo por localização e o app o trata como grupo.
  */
-export function loadVbfMacroChunks(
-  root: string,
-  macroPath: string
-): Promise<VbfNode[]> {
+export function loadVbfMacroChunks(root: string, macroPath: string): Promise<VbfNode[]> {
   const key = `macro|${root}|${macroPath.toLowerCase()}`;
   const cached = dirCache.get(key);
   if (cached) return Promise.resolve(cached);
@@ -117,11 +114,7 @@ export function loadVbfMacroChunks(
 }
 
 /** Decodifica um arquivo de TEXTO do .vbf e devolve a tabela. */
-export function loadVbfEntry(
-  root: string,
-  path: string,
-  id: string
-): Promise<dto.FileEntry> {
+export function loadVbfEntry(root: string, path: string, id: string): Promise<dto.FileEntry> {
   const key = `${root}|${path.toLowerCase()}|${id}`;
   const cached = entryCache.get(key);
   if (cached) return Promise.resolve(cached);
@@ -132,10 +125,7 @@ export function loadVbfEntry(
 }
 
 /** Decodifica uma textura (.dds.phyre) do .vbf (data URL + metadados). */
-export function loadVbfImage(
-  root: string,
-  path: string
-): Promise<dto.ImageEntry> {
+export function loadVbfImage(root: string, path: string): Promise<dto.ImageEntry> {
   const key = `${root}|${path.toLowerCase()}`;
   const cached = imageCache.get(key);
   if (cached) return Promise.resolve(cached);
@@ -161,7 +151,7 @@ export function saveVbfImage(
   root: string,
   path: string,
   format: 'dds' | 'png',
-  destPath: string
+  destPath: string,
 ): Promise<void> {
   return SaveVbfImage(root, path, format, destPath);
 }
@@ -169,7 +159,7 @@ export function saveVbfImage(
 export function replicateVbfImage(
   root: string,
   sourcePath: string,
-  targetPaths: string[]
+  targetPaths: string[],
 ): Promise<dto.BatchResult> {
   return ReplicateVbfImage(root, sourcePath, targetPaths);
 }
@@ -194,7 +184,7 @@ export function invalidateVbfCache(): void {
 export function previewVbfExtraction(
   root: string,
   paths: string[],
-  destRoot: string
+  destRoot: string,
 ): Promise<dto.VbfExtractPreview> {
   return PreviewVbfExtraction(root, paths, destRoot);
 }
@@ -203,7 +193,7 @@ export function previewVbfExtraction(
 export function extractVbfSelection(
   root: string,
   paths: string[],
-  destRoot: string
+  destRoot: string,
 ): Promise<dto.BatchResult> {
   return ExtractVbfSelection(root, paths, destRoot);
 }
@@ -212,7 +202,7 @@ export function extractVbfSelection(
 export function extractVbfImagesSelection(
   root: string,
   paths: string[],
-  destRoot: string
+  destRoot: string,
 ): Promise<dto.BatchResult> {
   return ExtractVbfImagesSelection(root, paths, destRoot);
 }
@@ -235,7 +225,7 @@ export function exportVbfSelection(
   root: string,
   format: ExportFormat,
   paths: string[],
-  langs: string[] = []
+  langs: string[] = [],
 ): Promise<string[]> {
   return ExportVbfSelection(root, format, paths, langs);
 }
@@ -244,7 +234,7 @@ export function exportVbfSelection(
 export function vbfImageExportPath(
   root: string,
   path: string,
-  format: 'dds' | 'png'
+  format: 'dds' | 'png',
 ): Promise<string> {
   return VbfImageExportPath(root, path, format);
 }

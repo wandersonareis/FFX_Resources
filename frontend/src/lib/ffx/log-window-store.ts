@@ -1,8 +1,8 @@
 import { useSelector } from '@tanstack/react-store';
 import { createStore } from '@tanstack/store';
+import { CloseWindow, OpenWindow } from '../../../bindings/ffxresources/windowservice';
 import { isDesktop } from './env';
 import { loggedToast } from './toast-logged';
-import { CloseWindow, OpenWindow } from '../../../bindings/ffxresources/windowservice';
 
 /**
  * Janela/painel de LOGS — estado de MÓDULO (mesmo padrão do
@@ -23,9 +23,7 @@ export const logWindowStore = createStore<{ open: boolean }>({
 
 /** Espelha o estado sem tocar nas janelas (eco de eventos do backend). */
 export function setLogWindowOpen(open: boolean): void {
-  logWindowStore.setState((prev) =>
-    prev.open === open ? prev : { ...prev, open }
-  );
+  logWindowStore.setState((prev) => (prev.open === open ? prev : { ...prev, open }));
 }
 
 /**
@@ -40,8 +38,7 @@ export function toggleLogWindow(open: boolean): void {
   if (open) {
     void OpenWindow('logs').catch((error: unknown) => {
       setLogWindowOpen(false);
-      const message =
-        error instanceof Error ? error.message : String(error ?? 'Erro');
+      const message = error instanceof Error ? error.message : String(error ?? 'Erro');
       loggedToast.error(message, { duration: 4000 });
     });
     return;

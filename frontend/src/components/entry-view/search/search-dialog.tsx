@@ -1,35 +1,28 @@
 'use client';
 
-import {
-  startTransition,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from 'react';
 import { useSelector } from '@tanstack/react-store';
 import { CornerDownLeft, FileText, Loader2, Search } from 'lucide-react';
+import { type KeyboardEvent, startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import type * as services from '@/bindings/ffxresources/backend/services/models';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { KIND_LABELS } from '@/lib/ffx/display-names';
-import { formatGameTextSnippetForSearch } from '@/lib/ffx/game-text-format';
 import { buildNodeIndex } from '@/lib/ffx/content-tree/model';
 import {
   buildSearchItems,
-  searchTreeNames,
   type SearchListItem,
+  searchTreeNames,
 } from '@/lib/ffx/content-tree/search';
+import { KIND_LABELS } from '@/lib/ffx/display-names';
+import { formatGameTextSnippetForSearch } from '@/lib/ffx/game-text-format';
 import {
-  SEARCH_DEBOUNCE_MS,
-  SEARCH_MIN_QUERY_RUNES,
   closeSearchDialog,
   runTextSearch,
+  SEARCH_DEBOUNCE_MS,
+  SEARCH_MIN_QUERY_RUNES,
   searchStoreFor,
 } from '@/lib/ffx/search-store';
-import * as services from '@/bindings/ffxresources/backend/services/models';
 import type { EntryView } from '../entry-view-store';
 
 /**
@@ -55,10 +48,7 @@ export function SearchDialog({ view }: { view: EntryView }) {
   // O backend devolve só kind/id de cada arquivo: o RÓTULO real (e a árvore
   // onde o reveal vai acontecer) sai do índice de nós já carregado.
   const nodeById = useMemo(() => buildNodeIndex(roots, []), [roots]);
-  const nameMatches = useMemo(
-    () => searchTreeNames(roots, search.query),
-    [roots, search.query],
-  );
+  const nameMatches = useMemo(() => searchTreeNames(roots, search.query), [roots, search.query]);
   const items = useMemo(
     () =>
       buildSearchItems(search.results, nameMatches).map((item) => ({
@@ -74,8 +64,7 @@ export function SearchDialog({ view }: { view: EntryView }) {
   // re-executa sozinho — o modal nunca fica mostrando foto velha.
   useEffect(() => {
     const trimmed = draft.trim();
-    const stale =
-      [...trimmed].length >= SEARCH_MIN_QUERY_RUNES && search.status === 'idle';
+    const stale = [...trimmed].length >= SEARCH_MIN_QUERY_RUNES && search.status === 'idle';
     if (trimmed === search.query.trim() && !stale) return;
     const timeout = setTimeout(() => {
       void runTextSearch(version, draft);
@@ -85,7 +74,7 @@ export function SearchDialog({ view }: { view: EntryView }) {
 
   useEffect(() => {
     setActiveIndex(0);
-  }, [items]);
+  }, []);
 
   // A seta move a seleção; o item ativo rola para a vista.
   useEffect(() => {
@@ -108,9 +97,7 @@ export function SearchDialog({ view }: { view: EntryView }) {
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setActiveIndex((index) =>
-        Math.max(0, Math.min(index + 1, items.length - 1))
-      );
+      setActiveIndex((index) => Math.max(0, Math.min(index + 1, items.length - 1)));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       setActiveIndex((index) => Math.max(index - 1, 0));
@@ -201,11 +188,7 @@ export function SearchDialog({ view }: { view: EntryView }) {
             <CornerDownLeft size={16} />
           </Button>
         </div>
-        <div
-          role="status"
-          aria-live="polite"
-          className="px-3 py-1.5 text-xs text-muted-foreground"
-        >
+        <div role="status" aria-live="polite" className="px-3 py-1.5 text-xs text-muted-foreground">
           {status}
         </div>
         <div
@@ -220,9 +203,16 @@ export function SearchDialog({ view }: { view: EntryView }) {
               key={item.key}
               role="option"
               aria-selected={index === activeIndex}
+              tabIndex={-1}
               data-search-index={index}
               onMouseEnter={() => setActiveIndex(index)}
               onClick={() => activate(item)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  activate(item);
+                }
+              }}
               className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left ${
                 item.fileHeader ? 'mt-1 font-medium' : 'pl-8'
               } ${index === activeIndex ? 'bg-accent' : 'hover:bg-accent/50'}`}
@@ -246,7 +236,7 @@ export function SearchDialog({ view }: { view: EntryView }) {
                     #{item.match?.index}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm">
-                    <SnippetText match={item.match!} />
+                    {item.match ? <SnippetText match={item.match} /> : null}
                   </span>
                   {item.match?.data ? (
                     <Badge variant="secondary" className="shrink-0 text-[10px]">
@@ -261,10 +251,7 @@ export function SearchDialog({ view }: { view: EntryView }) {
                 </>
               )}
               {index === activeIndex ? (
-                <CornerDownLeft
-                  size={14}
-                  className="shrink-0 text-muted-foreground"
-                />
+                <CornerDownLeft size={14} className="shrink-0 text-muted-foreground" />
               ) : null}
             </div>
           ))}
@@ -293,6 +280,7 @@ function SnippetText({ match }: { match: services.TextSearchMatch }) {
   return (
     <span
       className="block min-w-0 truncate [&_mark]:rounded-sm [&_mark]:bg-yellow-200 [&_mark]:px-0.5 [&_p]:inline [&_p]:m-0 [&_p+p]:pl-1 dark:[&_mark]:bg-yellow-500/40"
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML montado por formatGameTextSnippetForSearch, que escapa texto e atributos.
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  splitLeadingPadding,
-  summarizePadding,
-} from './leading-padding';
+import { splitLeadingPadding, summarizePadding } from './leading-padding';
 
 describe('splitLeadingPadding', () => {
   it('sem padding: body igual ao original', () => {

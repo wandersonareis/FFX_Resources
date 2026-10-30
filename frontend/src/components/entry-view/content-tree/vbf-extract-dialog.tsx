@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { AlertTriangle, FolderOpen, HardDriveDownload, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,15 +12,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { formatBytes } from '@/lib/ffx/bytes';
 import { parseError } from '@/lib/ffx/error-handler';
 import { progressWasShown } from '@/lib/ffx/progress-store';
-import { formatBytes } from '@/lib/ffx/bytes';
-import {
-  extractVbfSelection,
-  previewVbfExtraction,
-  selectVbfExtractDir,
-} from '@/lib/ffx/vbf';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
+import { loggedToast as toast } from '@/lib/ffx/toast-logged';
+import { extractVbfSelection, previewVbfExtraction, selectVbfExtractDir } from '@/lib/ffx/vbf';
 
 export interface VbfExtractRequest {
   requestId: number;
@@ -40,9 +36,7 @@ export function VbfExtractDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [destRoot, setDestRoot] = useState<string | null>(
-    request?.mode === 'data' ? '' : null
-  );
+  const [destRoot, setDestRoot] = useState<string | null>(request?.mode === 'data' ? '' : null);
   const [preview, setPreview] = useState<dto.VbfExtractPreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
@@ -51,7 +45,7 @@ export function VbfExtractDialog({
   // "Extrair para…" abre o diálogo nativo imediatamente; o diálogo de
   // confirmação só aparece depois de a pasta ser escolhida.
   useEffect(() => {
-    if (!request || request.mode !== 'choose') return;
+    if (request?.mode !== 'choose') return;
     let cancelled = false;
     void selectVbfExtractDir()
       .then((path) => {
@@ -92,11 +86,7 @@ export function VbfExtractDialog({
     setExtracting(true);
     setRunError(null);
     try {
-      const result = await extractVbfSelection(
-        request.root,
-        request.paths,
-        destRoot ?? ''
-      );
+      const result = await extractVbfSelection(request.root, request.paths, destRoot ?? '');
       // O modal de progresso do backend acompanha arquivo a arquivo e
       // mostra o resultado (falhas contam como issues) — sem toast paralelo.
       void result;
@@ -113,7 +103,7 @@ export function VbfExtractDialog({
 
   const isOpen = request !== null && (request.mode === 'data' || destRoot !== null);
   const loadingPreview = Boolean(
-    request && destRoot !== null && preview === null && previewError === null
+    request && destRoot !== null && preview === null && previewError === null,
   );
   const destination = preview?.destRoot ?? (destRoot || 'data/ do jogo');
 
@@ -131,14 +121,18 @@ export function VbfExtractDialog({
         </DialogHeader>
 
         {runError ? (
-          <p role="alert" className="text-destructive">{runError}</p>
+          <p role="alert" className="text-destructive">
+            {runError}
+          </p>
         ) : loadingPreview ? (
           <div className="flex items-center gap-2 py-3 text-muted-foreground" role="status">
             <Loader2 size={16} className="animate-spin" />
             Calculando arquivos e possíveis sobrescritas…
           </div>
         ) : previewError ? (
-          <p role="alert" className="text-destructive">{previewError}</p>
+          <p role="alert" className="text-destructive">
+            {previewError}
+          </p>
         ) : preview ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -149,7 +143,9 @@ export function VbfExtractDialog({
               <span className="text-muted-foreground">Destino</span>
               <span className="flex min-w-0 items-center gap-1 font-medium">
                 <FolderOpen size={14} className="shrink-0" />
-                <span className="truncate" title={destination}>{destination}</span>
+                <span className="truncate" title={destination}>
+                  {destination}
+                </span>
               </span>
             </div>
             {preview.existing > 0 ? (
@@ -159,8 +155,8 @@ export function VbfExtractDialog({
               >
                 <AlertTriangle size={17} className="mt-0.5 shrink-0 text-warning" />
                 <span>
-                  <strong>{preview.existing.toLocaleString('pt-BR')} arquivo(s)</strong> já
-                  existem no destino e serão sobrescritos.
+                  <strong>{preview.existing.toLocaleString('pt-BR')} arquivo(s)</strong> já existem
+                  no destino e serão sobrescritos.
                 </span>
               </div>
             ) : null}
@@ -177,13 +173,21 @@ export function VbfExtractDialog({
             Cancelar
           </Button>
           <Button
-            disabled={extracting || (!runError && (loadingPreview || Boolean(previewError) || !preview || preview.files === 0))}
+            disabled={
+              extracting ||
+              (!runError &&
+                (loadingPreview || Boolean(previewError) || !preview || preview.files === 0))
+            }
             onClick={() => {
               if (runError) onClose();
               else void runExtraction();
             }}
           >
-            {extracting ? <Loader2 size={16} className="animate-spin" /> : runError ? null : <HardDriveDownload size={16} />}
+            {extracting ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : runError ? null : (
+              <HardDriveDownload size={16} />
+            )}
             {extracting ? 'Extraindo…' : runError ? 'Fechar' : 'Confirmar extração'}
           </Button>
         </DialogFooter>

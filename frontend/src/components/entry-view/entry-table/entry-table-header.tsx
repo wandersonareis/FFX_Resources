@@ -1,6 +1,6 @@
 import type { ReactTable } from '@tanstack/react-table';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
 import type { F } from './table-types';
 
 /**
@@ -18,11 +18,7 @@ import type { F } from './table-types';
 const ID_WIDTH = '56px';
 const NAME_WIDTH = '160px';
 
-export function EntryTableHeader({
-  table,
-}: {
-  table: ReactTable<F, dto.TextRow>;
-}) {
+export function EntryTableHeader({ table }: { table: ReactTable<F, dto.TextRow> }) {
   const hasName = table.getAllColumns().some((c) => c.id === 'name');
   const textWidth = hasName
     ? `calc((100% - ${ID_WIDTH} - ${NAME_WIDTH}) / 2)`

@@ -1,21 +1,21 @@
-import type { Metadata } from "next";
-import { Geist_Mono } from "next/font/google";
-import "./globals.css";
-import { Providers } from "@/components/providers";
+import type { Metadata } from 'next';
+import { Geist_Mono } from 'next/font/google';
+import './globals.css';
+import { Providers } from '@/components/providers';
 
 // Sans do projeto é a Malva (arquivo local, @font-face em globals.css) —
 // o Geist fica só para o mono (kbd, código, listas técnicas).
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
-  title: "FINAL FANTASY X and X-2 HD Remaster Resources Editor",
-  description: "FINAL FANTASY X and X-2 HD Remaster Resources Editor",
+  title: 'FINAL FANTASY X and X-2 HD Remaster Resources Editor',
+  description: 'FINAL FANTASY X and X-2 HD Remaster Resources Editor',
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     // suppressHydrationWarning: o next-themes escreve a classe `.dark` no
     // <html> antes da hidratação (para não piscar o tema errado).

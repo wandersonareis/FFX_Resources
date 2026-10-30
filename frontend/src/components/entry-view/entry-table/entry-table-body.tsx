@@ -1,8 +1,8 @@
-import type { RefObject } from 'react';
 import type { ReactTable } from '@tanstack/react-table';
-import { rowKey } from '@/lib/ffx/edit-draft';
+import type { RefObject } from 'react';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { TableBody, TableCell, TableRow } from '@/components/ui/table';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
+import { rowKey } from '@/lib/ffx/edit-draft';
 import type { F } from './table-types';
 
 export function EntryTableBody({

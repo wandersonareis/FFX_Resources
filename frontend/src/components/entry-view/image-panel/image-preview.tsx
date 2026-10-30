@@ -63,7 +63,7 @@ export function ImagePreview({
         }
       >
         {src ? (
-          // eslint-disable-next-line @next/next/no-img-element -- data URL gerado pelo Go (next/image não otimiza nem precisa)
+          // biome-ignore lint/performance/noImgElement: data URL gerado pelo Go (next/image não otimiza nem precisa)
           <img
             src={src}
             alt={alt}
@@ -144,9 +144,7 @@ export function ImagePreview({
               className="w-36 accent-primary"
               onChange={(e) => onSetZoomLevel(Number(e.target.value))}
             />
-            <span className="w-9 text-right text-xs tabular-nums opacity-60">
-              {zoomLevel}×
-            </span>
+            <span className="w-9 text-right text-xs tabular-nums opacity-60">{zoomLevel}×</span>
           </div>
         ) : null}
       </div>

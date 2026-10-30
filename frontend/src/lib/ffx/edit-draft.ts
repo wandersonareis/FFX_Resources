@@ -1,7 +1,7 @@
-import { createStore } from '@tanstack/store';
 import { useSelector } from '@tanstack/react-store';
+import { createStore } from '@tanstack/store';
 import * as dto from '../../../bindings/ffxresources/backend/dto/models';
-import { EntryKind } from './display-names';
+import type { EntryKind } from './display-names';
 import type { GameVersionId } from './game-version';
 import {
   missingProtectedTags,
@@ -33,12 +33,8 @@ interface DraftState {
   source: string;
 }
 
-const draftKey = (
-  version: GameVersionId,
-  kind: EntryKind,
-  id: string,
-  source: string
-): string => `${version}|${kind}|${id}|${source}`;
+const draftKey = (version: GameVersionId, kind: EntryKind, id: string, source: string): string =>
+  `${version}|${kind}|${id}|${source}`;
 
 interface DraftSnapshot {
   hasDirty: boolean;
@@ -100,7 +96,7 @@ class EditDraftStore {
     kind: EntryKind,
     id: string,
     entry: dto.FileEntry,
-    source = ''
+    source = '',
   ): void {
     const key = draftKey(version, kind, id, source);
     const existing = this.states.get(key);
@@ -124,12 +120,7 @@ class EditDraftStore {
    * A base da entrada já está registrada? É a guarda de quem edita ATRAVÉS
    * do link: sem base, setCell descarta a edição em silêncio.
    */
-  hasBase(
-    version: GameVersionId,
-    kind: EntryKind,
-    id: string,
-    source = ''
-  ): boolean {
+  hasBase(version: GameVersionId, kind: EntryKind, id: string, source = ''): boolean {
     return this.states.has(draftKey(version, kind, id, source));
   }
 
@@ -150,7 +141,7 @@ class EditDraftStore {
     lang: string,
     text: string,
     source = '',
-    divergent?: boolean
+    divergent?: boolean,
   ): void {
     const key = draftKey(version, kind, id, source);
     const state = this.states.get(key);
@@ -187,7 +178,7 @@ class EditDraftStore {
     id: string,
     row: dto.TextRow,
     lang: string,
-    source = ''
+    source = '',
   ): string | undefined {
     return this.editTextOf(version, kind, id, rowKey(row), lang, source);
   }
@@ -197,7 +188,7 @@ class EditDraftStore {
     kind: EntryKind,
     id: string,
     row: dto.TextRow,
-    source = ''
+    source = '',
   ): boolean {
     const state = this.states.get(draftKey(version, kind, id, source));
     const rKey = rowKey(row);
@@ -215,7 +206,7 @@ class EditDraftStore {
     id: string,
     rKey: string,
     lang: string,
-    source = ''
+    source = '',
   ): string | undefined {
     return this.states
       .get(draftKey(version, kind, id, source))
@@ -312,10 +303,7 @@ class EditDraftStore {
    * Só rascunhos de data/ (source = ""): os de .vbf vão pelo
    * buildSourceCollection, com destino próprio.
    */
-  buildCollection(
-    version: GameVersionId,
-    kind: EntryKind
-  ): Record<string, dto.FileEntry> {
+  buildCollection(version: GameVersionId, kind: EntryKind): Record<string, dto.FileEntry> {
     return this.buildSourceCollection(version, kind, '');
   }
 
@@ -323,7 +311,7 @@ class EditDraftStore {
   buildSourceCollection(
     version: GameVersionId,
     kind: EntryKind,
-    source: string
+    source: string,
   ): Record<string, dto.FileEntry> {
     const out: Record<string, dto.FileEntry> = {};
     for (const state of this.states.values()) {
@@ -358,8 +346,7 @@ class EditDraftStore {
     const out = new Map<GameVersionId, Map<string, Map<EntryKind, string[]>>>();
     for (const state of this.states.values()) {
       if (state.edits.size === 0 || state.source === '') continue;
-      const byRoot =
-        out.get(state.version) ?? new Map<string, Map<EntryKind, string[]>>();
+      const byRoot = out.get(state.version) ?? new Map<string, Map<EntryKind, string[]>>();
       const byKind = byRoot.get(state.source) ?? new Map<EntryKind, string[]>();
       const kind = splitDraftKind(state);
       const list = byKind.get(kind) ?? [];
@@ -390,9 +377,7 @@ class EditDraftStore {
         hash: row.hash,
         text,
         divergent:
-          (edits?.size ?? 0) > 0 && state.divergentRows.has(rowKey(row))
-            ? true
-            : undefined,
+          (edits?.size ?? 0) > 0 && state.divergentRows.has(rowKey(row)) ? true : undefined,
       });
     });
     return dto.FileEntry.createFrom({ metadata: state.entry.metadata, rows });

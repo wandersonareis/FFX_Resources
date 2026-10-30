@@ -1,7 +1,7 @@
 import { createStore } from '@tanstack/store';
+import { OpenWindow } from '@/bindings/ffxresources/windowservice';
 import { isDesktop } from './env';
 import { loggedToast } from './toast-logged';
-import { OpenWindow } from '@/bindings/ffxresources/windowservice';
 
 /**
  * Diálogo de Configurações — estado de MÓDULO (mesmo padrão do search-store
@@ -30,8 +30,7 @@ export function setConfigDialogOpen(open: boolean): void {
 export function openConfigDialog(): void {
   if (isDesktop()) {
     void OpenWindow('config').catch((error: unknown) => {
-      const message =
-        error instanceof Error ? error.message : String(error ?? 'Erro');
+      const message = error instanceof Error ? error.message : String(error ?? 'Erro');
       loggedToast.error(message, { duration: 4000 });
     });
     return;

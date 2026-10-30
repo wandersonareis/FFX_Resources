@@ -1,8 +1,5 @@
 import { Node } from '@tiptap/core';
-import {
-  buttonSpriteClasses,
-  extractChipLabel,
-} from '@/lib/ffx/game-text-tags';
+import { buttonSpriteClasses, extractChipLabel } from '@/lib/ffx/game-text-tags';
 
 export interface GameTagAttrs {
   /** Tag original completa, ex: {MCR:s06:l3F:"Yevon"}. Serializada verbatim. */
@@ -54,10 +51,10 @@ export const GameTagExtension = Node.create<GameTagAttrs>({
   },
 
   renderHTML({ node }) {
-    const value = node?.attrs['value'] ?? '';
-    const label = node?.attrs['label'] ?? value;
-    const locked = !!node?.attrs['locked'];
-    const invalid = !!node?.attrs['invalid'];
+    const value = node?.attrs.value ?? '';
+    const label = node?.attrs.label ?? value;
+    const locked = !!node?.attrs.locked;
+    const invalid = !!node?.attrs.invalid;
     // BUTTON mapeado e sem marcação: ícones direto no texto, sem chip —
     // igual aos botões do jogo. O renderHTML de UM node atômico só aceita
     // UM elemento raiz: o wrapper externo (data-game-tag) é o ponto de
@@ -73,17 +70,12 @@ export const GameTagExtension = Node.create<GameTagAttrs>({
       return [
         'span',
         { 'data-game-tag': value },
-        ...btnClasses.map((cls) => [
-          'span',
-          { class: `gb-sprite ${cls}`, title: chipLabel },
-        ]),
+        ...btnClasses.map((cls) => ['span', { class: `gb-sprite ${cls}`, title: chipLabel }]),
       ];
     }
     const attrs: Record<string, string> = {
       'data-game-tag': value,
-      class: `game-tag-chip${locked ? ' locked' : ''}${
-        invalid ? ' invalid' : ''
-      }`,
+      class: `game-tag-chip${locked ? ' locked' : ''}${invalid ? ' invalid' : ''}`,
     };
     if (locked) attrs['data-locked'] = 'true';
     if (invalid) attrs['data-invalid'] = 'true';

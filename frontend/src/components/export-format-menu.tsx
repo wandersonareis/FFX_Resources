@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,11 +10,10 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
 import {
   EXPORT_FORMAT_LABELS,
+  type ExportFormat,
   exportSelection,
-  ExportFormat,
   useExportSelection,
 } from '@/lib/ffx/export-selection';
 
@@ -30,32 +30,22 @@ export function ExportFormatMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="min-w-19 h-9 gap-1 px-2 text-sm"
-        >
+        <Button variant="ghost" size="sm" className="min-w-19 h-9 gap-1 px-2 text-sm">
           {EXPORT_FORMAT_LABELS[exportFormat]}
           <ChevronDown size={14} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel className="text-muted-foreground">
-          Formato
-        </DropdownMenuLabel>
+        <DropdownMenuLabel className="text-muted-foreground">Formato</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={exportFormat}
-          onValueChange={(value) =>
-            exportSelection.setFormat(value as ExportFormat)
-          }
+          onValueChange={(value) => exportSelection.setFormat(value as ExportFormat)}
         >
-          {(Object.keys(EXPORT_FORMAT_LABELS) as ExportFormat[]).map(
-            (format) => (
-              <DropdownMenuRadioItem key={format} value={format}>
-                {EXPORT_FORMAT_LABELS[format]}
-              </DropdownMenuRadioItem>
-            )
-          )}
+          {(Object.keys(EXPORT_FORMAT_LABELS) as ExportFormat[]).map((format) => (
+            <DropdownMenuRadioItem key={format} value={format}>
+              {EXPORT_FORMAT_LABELS[format]}
+            </DropdownMenuRadioItem>
+          ))}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>

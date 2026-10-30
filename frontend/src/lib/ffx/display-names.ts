@@ -104,18 +104,7 @@ export const IMAGE_TREE_PREFIX = 'gamedata/ps3data/';
  * `event/es`, `help_es`, `btl_ch`, `map_2d_ui_us`… `inter` (internacional)
  * não é idioma e fica de fora por não estar na lista.
  */
-const IMAGE_LANG_CODES = new Set([
-  'ch',
-  'cn',
-  'de',
-  'es',
-  'fr',
-  'it',
-  'jp',
-  'kr',
-  'sp',
-  'us',
-]);
+const IMAGE_LANG_CODES = new Set(['ch', 'cn', 'de', 'es', 'fr', 'it', 'jp', 'kr', 'sp', 'us']);
 
 /** Código de idioma → nome de exibição (PT-BR). */
 export const LANGUAGE_LABELS: Record<string, string> = {
@@ -151,10 +140,7 @@ export const LANGUAGE_LABELS: Record<string, string> = {
  * Devolve o código ("es") ou null quando o caminho não declara idioma —
  * aí a linha nem aparece.
  */
-export function imageLanguage(
-  assetPath?: string | null,
-  id?: string | null
-): string | null {
+export function imageLanguage(assetPath?: string | null, id?: string | null): string | null {
   for (const source of [assetPath, id]) {
     if (!source) continue;
     const found = languageOfPath(source);

@@ -1,5 +1,5 @@
-import { resolveSegmentLabel } from '@/lib/ffx/display-names';
 import type { EntryKind } from '@/lib/ffx/display-names';
+import { resolveSegmentLabel } from '@/lib/ffx/display-names';
 import { columnHelper } from '../table-types';
 
 /**
@@ -17,9 +17,7 @@ export function buildNameColumn(activeKind: EntryKind) {
       ) : (
         // Layout fixo: a coluna tem 160px fixos e o <td> é nowrap, então o
         // nome precisa quebrar linha aqui para não vazar na coluna vizinha.
-        <span className="block whitespace-normal wrap-break-word">
-          {info.getValue()}
-        </span>
+        <span className="block whitespace-normal wrap-break-word">{info.getValue()}</span>
       ),
   });
 }

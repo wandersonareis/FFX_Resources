@@ -1,5 +1,5 @@
 import { createColumnHelper, tableFeatures } from '@tanstack/react-table';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 
 // Infra compartilhada da tabela (TanStack v9: features + columnHelper).
 export const features = tableFeatures({});

@@ -2,16 +2,16 @@
 
 import { Copy } from 'lucide-react';
 import type { ReactNode } from 'react';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { Badge } from '@/components/ui/badge';
+import { formatBytes } from '@/lib/ffx/bytes';
 import {
   copyState,
-  imageLanguage,
   IMAGE_SOURCE_LABELS,
+  imageLanguage,
   LANGUAGE_LABELS,
   resolveEntryLabel,
 } from '@/lib/ffx/display-names';
-import { formatBytes } from '@/lib/ffx/bytes';
 
 /**
  * Coluna de informações da textura aberta: metadados do container, estado
@@ -39,8 +39,7 @@ export function ImageInfoPanel({
           <div key="dups" className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge className="border border-warning/40 bg-warning/15 text-warning">
-                <Copy size={12} className="mr-1" />×{duplicates.length + 1}{' '}
-                idênticas
+                <Copy size={12} className="mr-1" />×{duplicates.length + 1} idênticas
               </Badge>
               <span className="text-xs opacity-70">
                 {formatBytes(image.dupPayload * duplicates.length)} de cópias
@@ -143,10 +142,7 @@ export function ImageInfoPanel({
     // conteúdo (o que acontecia com o wrapper como container de rolagem), o
     // conteúdo aparecia POR FORA do card ao rolar uma coluna alta.
     <>
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 rounded-md border bg-muted/40"
-      />
+      <div aria-hidden="true" className="absolute inset-0 rounded-md border bg-muted/40" />
       {/*
           O dl É o container de rolagem da coluna: h-full (a altura do
           painel) + overflow-y-auto. Conteúdo mais alto (repetidas +
@@ -158,9 +154,7 @@ export function ImageInfoPanel({
       <dl className="relative h-full space-y-2 overflow-y-auto p-1 text-sm">
         {meta.map(([label, value]) => (
           <div key={label} className="flex flex-col gap-1">
-            <dt className="text-xs uppercase tracking-wide opacity-60">
-              {label}
-            </dt>
+            <dt className="text-xs uppercase tracking-wide opacity-60">{label}</dt>
             <dd className="min-w-0">{value}</dd>
           </div>
         ))}

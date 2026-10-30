@@ -40,9 +40,7 @@ describe('editDraft: base é pré-requisito da edição', () => {
 
     editDraft.setCell(VERSION, KIND, ID, defRow, 'us', 'Tradução da def', '');
     // É o que a célula linkada da ref lê para repintar ao vivo.
-    expect(editDraft.editTextOf(VERSION, KIND, ID, '3:', 'us', '')).toBe(
-      'Tradução da def'
-    );
+    expect(editDraft.editTextOf(VERSION, KIND, ID, '3:', 'us', '')).toBe('Tradução da def');
     expect(editDraft.isDirty(VERSION, KIND, ID, '')).toBe(true);
 
     editDraft.clear(VERSION, KIND, ID, '');

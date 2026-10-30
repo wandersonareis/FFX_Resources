@@ -37,7 +37,7 @@ export function unwrapSingleParagraphHtml(html: string): string | null {
  */
 export function createPasteHandlerExtension(
   parser: typeof gameTextParser,
-  validate?: ChipValidator
+  validate?: ChipValidator,
 ) {
   return Extension.create({
     name: 'pasteHandler',
@@ -59,15 +59,10 @@ export function createPasteHandlerExtension(
               // Copiar uma linha/bloco costuma trazer `\n` nas pontas (o
               // "texto colado\n" do editor/Bloco de Notas). Colar no meio do
               // parágrafo não deve criar uma quebra antes nem depois.
-              const pastedText = rawText
-                .replace(/^(?:\r?\n)+/, '')
-                .replace(/(?:\r?\n)+$/, '');
+              const pastedText = rawText.replace(/^(?:\r?\n)+/, '').replace(/(?:\r?\n)+$/, '');
               if (!pastedText) return true;
 
-              const convertedHtml = parser.parseGameTextToHTML(
-                pastedText,
-                validate
-              );
+              const convertedHtml = parser.parseGameTextToHTML(pastedText, validate);
               const inline = unwrapSingleParagraphHtml(convertedHtml);
               if (inline === null) {
                 editor.commands.insertContent(convertedHtml);

@@ -202,9 +202,7 @@ function nearestColorName(color: RgbColor): string {
     const candidate = hexToRgb(definition.hex);
     if (!candidate) continue;
     const distance =
-      (color.r - candidate.r) ** 2 +
-      (color.g - candidate.g) ** 2 +
-      (color.b - candidate.b) ** 2;
+      (color.r - candidate.r) ** 2 + (color.g - candidate.g) ** 2 + (color.b - candidate.b) ** 2;
     if (distance < bestDistance) {
       bestDistance = distance;
       best = definition.name;
@@ -228,10 +226,7 @@ export function getColorTagName(colorValue?: string | null): string | null {
   if (!value) return null;
   const lower = value.toLowerCase();
   for (const definition of Object.values(KNOWN_COLORS)) {
-    if (
-      definition.name.toLowerCase() === lower ||
-      definition.hex.toLowerCase() === lower
-    ) {
+    if (definition.name.toLowerCase() === lower || definition.hex.toLowerCase() === lower) {
       return definition.name;
     }
   }
@@ -253,7 +248,7 @@ export function getColorTagName(colorValue?: string | null): string | null {
  * `{CLR:RGB(...)}`): o rascunho antigo volta a ser cor em vez de chip.
  */
 export function getResolvedColorFromTag(
-  tagName: string
+  tagName: string,
 ): { hex: string | null; isReset: boolean } | null {
   const normalized = tagName.trim().toUpperCase();
   if (!normalized) return null;
@@ -275,9 +270,7 @@ export function getResolvedColorFromTag(
   const rgb = parseCssColor(normalized);
   if (rgb) {
     const hex = rgbToHex(rgb);
-    return hex === '#ffffff'
-      ? { hex: null, isReset: true }
-      : { hex, isReset: false };
+    return hex === '#ffffff' ? { hex: null, isReset: true } : { hex, isReset: false };
   }
   return null;
 }
@@ -330,33 +323,33 @@ export function extractChipLabel(inner: string): string {
  * Códigos sem glifo (Dummy/Dummy2, 0x001+) devolvem [] → chip textual.
  */
 const BUTTON_CODE_SPRITES: Record<number, string[]> = {
-  0x20: ['gb-lb'], // ?L1 (SWITCH)
-  0x30: ['gb-y'],
-  0x31: ['gb-a'],
-  0x32: ['gb-b'],
-  0x33: ['gb-x'],
-  0x34: ['gb-lb'],
-  0x35: ['gb-rb'],
-  0x36: ['gb-lt'],
-  0x37: ['gb-rt'],
-  0x38: ['gb-start'],
-  0x39: ['gb-back'],
-  0x40: ['gb-cursor'], // Direcional (generico: cruz de direções)
-  0x41: ['gb-arrow-up'],
-  0x42: ['gb-arrow-right'],
-  0x43: ['gb-arrow-up', 'gb-arrow-right'],
-  0x44: ['gb-arrow-down'],
-  0x45: ['gb-arrow-up', 'gb-arrow-down'],
-  0x46: ['gb-arrow-down', 'gb-arrow-right'],
-  0x47: ['gb-arrow-up', 'gb-arrow-right', 'gb-arrow-down'],
-  0x48: ['gb-arrow-left'],
-  0x49: ['gb-arrow-up', 'gb-arrow-left'],
-  0x4a: ['gb-arrow-left', 'gb-arrow-right'],
-  0x4b: ['gb-arrow-up', 'gb-arrow-left', 'gb-arrow-right'],
-  0x4c: ['gb-arrow-left', 'gb-arrow-down'],
-  0x4d: ['gb-arrow-up', 'gb-arrow-left', 'gb-arrow-down'],
-  0x4e: ['gb-arrow-left', 'gb-arrow-down', 'gb-arrow-right'],
-  0x4f: ['gb-cursor'], // Direcional All
+  32: ['gb-lb'], // ?L1 (SWITCH)
+  48: ['gb-y'],
+  49: ['gb-a'],
+  50: ['gb-b'],
+  51: ['gb-x'],
+  52: ['gb-lb'],
+  53: ['gb-rb'],
+  54: ['gb-lt'],
+  55: ['gb-rt'],
+  56: ['gb-start'],
+  57: ['gb-back'],
+  64: ['gb-cursor'], // Direcional (generico: cruz de direções)
+  65: ['gb-arrow-up'],
+  66: ['gb-arrow-right'],
+  67: ['gb-arrow-up', 'gb-arrow-right'],
+  68: ['gb-arrow-down'],
+  69: ['gb-arrow-up', 'gb-arrow-down'],
+  70: ['gb-arrow-down', 'gb-arrow-right'],
+  71: ['gb-arrow-up', 'gb-arrow-right', 'gb-arrow-down'],
+  72: ['gb-arrow-left'],
+  73: ['gb-arrow-up', 'gb-arrow-left'],
+  74: ['gb-arrow-left', 'gb-arrow-right'],
+  75: ['gb-arrow-up', 'gb-arrow-left', 'gb-arrow-right'],
+  76: ['gb-arrow-left', 'gb-arrow-down'],
+  77: ['gb-arrow-up', 'gb-arrow-left', 'gb-arrow-down'],
+  78: ['gb-arrow-left', 'gb-arrow-down', 'gb-arrow-right'],
+  79: ['gb-cursor'], // Direcional All
 };
 
 /**
@@ -366,9 +359,7 @@ const BUTTON_CODE_SPRITES: Record<number, string[]> = {
  * do node no renderHTML).
  */
 export function buttonSpriteClasses(inner: string): string[] {
-  const match = /^BUTTON:([0-9A-Fa-f]{1,2})(?::|$)/i.exec(
-    inner.trim().replace(/^\{|\}$/g, '')
-  );
+  const match = /^BUTTON:([0-9A-Fa-f]{1,2})(?::|$)/i.exec(inner.trim().replace(/^\{|\}$/g, ''));
   if (!match) return [];
   const code = parseInt(match[1], 16);
   if (Number.isNaN(code)) return [];

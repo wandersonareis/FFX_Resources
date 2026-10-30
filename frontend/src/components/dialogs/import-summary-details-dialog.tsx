@@ -1,7 +1,6 @@
 'use client';
 
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import { EntryKind, KIND_LABELS, resolveEntryLabel } from '@/lib/ffx/display-names';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -18,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { type EntryKind, KIND_LABELS, resolveEntryLabel } from '@/lib/ffx/display-names';
 
 interface ImportSummaryDetailsDialogProps {
   summary: dto.ImportSummary | null;
@@ -48,9 +48,9 @@ export function ImportSummaryDetailsDialog({
         <DialogHeader>
           <DialogTitle>Detalhes do resumo</DialogTitle>
           <DialogDescription>
-            Rows do arquivo que ficaram fora do import e entradas ignoradas.
-            Nada aqui bloqueia a importação — é o registro do que{' '}
-            <strong>não</strong> entra para você revisar no artefato.
+            Rows do arquivo que ficaram fora do import e entradas ignoradas. Nada aqui bloqueia a
+            importação — é o registro do que <strong>não</strong> entra para você revisar no
+            artefato.
           </DialogDescription>
         </DialogHeader>
 
@@ -78,13 +78,11 @@ export function ImportSummaryDetailsDialog({
 
           {skipped.length > 0 ? (
             <section className="space-y-2">
-              <p className="text-sm font-medium">
-                Rows ignoradas ({skipped.length})
-              </p>
+              <p className="text-sm font-medium">Rows ignoradas ({skipped.length})</p>
               <p className="text-xs text-muted-foreground">
-                O hash da row não casa com nada no binário atual (o conteúdo
-                mudou desde o export) ou a tradução divergiu das tags de
-                controle do original. A row é pulada; o resto importa.
+                O hash da row não casa com nada no binário atual (o conteúdo mudou desde o export)
+                ou a tradução divergiu das tags de controle do original. A row é pulada; o resto
+                importa.
               </p>
               {/* Container ÚNICO rolando nos dois eixos (containerClassName):
                   o header gruda no topo dele (sticky) e rola horizontalmente
@@ -95,26 +93,16 @@ export function ImportSummaryDetailsDialog({
               <Table containerClassName="max-h-72 overflow-auto rounded-md border">
                 <TableHeader className="sticky top-0 z-[5]">
                   <TableRow>
-                    <TableHead className="sticky top-0 z-[5] bg-popover">
-                      Entrada
-                    </TableHead>
-                    <TableHead className="sticky top-0 z-[5] bg-popover">
-                      Índice
-                    </TableHead>
-                    <TableHead className="sticky top-0 z-[5] bg-popover">
-                      Hash
-                    </TableHead>
-                    <TableHead className="sticky top-0 z-[5] bg-popover">
-                      Motivo
-                    </TableHead>
-                    <TableHead className="sticky top-0 z-[5] bg-popover">
-                      Texto
-                    </TableHead>
+                    <TableHead className="sticky top-0 z-[5] bg-popover">Entrada</TableHead>
+                    <TableHead className="sticky top-0 z-[5] bg-popover">Índice</TableHead>
+                    <TableHead className="sticky top-0 z-[5] bg-popover">Hash</TableHead>
+                    <TableHead className="sticky top-0 z-[5] bg-popover">Motivo</TableHead>
+                    <TableHead className="sticky top-0 z-[5] bg-popover">Texto</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {skipped.map((issue, i) => (
-                    <TableRow key={`${issue.id}:${issue.index}:${i}`}>
+                  {skipped.map((issue) => (
+                    <TableRow key={`${issue.id}:${issue.index}`}>
                       <TableCell className="font-medium">
                         {resolveEntryLabel(kind, issue.id)}
                       </TableCell>
@@ -136,12 +124,10 @@ export function ImportSummaryDetailsDialog({
 
           {warnings.length > 0 ? (
             <section className="space-y-2">
-              <p className="text-sm font-medium">
-                Entradas ignoradas ({warnings.length})
-              </p>
+              <p className="text-sm font-medium">Entradas ignoradas ({warnings.length})</p>
               <ul className="list-disc space-y-1 pl-5 text-sm text-warning">
-                {warnings.map((w, i) => (
-                  <li key={`${i}:${w}`}>{w}</li>
+                {warnings.map((w) => (
+                  <li key={w}>{w}</li>
                 ))}
               </ul>
             </section>

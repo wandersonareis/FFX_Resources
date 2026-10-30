@@ -29,9 +29,7 @@ describe('buttonSpriteClasses', () => {
   });
 
   it('hex em caixa baixa resolve igual (texto digitado à mão)', () => {
-    expect(buttonSpriteClasses('{button:4f:direcional all}')).toEqual([
-      'gb-cursor',
-    ]);
+    expect(buttonSpriteClasses('{button:4f:direcional all}')).toEqual(['gb-cursor']);
   });
 
   it('códigos sem glifo devolvem lista vazia (chip textual)', () => {

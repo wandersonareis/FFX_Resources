@@ -15,7 +15,7 @@ import { Plugin } from '@tiptap/pm/state';
 
 function isEmptyTextStyleMark(attrs: Record<string, unknown>): boolean {
   return Object.values(attrs).every(
-    (value) => value === null || value === undefined || value === ''
+    (value) => value === null || value === undefined || value === '',
   );
 }
 
@@ -26,7 +26,7 @@ export const CleanMarksExtension = Extension.create({
     return [
       new Plugin({
         appendTransaction: (_transactions, _oldState, newState) => {
-          const textStyle = newState.schema.marks['textStyle'];
+          const textStyle = newState.schema.marks.textStyle;
           if (!textStyle) return null;
 
           const tr = newState.tr;

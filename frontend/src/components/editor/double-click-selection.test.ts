@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
 import { Schema } from '@tiptap/pm/model';
 import { EditorState, TextSelection } from '@tiptap/pm/state';
+import { describe, expect, it } from 'vitest';
 import { trimDoubleClickSelection } from './double-click-selection.extension';
 
 const schema = new Schema({
@@ -17,9 +17,7 @@ const schema = new Schema({
 });
 
 function stateWith(text: string, from: number, to: number): EditorState {
-  const doc = schema.node('doc', null, [
-    schema.node('paragraph', null, [schema.text(text)]),
-  ]);
+  const doc = schema.node('doc', null, [schema.node('paragraph', null, [schema.text(text)])]);
   return EditorState.create({
     doc,
     selection: TextSelection.create(doc, from, to),

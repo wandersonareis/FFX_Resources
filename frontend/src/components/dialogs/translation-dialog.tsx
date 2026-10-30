@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useSelector } from '@tanstack/react-store';
+import { useEffect, useState } from 'react';
 import { ListLanguages } from '@/bindings/ffxresources/textservice';
-import { SOURCE_LANG } from '@/lib/ffx/save-all';
 import { TranslationCellDialog } from '@/components/dialogs/translation-cell-dialog';
 import type { EntryView } from '@/components/entry-view/entry-view-store';
+import { SOURCE_LANG } from '@/lib/ffx/save-all';
 
 /**
  * Fio do diálogo de tradução com o store da view: busca os idiomas de
@@ -37,9 +37,7 @@ export function TranslationDialog({ view }: { view: EntryView }) {
       row={row}
       version={view.version}
       languages={languages}
-      hasPrevious={
-        !target && !copyRow && rows.findIndex((r) => r.index === row?.index) > 0
-      }
+      hasPrevious={!target && !copyRow && rows.findIndex((r) => r.index === row?.index) > 0}
       hasNext={
         !target && !copyRow && rows.findIndex((r) => r.index === row?.index) < rows.length - 1
       }

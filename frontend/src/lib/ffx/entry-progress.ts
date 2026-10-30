@@ -1,6 +1,6 @@
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import { isRefText } from './hash-ref';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { isBlankText } from './blank-us';
+import { isRefText } from './hash-ref';
 import { SOURCE_LANG } from './save-all';
 
 /** Progresso de tradução por row da entrada aberta — todos os formatos

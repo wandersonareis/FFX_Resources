@@ -1,4 +1,4 @@
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import type { EntryKind } from '../display-names';
 import type { EntryRow } from '../tree-data';
 
@@ -46,7 +46,7 @@ export function entryIdsInNode(node: SideNode): string[] {
 /** Estado tri-state do checkbox de um nó data/ sobre todas as folhas abaixo. */
 export function entryCheckState(
   node: SideNode,
-  selected: ReadonlySet<string>
+  selected: ReadonlySet<string>,
 ): boolean | 'indeterminate' {
   const ids = entryIdsInNode(node);
   const count = ids.filter((id) => selected.has(id)).length;
@@ -108,7 +108,7 @@ export function buildContentRoots(kindRoots: readonly SideNode[]): SideNode[] {
  */
 export function buildNodeIndex(
   roots: readonly SideNode[],
-  vbfRoots: readonly SideNode[]
+  vbfRoots: readonly SideNode[],
 ): Map<string, SideNode> {
   const map = new Map<string, SideNode>();
   const walk = (node: SideNode) => {
@@ -127,10 +127,7 @@ export function buildNodeIndex(
  * reveal da busca expande no `expanded` sem tocar no resto do que o usuário
  * abriu. [] = a folha não existe nas raízes dadas (árvore ainda em carga).
  */
-export function ancestorPathOf(
-  roots: readonly SideNode[],
-  leafId: string
-): string[] {
+export function ancestorPathOf(roots: readonly SideNode[], leafId: string): string[] {
   const walk = (nodes: readonly SideNode[]): string[] | null => {
     for (const node of nodes) {
       if (node.id === leafId) return [node.id];
@@ -150,7 +147,7 @@ export function ancestorPathOf(
  */
 export function highlightedNodeId(
   selectedEntry: EntryRow | null,
-  image: dto.ImageEntry | null
+  image: dto.ImageEntry | null,
 ): string | null {
   if (!selectedEntry) return null;
   // Folha de .vbf é identificada pelo caminho no container: o mesmo id de
@@ -159,9 +156,6 @@ export function highlightedNodeId(
   const base = `leaf:${selectedEntry.kind}:${selectedEntry.id}`;
   if (selectedEntry.kind !== 'images' || !image) return base;
   if (image.metadata.id !== selectedEntry.id) return base;
-  const group = [
-    selectedEntry.id,
-    ...(image.duplicates ?? []).map((d) => d.id),
-  ].sort();
+  const group = [selectedEntry.id, ...(image.duplicates ?? []).map((d) => d.id)].sort();
   return `leaf:images:${group[0]}`;
 }

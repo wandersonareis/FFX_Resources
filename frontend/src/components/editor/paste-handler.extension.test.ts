@@ -1,16 +1,13 @@
-import { describe, expect, it } from 'vitest';
 import { Editor } from '@tiptap/core';
-import StarterKit from '@tiptap/starter-kit';
-import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
+import StarterKit from '@tiptap/starter-kit';
+import { describe, expect, it } from 'vitest';
 import { gameTextParser } from '@/lib/ffx/game-text-parser';
 import { GameTagExtension } from './game-tag.extension';
 import { LockedTagsExtension } from './locked-tags.extension';
+import { createPasteHandlerExtension, unwrapSingleParagraphHtml } from './paste-handler.extension';
 import { createTypedTagExtension } from './typed-tag.extension';
-import {
-  createPasteHandlerExtension,
-  unwrapSingleParagraphHtml,
-} from './paste-handler.extension';
 
 function makeEditor(value: string): Editor {
   const host = document.createElement('div');
@@ -54,9 +51,9 @@ function paste(editor: Editor, text: string): void {
 describe('unwrapSingleParagraphHtml', () => {
   it('achata um parágrafo só', () => {
     expect(unwrapSingleParagraphHtml('<p>texto</p>')).toBe('texto');
-    expect(
-      unwrapSingleParagraphHtml('<p><span data-game-tag="{PAUSE}"></span>oi</p>')
-    ).toBe('<span data-game-tag="{PAUSE}"></span>oi');
+    expect(unwrapSingleParagraphHtml('<p><span data-game-tag="{PAUSE}"></span>oi</p>')).toBe(
+      '<span data-game-tag="{PAUSE}"></span>oi',
+    );
   });
 
   it('não achata quando há quebra real (vários parágrafos)', () => {
@@ -80,9 +77,7 @@ describe('paste handler', () => {
     expect(json.content?.[0]?.content).toHaveLength(1);
     expect(json.content?.[0]?.content?.[0]?.text).toBe('um textotexto colado');
     expect(json.content?.[0]?.content?.[0]?.type).toBe('text');
-    expect(json.content?.[0]?.content?.some((node) => node.type === 'hardBreak')).toBe(
-      false
-    );
+    expect(json.content?.[0]?.content?.some((node) => node.type === 'hardBreak')).toBe(false);
     editor.destroy();
   });
 
@@ -97,7 +92,7 @@ describe('paste handler', () => {
     expect(inline.some((node) => node.type === 'gameTag')).toBe(true);
     // O reset da cor vai para o fim do bloco colorido (mesmo byte do jogo).
     expect(gameTextParser.serializeJSONToGameText(json)).toBe(
-      'antes{CLR:BLUE}Oi{PAUSE}{CLR:WHITE}'
+      'antes{CLR:BLUE}Oi{PAUSE}{CLR:WHITE}',
     );
     editor.destroy();
   });
@@ -110,7 +105,7 @@ describe('paste handler', () => {
     const json = editor.getJSON();
     expect(json.content).toHaveLength(3);
     expect(gameTextParser.serializeJSONToGameText(json)).toBe(
-      'antes{TEXT_NEWLINE}linha1{TEXT_NEWLINE}linha2'
+      'antes{TEXT_NEWLINE}linha1{TEXT_NEWLINE}linha2',
     );
     editor.destroy();
   });
@@ -122,9 +117,7 @@ describe('paste handler', () => {
 
     const json = editor.getJSON();
     expect(json.content).toHaveLength(1);
-    expect(gameTextParser.serializeJSONToGameText(json)).toBe(
-      'um texto aquitexto colado'
-    );
+    expect(gameTextParser.serializeJSONToGameText(json)).toBe('um texto aquitexto colado');
     editor.destroy();
   });
 

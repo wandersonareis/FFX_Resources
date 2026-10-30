@@ -1,8 +1,8 @@
 'use client';
 
 import { ThemeProvider } from 'next-themes';
-import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { UpdateBanner } from '@/components/update-banner';
 
 /**

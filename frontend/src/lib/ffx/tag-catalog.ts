@@ -8,10 +8,11 @@
 //   2. valores: os índices de PC/MCR/BUTTON/ICON precisam existir no catálogo
 //      da versão — caso contrário o re-import reescreve a tag (o decoder
 //      normaliza o índice/nome) e o texto do tradutor muda sozinho.
+
+import type * as services from '@/bindings/ffxresources/backend/services/models';
 import { GetTagCatalog } from '@/bindings/ffxresources/textservice';
-import * as services from '@/bindings/ffxresources/backend/services/models';
-import type { GameVersionId } from './game-version';
 import { extractChipLabel, isLockedTagInner } from './game-text-tags';
+import type { GameVersionId } from './game-version';
 
 export type TagCatalog = services.TagCatalog;
 
@@ -48,9 +49,7 @@ const catalogCache = new Map<GameVersionId, Promise<TagCatalog | null>>();
  * Carrega o catálogo da versão uma única vez (promessa cacheada). Falha de
  * binding → null: o editor segue com validação estrutural (gramática) apenas.
  */
-export function loadTagCatalog(
-  version: GameVersionId
-): Promise<TagCatalog | null> {
+export function loadTagCatalog(version: GameVersionId): Promise<TagCatalog | null> {
   let pending = catalogCache.get(version);
   if (!pending) {
     pending = GetTagCatalog(version as Parameters<typeof GetTagCatalog>[0])
@@ -108,11 +107,7 @@ function matchesGrammar(inner: string): boolean {
   // MACRO: exige len >= 12 e hex em cmd[7:9] e cmd[10:12] (mesmo corte do
   // backend; o prefixo legado não é emitido pelo decoder).
   if (inner.startsWith('MACRO:')) {
-    return (
-      inner.length >= 12 &&
-      HEX2.test(inner.slice(7, 9)) &&
-      HEX2.test(inner.slice(10, 12))
-    );
+    return inner.length >= 12 && HEX2.test(inner.slice(7, 9)) && HEX2.test(inner.slice(10, 12));
   }
   return false;
 }
@@ -187,9 +182,7 @@ export function looksLikeTagAttempt(query: string): boolean {
   if (query === '') return true;
   const colon = query.indexOf(':');
   if (colon >= 0) {
-    return (TAG_NAMES as readonly string[]).includes(
-      query.slice(0, colon).toUpperCase()
-    );
+    return (TAG_NAMES as readonly string[]).includes(query.slice(0, colon).toUpperCase());
   }
   const upper = query.toUpperCase();
   return TAG_NAMES.some((name) => name.startsWith(upper));
@@ -210,10 +203,7 @@ export function isPartialTagQuery(query: string): boolean {
  * Itens do popup para a query atual. Query sem `:` → estágio 1 (nomes);
  * `TAG:filtro` → valores do catálogo filtrados por índice ou texto.
  */
-export function computeSuggestions(
-  query: string,
-  catalog: TagCatalog | null
-): TagSuggestionItem[] {
+export function computeSuggestions(query: string, catalog: TagCatalog | null): TagSuggestionItem[] {
   const colon = query.indexOf(':');
 
   if (colon < 0) {
@@ -234,14 +224,17 @@ export function computeSuggestions(
   const entry = catalog?.tags?.find((t) => t.tag === name);
   if (!entry) return [];
 
-  const filter = query.slice(colon + 1).trim().toLowerCase();
+  const filter = query
+    .slice(colon + 1)
+    .trim()
+    .toLowerCase();
   const validator = getChipValidator(catalog);
   return (entry.values ?? [])
     .filter(
       (value) =>
         !filter ||
         value.key.toLowerCase().includes(filter) ||
-        value.label.toLowerCase().includes(filter)
+        value.label.toLowerCase().includes(filter),
     )
     .slice(0, MAX_VALUES)
     .map((value) => {

@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import { cn } from 'cn';
+import { useEffect, useRef, useState } from 'react';
 import type { Entry } from '@/bindings/ffxresources/backend/uilog/models';
-import { useWailsEvent } from '@/lib/ffx/use-wails-event';
 import { uiLog, useUILog } from '@/lib/ffx/uilog-store';
+import { useWailsEvent } from '@/lib/ffx/use-wails-event';
 
 /**
  * LogPanel é SÓ a lista rolável do log de operações (backend/uilog) — o
@@ -50,7 +50,7 @@ export function LogPanel({ className }: { className?: string }) {
   useEffect(() => {
     const el = listRef.current;
     if (el && stick) el.scrollTop = el.scrollHeight;
-  }, [entries, stick]);
+  }, [stick]);
 
   const onScroll = () => {
     const el = listRef.current;
@@ -65,17 +65,20 @@ export function LogPanel({ className }: { className?: string }) {
       onScroll={onScroll}
       className={cn(
         'min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-xs leading-5',
-        className
+        className,
       )}
     >
       {entries.length === 0 ? (
         <p className="text-muted-foreground">
-          Nada registrado ainda — as operações do app (import, export,
-          binários compilados) aparecem aqui em tempo real.
+          Nada registrado ainda — as operações do app (import, export, binários compilados) aparecem
+          aqui em tempo real.
         </p>
       ) : (
-        entries.map((e, i) => (
-          <div key={`${e.time}-${i}`} className="whitespace-pre-wrap break-all">
+        entries.map((e) => (
+          <div
+            key={`${e.time}|${e.level}|${e.action ?? ''}|${e.path ?? ''}|${e.status ?? ''}|${e.message}`}
+            className="whitespace-pre-wrap break-all"
+          >
             <span className="text-muted-foreground">{fmtTime(e.time)} </span>
             {e.action ? <span className="font-semibold">[{e.action}] </span> : null}
             {e.path ? (

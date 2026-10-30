@@ -42,7 +42,7 @@ describe('hydrate (semeia do backend)', () => {
 
   it('semeia o histórico do backend e corta no teto (as mais antigas caem)', async () => {
     const seed = Array.from({ length: MAX_LINES + 5 }, (_, i) =>
-      entry({ time: i + 1, message: `linha ${i}` })
+      entry({ time: i + 1, message: `linha ${i}` }),
     );
     History.mockResolvedValueOnce(seed);
 

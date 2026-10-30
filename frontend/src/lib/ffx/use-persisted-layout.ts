@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useCallback, useState } from "react";
-import type { Layout, LayoutChangedMeta } from "react-resizable-panels";
-import { layoutStorage, type PanelLayout } from "./layout-storage";
+import { useCallback, useState } from 'react';
+import type { Layout, LayoutChangedMeta } from 'react-resizable-panels';
+import { layoutStorage, type PanelLayout } from './layout-storage';
 
-export type LayoutGroup = "sidebar" | "imageInfo";
+export type LayoutGroup = 'sidebar' | 'imageInfo';
 
 /**
  * Restaura e persiste o layout de UM grupo redimensionável.

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { ConfigDialogContent } from "@/components/dialogs/config-dialog";
-import { applyConfigSnapshot, loadConfigSnapshot } from "@/lib/ffx/config-store";
-import { useWailsEvent } from "@/lib/ffx/use-wails-event";
+import { useEffect } from 'react';
+import { ConfigDialogContent } from '@/components/dialogs/config-dialog';
+import { applyConfigSnapshot, loadConfigSnapshot } from '@/lib/ffx/config-store';
+import { useWailsEvent } from '@/lib/ffx/use-wails-event';
 
 /**
  * Conteúdo da janela filha de Configurações (/w/#config).
@@ -20,7 +20,7 @@ export function ConfigWindowContent() {
     void loadConfigSnapshot();
   }, []);
 
-  useWailsEvent("AppConfigChanged", (data) => applyConfigSnapshot(data, true));
+  useWailsEvent('AppConfigChanged', (data) => applyConfigSnapshot(data, true));
 
   return (
     <div className="grid gap-4 p-4 text-sm">

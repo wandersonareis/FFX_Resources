@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useTheme } from "next-themes";
-import { LogPanel } from "@/components/log-panel";
-import { useWailsEvent } from "@/lib/ffx/use-wails-event";
+import { useTheme } from 'next-themes';
+import { LogPanel } from '@/components/log-panel';
+import { useWailsEvent } from '@/lib/ffx/use-wails-event';
 
 /**
  * Conteúdo da janela filha de Logs (/w/#logs): SÓ o conteúdo — o WindowChrome
@@ -17,8 +17,8 @@ import { useWailsEvent } from "@/lib/ffx/use-wails-event";
  */
 export function LogWindowContent() {
   const { setTheme } = useTheme();
-  useWailsEvent("ffx:theme", (theme) => {
-    if (theme === "dark" || theme === "light") setTheme(theme);
+  useWailsEvent('ffx:theme', (theme) => {
+    if (theme === 'dark' || theme === 'light') setTheme(theme);
   });
 
   return <LogPanel className="h-full" />;

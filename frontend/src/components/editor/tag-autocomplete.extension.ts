@@ -11,10 +11,7 @@
 import { Extension, type JSONContent, type Range } from '@tiptap/core';
 import { PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
-import {
-  Suggestion,
-  type SuggestionProps,
-} from '@tiptap/suggestion';
+import { Suggestion, type SuggestionProps } from '@tiptap/suggestion';
 import {
   computeSuggestions,
   isPartialTagQuery,
@@ -22,10 +19,7 @@ import {
   type TagCatalog,
   type TagSuggestionItem,
 } from '@/lib/ffx/tag-catalog';
-import {
-  createTagSuggestionPopup,
-  type TagSuggestionPopup,
-} from './tag-suggestion-popup';
+import { createTagSuggestionPopup, type TagSuggestionPopup } from './tag-suggestion-popup';
 
 interface SharedState {
   /** Seleção confirmada: o texto parcial não deve ser apagado no exit. */
@@ -41,7 +35,7 @@ interface SharedState {
 export function createTagAutocompleteExtension(
   catalog: TagCatalog | null,
   /** Destino de montagem do popup (ex.: conteúdo do modal Radix). */
-  popupContainer?: HTMLElement | (() => HTMLElement | null)
+  popupContainer?: HTMLElement | (() => HTMLElement | null),
 ): Extension {
   const pluginKey = new PluginKey('tagAutocomplete');
   const shared: SharedState = {
@@ -53,9 +47,7 @@ export function createTagAutocompleteExtension(
     command: null,
   };
 
-  const show = (
-    props: SuggestionProps<TagSuggestionItem, TagSuggestionItem>
-  ): void => {
+  const show = (props: SuggestionProps<TagSuggestionItem, TagSuggestionItem>): void => {
     shared.query = props.query;
     shared.items = props.items;
     // Uma sessão nova (ou nova query) nunca herda a confirmação anterior.
@@ -77,7 +69,6 @@ export function createTagAutocompleteExtension(
     shared.command = null;
     shared.query = '';
   };
-
 
   return Extension.create({
     name: 'tagAutocomplete',
@@ -166,7 +157,7 @@ export function createTagAutocompleteExtension(
  * naquele momento). null/undefined -> document.body.
  */
 function resolvePopupContainer(
-  source?: HTMLElement | (() => HTMLElement | null)
+  source?: HTMLElement | (() => HTMLElement | null),
 ): string | HTMLElement | undefined {
   const target = typeof source === 'function' ? source() : source;
   return target instanceof HTMLElement ? target : undefined;

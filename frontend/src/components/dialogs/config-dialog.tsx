@@ -1,36 +1,40 @@
-"use client";
+'use client';
 
-import { useRef, useState } from "react";
-import { loggedToast as toast } from "@/lib/ffx/toast-logged";
-import { FolderOpen } from "lucide-react";
-import { SelectDirectory, SelectGameExeFile, ResolveEnableModsChange } from "@/bindings/ffxresources/configservice";
-import { HasUnsavedEdits } from "@/bindings/ffxresources/app";
+import { FolderOpen } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { HasUnsavedEdits } from '@/bindings/ffxresources/app';
 import {
-  commitEnableMods,
-  commitGameExeLocation,
-  commitGameLocation,
-  commitTranslateLocation,
-  useAppConfig,
-} from "@/lib/ffx/config-store";
-import { editDraft } from "@/lib/ffx/edit-draft";
+  ResolveEnableModsChange,
+  SelectDirectory,
+  SelectGameExeFile,
+} from '@/bindings/ffxresources/configservice';
 import {
-  ModsToggleGuardDialog,
   type ModsGuardDecision,
-} from "@/components/dialogs/mods-toggle-guard-dialog";
+  ModsToggleGuardDialog,
+} from '@/components/dialogs/mods-toggle-guard-dialog';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  commitEnableMods,
+  commitGameExeLocation,
+  commitGameLocation,
+  commitTranslateLocation,
+  useAppConfig,
+} from '@/lib/ffx/config-store';
+import { editDraft } from '@/lib/ffx/edit-draft';
+import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 
-type FieldKey = "gameExe" | "gameFiles" | "translate";
-type DirectoryKey = Extract<FieldKey, "gameFiles" | "translate">;
+type FieldKey = 'gameExe' | 'gameFiles' | 'translate';
+type DirectoryKey = Extract<FieldKey, 'gameFiles' | 'translate'>;
 
 interface DirectoryField {
   key: DirectoryKey;
@@ -47,16 +51,16 @@ const COMMIT: Record<DirectoryKey, (path: string) => Promise<void>> = {
 
 const DIRECTORY_FIELDS: DirectoryField[] = [
   {
-    key: "gameFiles",
-    label: "Arquivos originais do jogo",
-    hint: "Padrão: <execução>/data",
-    dialogTitle: "Selecione a pasta dos arquivos originais do jogo",
+    key: 'gameFiles',
+    label: 'Arquivos originais do jogo',
+    hint: 'Padrão: <execução>/data',
+    dialogTitle: 'Selecione a pasta dos arquivos originais do jogo',
   },
   {
-    key: "translate",
-    label: "Arquivos traduzidos (reimport)",
-    hint: "Padrão: <jogo>/mods/translated",
-    dialogTitle: "Selecione a pasta dos arquivos traduzidos",
+    key: 'translate',
+    label: 'Arquivos traduzidos (reimport)',
+    hint: 'Padrão: <jogo>/mods/translated',
+    dialogTitle: 'Selecione a pasta dos arquivos traduzidos',
   },
 ];
 
@@ -66,10 +70,10 @@ const DIRECTORY_FIELDS: DirectoryField[] = [
  * a decisão final é sempre do eco: o backend recusa em silêncio e o
  * store devolve o input ao valor persistido.
  */
-const GAME_EXE_NAMES = new Set(["ffx.exe", "ffx-2.exe"]);
+const GAME_EXE_NAMES = new Set(['ffx.exe', 'ffx-2.exe']);
 
 /** Nome do arquivo de um caminho (Windows ou POSIX). */
-const basename = (p: string): string => p.split(/[\\/]/).pop() ?? "";
+const basename = (p: string): string => p.split(/[\\/]/).pop() ?? '';
 
 /**
  * Diálogo de diretórios: apenas gamefiles e translated (fonte do
@@ -101,9 +105,7 @@ export function ConfigDialog({
             janela filha o mesmo papel é do titlebar do WindowChrome. */}
         <DialogHeader>
           <DialogTitle>Configurações</DialogTitle>
-          <DialogDescription className="sr-only">
-            Diretórios usados pelo app
-          </DialogDescription>
+          <DialogDescription className="sr-only">Diretórios usados pelo app</DialogDescription>
         </DialogHeader>
         <ConfigDialogContent />
       </DialogContent>
@@ -167,22 +169,21 @@ export function ConfigDialogContent() {
    *    livres durante a edição).
    */
   const commitField = (key: FieldKey, raw: string, viaEnter: boolean): void => {
-    const path = (raw ?? "").trim();
-    if (key === "gameExe") {
-      if (path !== "" && !GAME_EXE_NAMES.has(basename(path).toLowerCase())) {
-        toast.error(
-          "Escolha um dos executáveis do jogo: FFX.exe ou FFX-2.exe.",
-          { duration: 4000 }
-        );
+    const path = (raw ?? '').trim();
+    if (key === 'gameExe') {
+      if (path !== '' && !GAME_EXE_NAMES.has(basename(path).toLowerCase())) {
+        toast.error('Escolha um dos executáveis do jogo: FFX.exe ou FFX-2.exe.', {
+          duration: 4000,
+        });
         if (viaEnter) setEditing(null); // Enter: reverte ao persistido
         return; // blur reverte sozinho (editing já saiu)
       }
       void runCommit(key, commitGameExeLocation(path));
       return;
     }
-    if (path === "") {
+    if (path === '') {
       if (viaEnter) {
-        toast("Informe um diretório válido.", { duration: 3000 });
+        toast('Informe um diretório válido.', { duration: 3000 });
         setEditing(null); // reverte o campo vazio ao valor do store
       }
       return;
@@ -225,7 +226,7 @@ export function ConfigDialogContent() {
       const path = await SelectGameExeFile();
       if (!path) return;
       setEditing(null);
-      void runCommit("gameExe", commitGameExeLocation(path));
+      void runCommit('gameExe', commitGameExeLocation(path));
     } catch (error) {
       notify(error);
     }
@@ -272,96 +273,94 @@ export function ConfigDialogContent() {
 
   return (
     <>
-        <div className="flex flex-col gap-3 pt-2 min-w-0">
-          <div className="flex items-center gap-2 pt-2">
+      <div className="flex flex-col gap-3 pt-2 min-w-0">
+        <div className="flex items-center gap-2 pt-2">
+          <div className="grid flex-1 gap-1.5">
+            <Label htmlFor="GameExeLocation">Executável do jogo</Label>
+            <Input
+              id="GameExeLocation"
+              value={shownValue('gameExe')}
+              placeholder="FFX.exe ou FFX-2.exe"
+              onChange={(e) => setEditing({ key: 'gameExe', text: e.target.value })}
+              onBlur={() => onFieldBlur('gameExe')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  onFieldEnter('gameExe');
+                }
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Dele saem as raízes dos containers <code>.vbf</code> (pasta do exe e pasta{' '}
+              <code>data/</code>) exibidos no fim da árvore. Vazio desliga as raízes VBF.
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => void selectExe()}
+            aria-label="Selecionar o executável do jogo"
+            title="Procurar arquivo"
+          >
+            <FolderOpen size={20} />
+          </Button>
+        </div>
+        {DIRECTORY_FIELDS.map((field) => (
+          <div key={field.key} className="flex items-center gap-2">
             <div className="grid flex-1 gap-1.5">
-              <Label htmlFor="GameExeLocation">Executável do jogo</Label>
+              <Label htmlFor={field.key}>{field.label}</Label>
               <Input
-                id="GameExeLocation"
-                value={shownValue("gameExe")}
-                placeholder="FFX.exe ou FFX-2.exe"
-                onChange={(e) => setEditing({ key: "gameExe", text: e.target.value })}
-                onBlur={() => onFieldBlur("gameExe")}
+                id={field.key}
+                value={shownValue(field.key)}
+                onChange={(e) => setEditing({ key: field.key, text: e.target.value })}
+                onBlur={() => onFieldBlur(field.key)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === 'Enter') {
                     e.preventDefault();
-                    onFieldEnter("gameExe");
+                    onFieldEnter(field.key);
                   }
                 }}
               />
-              <p className="text-xs text-muted-foreground">
-                Dele saem as raízes dos containers <code>.vbf</code> (pasta do
-                exe e pasta <code>data/</code>) exibidos no fim da árvore.
-                Vazio desliga as raízes VBF.
-              </p>
+              <p className="text-xs text-muted-foreground">{field.hint}</p>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => void selectExe()}
-              aria-label="Selecionar o executável do jogo"
-              title="Procurar arquivo"
+              onClick={() => void selectDirectory(field)}
+              aria-label={`Selecionar ${field.label}`}
+              title="Procurar pasta"
             >
               <FolderOpen size={20} />
             </Button>
           </div>
-          {DIRECTORY_FIELDS.map((field) => (
-            <div key={field.key} className="flex items-center gap-2">
-              <div className="grid flex-1 gap-1.5">
-                <Label htmlFor={field.key}>{field.label}</Label>
-                <Input
-                  id={field.key}
-                  value={shownValue(field.key)}
-                  onChange={(e) => setEditing({ key: field.key, text: e.target.value })}
-                  onBlur={() => onFieldBlur(field.key)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      onFieldEnter(field.key);
-                    }
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">{field.hint}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => void selectDirectory(field)}
-                aria-label={`Selecionar ${field.label}`}
-                title="Procurar pasta"
-              >
-                <FolderOpen size={20} />
-              </Button>
-            </div>
-          ))}
-        </div>
+        ))}
+      </div>
 
-        <div className="flex items-start gap-2 pt-2">
-          <Checkbox
-            id="EnableMods"
-            checked={config.enableMods}
-            onCheckedChange={(v) => void onToggleMods(Boolean(v))}
-          />
-          <div className="grid gap-1 leading-none">
-            <Label htmlFor="EnableMods" className="cursor-pointer">
-              Preferir binários traduzidos (mods)
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Ao carregar, usa primeiro os binários salvos em
-              <code className="mx-1">mods/</code>e cai para os originais quando
-              não existirem — a tradução continua de onde parou. O import de
-              JSON/strings grava os binários nessa pasta.
-            </p>
-          </div>
-        </div>
-
-        <ModsToggleGuardDialog
-          next={pendingMods}
-          onDecision={resolveModsGuard}
-          onCancel={() => setPendingMods(null)}
+      <div className="flex items-start gap-2 pt-2">
+        <Checkbox
+          id="EnableMods"
+          checked={config.enableMods}
+          onCheckedChange={(v) => void onToggleMods(Boolean(v))}
         />
+        <div className="grid gap-1 leading-none">
+          <Label htmlFor="EnableMods" className="cursor-pointer">
+            Preferir binários traduzidos (mods)
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Ao carregar, usa primeiro os binários salvos em
+            <code className="mx-1">mods/</code>e cai para os originais quando não existirem — a
+            tradução continua de onde parou. O import de JSON/strings grava os binários nessa pasta.
+          </p>
+        </div>
+      </div>
+
+      <ModsToggleGuardDialog
+        next={pendingMods}
+        onDecision={resolveModsGuard}
+        onCancel={() => setPendingMods(null)}
+      />
     </>
   );
 }
@@ -372,7 +371,6 @@ export function ConfigDialogContent() {
  * circularia de volta ao ProgressNotifier).
  */
 function notify(error: unknown): void {
-  const message =
-    error instanceof Error ? error.message : String(error ?? "Erro");
+  const message = error instanceof Error ? error.message : String(error ?? 'Erro');
   toast.error(message, { duration: 4000 });
 }

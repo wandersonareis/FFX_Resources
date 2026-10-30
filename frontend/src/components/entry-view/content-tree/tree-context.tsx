@@ -1,8 +1,8 @@
 'use client';
 
-import { createContext, useContext, type ReactNode } from 'react';
-import type { EntryKind } from '@/lib/ffx/display-names';
+import { createContext, type ReactNode, useContext } from 'react';
 import type { SideNode } from '@/lib/ffx/content-tree/model';
+import type { EntryKind } from '@/lib/ffx/display-names';
 
 /**
  * Estado e ações compartilhados por TODA a árvore. Existe só para a
@@ -31,11 +31,7 @@ export function ContentTreeProvider({
   value: ContentTreeValue;
   children: ReactNode;
 }) {
-  return (
-    <ContentTreeContext.Provider value={value}>
-      {children}
-    </ContentTreeContext.Provider>
-  );
+  return <ContentTreeContext.Provider value={value}>{children}</ContentTreeContext.Provider>;
 }
 
 export function useContentTree(): ContentTreeValue {

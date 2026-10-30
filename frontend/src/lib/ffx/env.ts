@@ -9,7 +9,7 @@
  * modal no browser.
  */
 export function isDesktop(): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === 'undefined') return false;
   const w = window as Window & {
     chrome?: { webview?: { postMessage?: (data: unknown) => void } };
     webkit?: {
@@ -22,6 +22,6 @@ export function isDesktop(): boolean {
   return Boolean(
     w.chrome?.webview?.postMessage ||
       w.webkit?.messageHandlers?.external?.postMessage ||
-      w.wails?.invoke
+      w.wails?.invoke,
   );
 }

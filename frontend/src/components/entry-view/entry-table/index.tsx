@@ -1,19 +1,19 @@
 'use client';
 
-import { memo, useEffect } from 'react';
-import { useTable } from '@tanstack/react-table';
 import { useSelector } from '@tanstack/react-store';
-import { rowKey } from '@/lib/ffx/edit-draft';
-import { DEDUP_VIEW_KINDS } from '@/lib/ffx/hash-ref';
+import { useTable } from '@tanstack/react-table';
+import { memo, useEffect } from 'react';
 import { Table } from '@/components/ui/table';
+import { rowKey } from '@/lib/ffx/edit-draft';
 import type { GameTextMark } from '@/lib/ffx/game-text-parser';
-import { type EntryView } from '../entry-view-store';
-import { features } from './table-types';
-import { useEntryTableHotkeys } from './use-entry-table-hotkeys';
-import { useEntryTableColumns } from './use-entry-table-columns';
-import { EntryTableHeader } from './entry-table-header';
+import { DEDUP_VIEW_KINDS } from '@/lib/ffx/hash-ref';
+import type { EntryView } from '../entry-view-store';
 import { EntryTableBody } from './entry-table-body';
 import { EntryTableEmpty } from './entry-table-empty';
+import { EntryTableHeader } from './entry-table-header';
+import { features } from './table-types';
+import { useEntryTableColumns } from './use-entry-table-columns';
+import { useEntryTableHotkeys } from './use-entry-table-hotkeys';
 
 /**
  * Tabela de linhas do arquivo selecionado: colunas (Original/Traduzido),
@@ -44,8 +44,12 @@ export const EntryTable = memo(function EntryTable({
   const refLinks = useSelector(store, (s) => s.refLinks);
   const version = view.version;
 
-  const { tableRef, rowRefs, focusedRowId, setFocusedRowId } =
-    useEntryTableHotkeys({ rows, refLinks, selectedEntry, actions });
+  const { tableRef, rowRefs, focusedRowId, setFocusedRowId } = useEntryTableHotkeys({
+    rows,
+    refLinks,
+    selectedEntry,
+    actions,
+  });
 
   const columns = useEntryTableColumns({
     rows,
@@ -83,7 +87,7 @@ export const EntryTable = memo(function EntryTable({
     setFocusedRowId(row.dataset.rowKey ?? key);
     row.focus();
     row.scrollIntoView({ block: 'center' });
-  }, [pendingTableRowFocus, loading, selectedEntry, rows, rowRefs, actions]);
+  }, [pendingTableRowFocus, loading, selectedEntry, rows, rowRefs, actions, setFocusedRowId]);
 
   // Busca local: o match ativo rola para o centro SEM roubar o foco do input
   // (digitação contínua). A pintura do match vem do <mark> find-current.
@@ -98,18 +102,13 @@ export const EntryTable = memo(function EntryTable({
     if (!pendingTableFocus || !selectedEntry || rows.length === 0) return;
     actions.consumeTableFocus();
     rowRefs.current.get(rowKey(rows[0]))?.focus();
-  }, [pendingTableFocus, selectedEntry, rows, actions]);
+  }, [pendingTableFocus, selectedEntry, rows, actions, rowRefs.current.get]);
 
   // Arquivo sem NENHUMA linha servível: a tabela ficaria com o corpo vazio,
   // então o aviso explica. Note que as refs NÃO entram aqui — elas ficam
   // VISÍVEIS como link (nada é oculto: nem arquivo, nem linha repetida, em
   // data/ ou no .vbf).
-  if (
-    DEDUP_VIEW_KINDS.has(activeKind) &&
-    selectedEntry &&
-    !loading &&
-    rows.length === 0
-  ) {
+  if (DEDUP_VIEW_KINDS.has(activeKind) && selectedEntry && !loading && rows.length === 0) {
     return <EntryTableEmpty />;
   }
 

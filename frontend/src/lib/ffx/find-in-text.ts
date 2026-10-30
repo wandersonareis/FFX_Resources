@@ -71,8 +71,7 @@ export function visibleSegments(rawText: string): VisibleSegment[] {
 function newlineLengthAt(text: string, index: number): number {
   if (
     text[index] === '{' &&
-    text.slice(index, index + '{TEXT_NEWLINE}'.length).toUpperCase() ===
-      '{TEXT_NEWLINE}'
+    text.slice(index, index + '{TEXT_NEWLINE}'.length).toUpperCase() === '{TEXT_NEWLINE}'
   ) {
     return '{TEXT_NEWLINE}'.length;
   }
@@ -85,11 +84,7 @@ function newlineLengthAt(text: string, index: number): number {
  * Todas as ocorrências de `query` no texto VISÍVEL (não sobrepostas, na
  * ordem do texto). `query` literal — busca local não aceita regex.
  */
-export function findMatches(
-  rawText: string,
-  query: string,
-  options: FindOptions
-): FindRange[] {
+export function findMatches(rawText: string, query: string, options: FindOptions): FindRange[] {
   if (!rawText || !query) return [];
   const needle = options.matchCase ? query : query.toLowerCase();
   if (!needle) return [];
@@ -127,7 +122,7 @@ export function findMatches(
 export function replaceMatches(
   rawText: string,
   matches: readonly FindRange[],
-  replacement: string
+  replacement: string,
 ): string {
   if (matches.length === 0) return rawText;
   // Corta de trás pra frente: os offsets anteriores não deslocam.
@@ -177,8 +172,7 @@ const WORD_CHAR = /[\p{L}\p{N}_]/u;
  * limite do trecho visível — a tag/quebra ao redor já é fronteira).
  */
 function isWholeWord(text: string, start: number, end: number): boolean {
-  const before =
-    start > 0 ? lastCodePoint(text.slice(Math.max(0, start - 2), start)) : '';
+  const before = start > 0 ? lastCodePoint(text.slice(Math.max(0, start - 2), start)) : '';
   const after = end < text.length ? firstCodePoint(text.slice(end, end + 2)) : '';
   return !isWordChar(before) && !isWordChar(after);
 }

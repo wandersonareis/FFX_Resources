@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { AlertTriangle, Info } from 'lucide-react';
+import { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,10 +13,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { parseError } from '@/lib/ffx/error-handler';
+import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { replicateImage } from '@/lib/ffx/tree-data';
 import { invalidateVbfImage, replicateVbfImage } from '@/lib/ffx/vbf';
+import { type ActionProps, reportBatch, useActionDuplicates } from './image-action-shared';
 import { DuplicateList } from './image-duplicate-list';
-import { reportBatch, useActionDuplicates, type ActionProps } from './image-action-shared';
 
 /**
  * Replicar: leva a IMAGEM ABERTA para as cópias em mods/ — o dupe que o app
@@ -40,12 +40,12 @@ export function ReplicateImageDialog({ view, action }: ActionProps) {
         ? await replicateVbfImage(
             action.vbf.root,
             action.vbf.path,
-            copies.map((d) => d.vbfPath ?? '').filter(Boolean)
+            copies.map((d) => d.vbfPath ?? '').filter(Boolean),
           )
         : await replicateImage(
             action.id,
             copies.map((d) => d.id),
-            version
+            version,
           );
       reportBatch(res, 'Replicada', 'Replicadas');
       if (action.vbf) {
@@ -91,9 +91,7 @@ export function ReplicateImageDialog({ view, action }: ActionProps) {
         {list === null ? (
           <p className="text-sm opacity-70">Carregando cópias…</p>
         ) : copies.length === 0 ? (
-          <p className="text-sm opacity-70">
-            Imagem única: não há cópias para replicar.
-          </p>
+          <p className="text-sm opacity-70">Imagem única: não há cópias para replicar.</p>
         ) : (
           <>
             {divergent > 0 ? (
@@ -137,9 +135,7 @@ export function ReplicateImageDialog({ view, action }: ActionProps) {
               ? 'Replicando…'
               : list === null
                 ? 'Carregando…'
-                : `Replicar para ${copies.length} cópia${
-                    copies.length === 1 ? '' : 's'
-                  }`}
+                : `Replicar para ${copies.length} cópia${copies.length === 1 ? '' : 's'}`}
           </Button>
         </DialogFooter>
       </DialogContent>

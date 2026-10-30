@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { AlertTriangle, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -16,14 +15,15 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { parseError } from '@/lib/ffx/error-handler';
+import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { deleteImages } from '@/lib/ffx/tree-data';
 import {
+  type ActionProps,
   DeleteIrreversibleAlert,
+  type DeleteScope,
   DeleteScopeField,
   reportBatch,
   useActionDuplicates,
-  type ActionProps,
-  type DeleteScope,
 } from './image-action-shared';
 
 /**
@@ -67,8 +67,7 @@ export function DeleteImageDialog({ view, action }: ActionProps) {
         <DialogHeader>
           <DialogTitle>Deletar {action.label}?</DialogTitle>
           <DialogDescription>
-            Escolha o escopo — o aviso abaixo lista exatamente o que sai do
-            disco.
+            Escolha o escopo — o aviso abaixo lista exatamente o que sai do disco.
           </DialogDescription>
         </DialogHeader>
 
@@ -102,8 +101,8 @@ export function DeleteImageDialog({ view, action }: ActionProps) {
                   {divergent > 1 ? 'm' : ''} do original
                 </AlertTitle>
                 <AlertDescription>
-                  Estão divergentes porque foram editadas em separado — a
-                  edição delas também será apagada.
+                  Estão divergentes porque foram editadas em separado — a edição delas também será
+                  apagada.
                 </AlertDescription>
               </Alert>
             ) : null}
@@ -116,17 +115,11 @@ export function DeleteImageDialog({ view, action }: ActionProps) {
           <Button variant="outline" disabled={busy} onClick={close}>
             Cancelar
           </Button>
-          <Button
-            variant="destructive"
-            disabled={busy || list === null}
-            onClick={() => void run()}
-          >
+          <Button variant="destructive" disabled={busy || list === null} onClick={() => void run()}>
             <Trash2 size={16} />
             {busy
               ? 'Apagando…'
-              : `Deletar ${targets.length + 1} textura${
-                  targets.length > 0 ? 's' : ''
-                }`}
+              : `Deletar ${targets.length + 1} textura${targets.length > 0 ? 's' : ''}`}
           </Button>
         </DialogFooter>
       </DialogContent>

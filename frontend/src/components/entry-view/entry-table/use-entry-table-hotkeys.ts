@@ -1,13 +1,13 @@
 'use client';
 
-import { useRef, useState } from 'react';
 import { useHotkeys } from '@tanstack/react-hotkeys';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import { rowKey } from '@/lib/ffx/edit-draft';
+import { useRef, useState } from 'react';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { entryNodeId } from '@/lib/ffx/content-tree/model';
+import { rowKey } from '@/lib/ffx/edit-draft';
 import { SHORTCUTS } from '@/lib/ffx/shortcuts';
-import type { EntryView } from '../entry-view-store';
 import type { EntryRow } from '@/lib/ffx/tree-data';
+import type { EntryView } from '../entry-view-store';
 
 /**
  * Teclado e foco da tabela — devolve as refs e o estado de foco que o corpo
@@ -60,9 +60,7 @@ export function useEntryTableHotkeys({
 
   /** Linhas na MESMA ordem do DOM (== ordem de `rows`, que as renderiza). */
   const rowEls = () =>
-    Array.from(
-      tableRef.current?.querySelectorAll<HTMLElement>('[data-row-key]') ?? []
-    );
+    Array.from(tableRef.current?.querySelectorAll<HTMLElement>('[data-row-key]') ?? []);
 
   const focusRow = (rowEl: HTMLElement | undefined) => {
     if (!rowEl) return;
@@ -105,14 +103,10 @@ export function useEntryTableHotkeys({
     // invertida), então a comparação é pelo atributo — nunca por seletor CSS.
     const tree = document.getElementById('entry-tree');
     const nodeId = selectedEntry ? entryNodeId(selectedEntry) : '';
-    const buttons = Array.from(
-      tree?.querySelectorAll<HTMLElement>('[data-node-button]') ?? []
-    );
+    const buttons = Array.from(tree?.querySelectorAll<HTMLElement>('[data-node-button]') ?? []);
     const node =
       buttons.find(
-        (button) =>
-          button.closest('[data-node-id]')?.getAttribute('data-node-id') ===
-          nodeId
+        (button) => button.closest('[data-node-id]')?.getAttribute('data-node-id') === nodeId,
       ) ?? buttons[0];
     node?.focus();
   };
@@ -145,7 +139,7 @@ export function useEntryTableHotkeys({
     // `preventDefault`/`stopPropagation` desligados: o cancelamento é manual
     // e só quando o alvo É a linha, e o evento precisa continuar subindo
     // (Delete em document e handlers sintéticos dos ancestres).
-    { target: tableRef, preventDefault: false, stopPropagation: false, ignoreInputs: true }
+    { target: tableRef, preventDefault: false, stopPropagation: false, ignoreInputs: true },
   );
 
   return { tableRef, rowRefs, focusedRowId, setFocusedRowId };

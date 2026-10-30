@@ -1,4 +1,4 @@
-import { resolveEntryLabel, type EntryKind } from '../display-names';
+import { type EntryKind, resolveEntryLabel } from '../display-names';
 
 /**
  * Modelo PURO do menu de contexto da árvore: o que o DOM entrega quando o

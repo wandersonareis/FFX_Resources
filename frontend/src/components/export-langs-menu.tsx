@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -10,12 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import {
-  DEFAULT_LANG,
-  exportLangs,
-  useExportLangs,
-} from '@/lib/ffx/export-langs';
+import { DEFAULT_LANG, exportLangs, useExportLangs } from '@/lib/ffx/export-langs';
 
 /**
  * Seletor de idiomas de exportação (header, à direita do seletor de
@@ -39,8 +35,7 @@ export function ExportLangsMenu() {
       : checkedCount === 0
         ? DEFAULT_LANG
         : `${DEFAULT_LANG} + ${checkedCount}`;
-  const defaultName =
-    available.find((lang) => lang.code === DEFAULT_LANG)?.name ?? DEFAULT_LANG;
+  const defaultName = available.find((lang) => lang.code === DEFAULT_LANG)?.name ?? DEFAULT_LANG;
 
   return (
     <DropdownMenu>
@@ -56,9 +51,7 @@ export function ExportLangsMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-56">
-        <DropdownMenuLabel className="text-muted-foreground">
-          Idiomas
-        </DropdownMenuLabel>
+        <DropdownMenuLabel className="text-muted-foreground">Idiomas</DropdownMenuLabel>
         <DropdownMenuItem disabled className="grid grid-cols-[5rem_auto_1fr]">
           <span className="truncate">{defaultName}</span>
           <span className="text-xs opacity-60">{DEFAULT_LANG}</span>

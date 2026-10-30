@@ -1,16 +1,12 @@
-"use client";
+'use client';
 
-import {
-  Copy,
-  FlipVertical,
-  RefreshCw,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { SHORTCUTS, shortcutTip } from "@/lib/ffx/shortcuts";
-import { ImageExportMenu } from "./export-menu";
-import { ImageExportFormatMenu } from "./image-export-format-menu";
-import { ImageImportMenu } from "./import-menu";
-import type { ImageBusy } from "./use-image-actions";
+import { Copy, FlipVertical, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { SHORTCUTS, shortcutTip } from '@/lib/ffx/shortcuts';
+import { ImageExportMenu } from './export-menu';
+import { ImageExportFormatMenu } from './image-export-format-menu';
+import { ImageImportMenu } from './import-menu';
+import type { ImageBusy } from './use-image-actions';
 
 /**
  * Barra de ações do painel: exportar (salvar como .dds/.png em pasta livre,
@@ -42,9 +38,9 @@ export function ImageToolbar({
   /** Coluna de informações oculta (estado de sessão, vem do imageInfoStore). */
   infoHidden: boolean;
   /** Exporta no formato selecionado para mods/images (sem diálogo). */
-  onExport: (format: "dds" | "png" | "dds+png") => void;
+  onExport: (format: 'dds' | 'png' | 'dds+png') => void;
   /** Exporta no formato selecionado para pasta customizada (com diálogo). */
-  onExtractTo: (format: "dds" | "png" | "dds+png") => void;
+  onExtractTo: (format: 'dds' | 'png' | 'dds+png') => void;
   onImport: () => void;
   onImportTranslated: () => void;
   onReplicate: () => void;
@@ -53,8 +49,6 @@ export function ImageToolbar({
   onToggleInfo: () => void;
   onRefresh: () => void;
 }) {
-  const copyTotal = duplicateCount + 1;
-
   return (
     // justify-between: as ações da textura ficam agrupadas à esquerda (e
     // quebram linha ENTRE SI se faltar largura) e o botão Info fica no
@@ -62,12 +56,7 @@ export function ImageToolbar({
     <div className="flex flex-wrap items-center justify-between gap-1">
       <div className="flex flex-wrap items-center gap-1">
         <ImageExportFormatMenu />
-        <ImageExportMenu
-          disabled={busy !== null}
-          readOnly={readOnly}
-          onExport={onExport}
-          onExtractTo={onExtractTo}
-        />
+        <ImageExportMenu disabled={busy !== null} onExport={onExport} onExtractTo={onExtractTo} />
         <ImageImportMenu
           disabled={busy !== null}
           duplicateCount={duplicateCount}
@@ -82,25 +71,25 @@ export function ImageToolbar({
             disabled={busy !== null}
             title={
               readOnly
-                ? "Reempacota a imagem aberta em mods/ das cópias do .vbf já identificadas"
-                : "Reempacota a imagem aberta em mods/ de cada cópia idêntica — sem escolher arquivo"
+                ? 'Reempacota a imagem aberta em mods/ das cópias do .vbf já identificadas'
+                : 'Reempacota a imagem aberta em mods/ de cada cópia idêntica — sem escolher arquivo'
             }
             onClick={onReplicate}
           >
             <Copy size={16} />
             Replicar para {duplicateCount} cópia
-            {duplicateCount > 1 ? "s" : ""}
+            {duplicateCount > 1 ? 's' : ''}
           </Button>
         ) : null}
         <Button
           size="sm"
-          variant={flipped ? "default" : "outline"}
+          variant={flipped ? 'default' : 'outline'}
           aria-pressed={flipped}
           title={`${shortcutTip(SHORTCUTS.imageFlip.label, SHORTCUTS.imageFlip.keys)} — só na tela: não altera nem reenvia a imagem`}
           onClick={onToggleFlip}
         >
           <FlipVertical size={16} />
-          {flipped ? "Flip (on)" : "Flip"}
+          {flipped ? 'Flip (on)' : 'Flip'}
         </Button>
       </div>
       <div className="flex flex-wrap items-center gap-1">
@@ -113,7 +102,7 @@ export function ImageToolbar({
             onClick={onRefresh}
           >
             <RefreshCw size={16} />
-            {busy === "refresh" ? "Reanalisando…" : "Reanalisar"}
+            {busy === 'refresh' ? 'Reanalisando…' : 'Reanalisar'}
           </Button>
         ) : null}
         {/*
@@ -125,13 +114,9 @@ export function ImageToolbar({
       */}
         <Button
           size="sm"
-          variant={infoHidden ? "outline" : "default"}
+          variant={infoHidden ? 'outline' : 'default'}
           aria-pressed={!infoHidden}
-          title={
-            infoHidden
-              ? "Exibe a coluna de informações"
-              : "Oculta a coluna de informações"
-          }
+          title={infoHidden ? 'Exibe a coluna de informações' : 'Oculta a coluna de informações'}
           onClick={onToggleInfo}
         >
           Info

@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  LAYOUT_MAX_AGE_MS,
-  parseLayoutConfig,
-} from './layout-storage';
+import { LAYOUT_MAX_AGE_MS, parseLayoutConfig } from './layout-storage';
 
 const NOW = 1_700_000_000_000;
 const DAY = 24 * 60 * 60 * 1000;
@@ -35,7 +32,7 @@ describe('parseLayoutConfig', () => {
   it('aceita o layout salvo pouco antes de agora', () => {
     const config = parseLayoutConfig(
       raw({ sidebar: { tree: 27, main: 73 }, savedAt: NOW - 5 * DAY }),
-      NOW
+      NOW,
     );
     expect(config).not.toBeNull();
     expect(config?.sidebar).toEqual({ tree: 27, main: 73 });
@@ -49,7 +46,7 @@ describe('parseLayoutConfig', () => {
         imageInfo: { preview: 70, info: 30 },
         savedAt: NOW,
       }),
-      NOW
+      NOW,
     );
     expect(config?.sidebar).toEqual({ tree: 25, main: 75 });
     expect(config?.imageInfo).toEqual({ preview: 70, info: 30 });
@@ -59,22 +56,22 @@ describe('parseLayoutConfig', () => {
     expect(
       parseLayoutConfig(
         raw({ sidebar: { tree: 30, main: 70 }, savedAt: NOW - LAYOUT_MAX_AGE_MS - 1 }),
-        NOW
-      )
+        NOW,
+      ),
     ).toBeNull();
   });
 
   it('ainda vale exatamente no limite de 30 dias', () => {
     const config = parseLayoutConfig(
       raw({ sidebar: { tree: 30, main: 70 }, savedAt: NOW - LAYOUT_MAX_AGE_MS }),
-      NOW
+      NOW,
     );
     expect(config).not.toBeNull();
   });
 
   it('descarta savedAt no futuro (relógio andou para trás)', () => {
     expect(
-      parseLayoutConfig(raw({ sidebar: { tree: 30 }, savedAt: NOW + LAYOUT_MAX_AGE_MS + 1 }), NOW)
+      parseLayoutConfig(raw({ sidebar: { tree: 30 }, savedAt: NOW + LAYOUT_MAX_AGE_MS + 1 }), NOW),
     ).toBeNull();
   });
 
@@ -86,7 +83,7 @@ describe('parseLayoutConfig', () => {
         imageInfo: { preview: 60, info: 40 },
         savedAt: NOW,
       }),
-      NOW
+      NOW,
     );
     expect(config?.sidebar).toBeNull();
     expect(config?.imageInfo).toEqual({ preview: 60, info: 40 });
@@ -94,14 +91,14 @@ describe('parseLayoutConfig', () => {
 
   it('rejeita percentual não finito ou <= 0', () => {
     expect(
-      parseLayoutConfig(raw({ sidebar: { tree: 0, main: 100 }, savedAt: NOW }), NOW)?.sidebar
+      parseLayoutConfig(raw({ sidebar: { tree: 0, main: 100 }, savedAt: NOW }), NOW)?.sidebar,
     ).toBeNull();
     expect(
-      parseLayoutConfig(raw({ sidebar: { tree: -5, main: 105 }, savedAt: NOW }), NOW)?.sidebar
+      parseLayoutConfig(raw({ sidebar: { tree: -5, main: 105 }, savedAt: NOW }), NOW)?.sidebar,
     ).toBeNull();
     expect(
       parseLayoutConfig(raw({ sidebar: { tree: Number.POSITIVE_INFINITY }, savedAt: NOW }), NOW)
-        ?.sidebar
+        ?.sidebar,
     ).toBeNull();
   });
 

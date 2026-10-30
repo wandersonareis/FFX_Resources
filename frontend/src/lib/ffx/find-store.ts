@@ -71,11 +71,19 @@ export function toggleFindReplace(version: GameVersionId): void {
 
 export function toggleFindMatchCase(version: GameVersionId): void {
   // Opção muda = o conjunto de matches muda; volta ao primeiro.
-  findStoreFor(version).setState((prev) => ({ ...prev, matchCase: !prev.matchCase, activeIndex: 0 }));
+  findStoreFor(version).setState((prev) => ({
+    ...prev,
+    matchCase: !prev.matchCase,
+    activeIndex: 0,
+  }));
 }
 
 export function toggleFindWholeWord(version: GameVersionId): void {
-  findStoreFor(version).setState((prev) => ({ ...prev, wholeWord: !prev.wholeWord, activeIndex: 0 }));
+  findStoreFor(version).setState((prev) => ({
+    ...prev,
+    wholeWord: !prev.wholeWord,
+    activeIndex: 0,
+  }));
 }
 
 export function setFindActiveIndex(version: GameVersionId, index: number): void {

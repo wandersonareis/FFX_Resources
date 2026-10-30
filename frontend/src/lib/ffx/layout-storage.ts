@@ -1,4 +1,4 @@
-const LAYOUT_KEY = "ffx-resources.layout";
+const LAYOUT_KEY = 'ffx-resources.layout';
 
 /**
  * Validade da config persistida: um layout guardado há mais de 30 dias não
@@ -32,17 +32,13 @@ export interface LayoutConfig {
 }
 
 function isPanelLayout(value: unknown): value is PanelLayout {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return false;
   }
   const sizes = Object.values(value as Record<string, unknown>);
   if (sizes.length === 0) return false;
   return sizes.every(
-    (size) =>
-      typeof size === "number" &&
-      Number.isFinite(size) &&
-      size > 0 &&
-      size <= 100,
+    (size) => typeof size === 'number' && Number.isFinite(size) && size > 0 && size <= 100,
   );
 }
 
@@ -51,10 +47,7 @@ function isPanelLayout(value: unknown): value is PanelLayout {
  * com `savedAt` vencido (> 30 dias) — nos dois últimos casos o chamador deve
  * descartar a chave e cair nos padrões atuais.
  */
-export function parseLayoutConfig(
-  raw: string | null,
-  now: number,
-): LayoutConfig | null {
+export function parseLayoutConfig(raw: string | null, now: number): LayoutConfig | null {
   if (raw === null) return null;
 
   let parsed: unknown;
@@ -64,12 +57,12 @@ export function parseLayoutConfig(
     return null;
   }
 
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     return null;
   }
 
   const config = parsed as Partial<LayoutConfig>;
-  if (typeof config.savedAt !== "number" || !Number.isFinite(config.savedAt)) {
+  if (typeof config.savedAt !== 'number' || !Number.isFinite(config.savedAt)) {
     return null;
   }
   // Janela SIMÉTRICA de ±30 dias: além para trás é config velha; além para
@@ -107,11 +100,7 @@ export const layoutStorage = {
   },
 
   /** Grava o layout de UM grupo, preservando o outro e renovando o savedAt. */
-  saveGroup(
-    group: "sidebar" | "imageInfo",
-    layout: PanelLayout,
-    now: number = Date.now(),
-  ): void {
+  saveGroup(group: 'sidebar' | 'imageInfo', layout: PanelLayout, now: number = Date.now()): void {
     if (!isPanelLayout(layout)) return;
     try {
       const previous = layoutStorage.load(now);

@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
-import { createStore } from '@tanstack/store';
 import { useSelector } from '@tanstack/react-store';
+import { createStore } from '@tanstack/store';
+import { useEffect } from 'react';
 import type { EntryKind } from './display-names';
 import type { GameVersionId } from './game-version';
 
@@ -49,8 +49,7 @@ interface SelectionSnapshot {
   format: ExportFormat;
 }
 
-const stateKey = (version: GameVersionId, kind: EntryKind): string =>
-  `${version}|${kind}`;
+const stateKey = (version: GameVersionId, kind: EntryKind): string => `${version}|${kind}`;
 
 /**
  * Store reativo da seleção (TanStack Store): o estado é o snapshot imutável
@@ -143,7 +142,7 @@ class ExportSelectionStore {
     kind: EntryKind,
     ids: string[],
     checked: boolean,
-    whole = false
+    whole = false,
   ): void {
     if (ids.length === 0) return;
     const key = stateKey(version, kind);

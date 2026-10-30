@@ -22,7 +22,7 @@ export const LockedTagsExtension = Extension.create({
             if (!selection.empty) {
               let found = false;
               view.state.doc.nodesBetween(selection.from, selection.to, (node) => {
-                if (node.type.name === 'gameTag' && node.attrs['locked']) {
+                if (node.type.name === 'gameTag' && node.attrs.locked) {
                   found = true;
                   return false;
                 }
@@ -37,13 +37,8 @@ export const LockedTagsExtension = Extension.create({
 
             // Cursor: verifica o nó vizinho na direção da tecla.
             const $pos = selection.$from;
-            const neighbor =
-              event.key === 'Backspace' ? $pos.nodeBefore : $pos.nodeAfter;
-            if (
-              neighbor &&
-              neighbor.type.name === 'gameTag' &&
-              neighbor.attrs['locked']
-            ) {
+            const neighbor = event.key === 'Backspace' ? $pos.nodeBefore : $pos.nodeAfter;
+            if (neighbor && neighbor.type.name === 'gameTag' && neighbor.attrs.locked) {
               event.preventDefault();
               return true;
             }

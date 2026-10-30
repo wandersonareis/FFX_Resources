@@ -1,15 +1,11 @@
-"use client";
+'use client';
 
-import { Save, Search } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { shortcutTip, SHORTCUTS } from "@/lib/ffx/shortcuts";
-import type { EntryProgress } from "@/lib/ffx/entry-progress";
+import { Save, Search } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import type { EntryProgress } from '@/lib/ffx/entry-progress';
+import { SHORTCUTS, shortcutTip } from '@/lib/ffx/shortcuts';
 
 /**
  * Barra de título da tabela: tipo + entrada + badge de progresso, e o
@@ -40,20 +36,17 @@ export function TableBar({
       <h3 className="flex gap-2 items-center text-primary text-lg font-malva-medium">
         {kindLabel}
         {/* O span volta ao Malva padrão (Regular, família base), só desanimado. */}
-        {entryLabel ? (
-          <span className="opacity-70"> · {entryLabel}</span>
-        ) : null}
+        {entryLabel ? <span className="opacity-70"> · {entryLabel}</span> : null}
         {progress ? (
           <Badge
             variant="outline"
             className={
               progress.translated >= progress.total && progress.total > 0
-                ? "text-success border-success/40"
-                : "text-muted-foreground"
+                ? 'text-success border-success/40'
+                : 'text-muted-foreground'
             }
           >
-            {progress.translated}/{progress.total} linhas traduzidas (
-            {progress.pct}%)
+            {progress.translated}/{progress.total} linhas traduzidas ({progress.pct}%)
           </Badge>
         ) : null}
       </h3>
@@ -61,7 +54,12 @@ export function TableBar({
         {onOpenFind ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Buscar neste arquivo" onClick={onOpenFind}>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Buscar neste arquivo"
+                onClick={onOpenFind}
+              >
                 <Search size={18} />
               </Button>
             </TooltipTrigger>
@@ -77,13 +75,11 @@ export function TableBar({
             <span className="inline-flex">
               <Button disabled={!hasDirty || saving} onClick={onSave}>
                 <Save size={18} />
-                {saving ? "Salvando…" : "Salvar"}
+                {saving ? 'Salvando…' : 'Salvar'}
               </Button>
             </span>
           </TooltipTrigger>
-          <TooltipContent>
-            {shortcutTip(SHORTCUTS.save.label, SHORTCUTS.save.keys)}
-          </TooltipContent>
+          <TooltipContent>{shortcutTip(SHORTCUTS.save.label, SHORTCUTS.save.keys)}</TooltipContent>
         </Tooltip>
       </div>
     </div>

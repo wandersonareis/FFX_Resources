@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { Window } from "@wailsio/runtime";
-import { WindowChrome } from "@/components/window/window-chrome";
-import { ConfigWindowContent } from "@/components/window/config-window";
-import { LogWindowContent } from "@/components/window/log-window";
-import { LogPanelControls } from "@/components/log-panel-controls";
+import { Window } from '@wailsio/runtime';
+import { useEffect, useState } from 'react';
+import { LogPanelControls } from '@/components/log-panel-controls';
+import { ConfigWindowContent } from '@/components/window/config-window';
+import { LogWindowContent } from '@/components/window/log-window';
+import { WindowChrome } from '@/components/window/window-chrome';
 
 /**
  * Host das janelas filhas (rota /w): o backend cria a janela com
@@ -32,9 +32,9 @@ const WINDOWS: Record<
     TitleExtra?: () => React.JSX.Element;
   }
 > = {
-  config: { title: "Configurações", Content: ConfigWindowContent },
+  config: { title: 'Configurações', Content: ConfigWindowContent },
   logs: {
-    title: "Logs",
+    title: 'Logs',
     Content: LogWindowContent,
     TitleExtra: () => <LogPanelControls />,
   },

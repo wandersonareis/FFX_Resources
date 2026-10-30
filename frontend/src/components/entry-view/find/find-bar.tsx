@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import type { KeyboardEvent } from 'react';
+import { cn } from 'cn';
 import {
   ArrowDown,
   ArrowUp,
@@ -11,9 +10,10 @@ import {
   WholeWord,
   X,
 } from 'lucide-react';
+import type { KeyboardEvent } from 'react';
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { cn } from 'cn';
 import type { EntryFind } from './use-entry-find';
 
 /**
@@ -72,19 +72,11 @@ export function FindBar({ find }: { find: EntryFind }) {
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={
-            find.showReplace ? 'Ocultar substituição' : 'Mostrar substituição'
-          }
-          title={
-            find.showReplace ? 'Ocultar substituição' : 'Mostrar substituição'
-          }
+          aria-label={find.showReplace ? 'Ocultar substituição' : 'Mostrar substituição'}
+          title={find.showReplace ? 'Ocultar substituição' : 'Mostrar substituição'}
           onClick={find.toggleReplace}
         >
-          {find.showReplace ? (
-            <ChevronDown size={15} />
-          ) : (
-            <ChevronRight size={15} />
-          )}
+          {find.showReplace ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
         </Button>
         <Input
           ref={findInputRef}
@@ -101,7 +93,7 @@ export function FindBar({ find }: { find: EntryFind }) {
           aria-live="polite"
           className={cn(
             'min-w-10 shrink-0 text-xs text-muted-foreground tabular-nums',
-            find.hasQuery && find.matches.length === 0 && 'text-destructive'
+            find.hasQuery && find.matches.length === 0 && 'text-destructive',
           )}
         >
           {counter}

@@ -1,12 +1,9 @@
 'use client';
 
-import { useMemo, type RefObject } from 'react';
 import { useHotkey, useHotkeys } from '@tanstack/react-hotkeys';
 import { useSelector } from '@tanstack/react-store';
-import {
-  buildContentRoots,
-  buildNodeIndex,
-} from '@/lib/ffx/content-tree/model';
+import { type RefObject, useMemo } from 'react';
+import { buildContentRoots, buildNodeIndex } from '@/lib/ffx/content-tree/model';
 import { SHORTCUTS } from '@/lib/ffx/shortcuts';
 import type { EntryView } from '../entry-view-store';
 
@@ -39,10 +36,7 @@ export function useContentTreeHotkeys({
   const imageAction = useSelector(store, (s) => s.imageAction);
 
   // Índice id → nó: devolvido pelo [data-node-id] do evento.
-  const nodeById = useMemo(
-    () => buildNodeIndex(contentRoots, vbfRoots),
-    [contentRoots, vbfRoots]
-  );
+  const nodeById = useMemo(() => buildNodeIndex(contentRoots, vbfRoots), [contentRoots, vbfRoots]);
 
   /**
    * Botão de nó sob o foco. `null` = chevron/checkbox/viewport: esses casos
@@ -56,7 +50,7 @@ export function useContentTreeHotkeys({
   const moveFocus = (event: KeyboardEvent, delta: number) => {
     const button = focusedNodeButton(event);
     const buttons = Array.from(
-      treeRef.current?.querySelectorAll<HTMLElement>('[data-node-button]') ?? []
+      treeRef.current?.querySelectorAll<HTMLElement>('[data-node-button]') ?? [],
     );
     const idx = button ? buttons.indexOf(button) : -1;
     if (idx < 0) return;
@@ -119,7 +113,7 @@ export function useContentTreeHotkeys({
     // `preventDefault`/`stopPropagation` desligados: senão Enter morre no
     // checkbox/chevron e o evento deixa de subir (cortando o Delete em
     // document e os handlers sintéticos dos ancestrais).
-    { target: treeRef, preventDefault: false, stopPropagation: false, ignoreInputs: true }
+    { target: treeRef, preventDefault: false, stopPropagation: false, ignoreInputs: true },
   );
 
   useHotkey(
@@ -139,9 +133,10 @@ export function useContentTreeHotkeys({
       });
     },
     {
-      enabled: !imageAction &&
+      enabled:
+        !imageAction &&
         (selectedImageIds.length > 0 || (selectedEntry?.kind === 'images' && !selectedEntry.vbf)),
       ignoreInputs: true,
-    }
+    },
   );
 }

@@ -1,7 +1,7 @@
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import { rowKey, useEditDraft } from '@/lib/ffx/edit-draft';
-import { SOURCE_LANG } from '@/lib/ffx/save-all';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
+import { rowKey, type useEditDraft } from '@/lib/ffx/edit-draft';
 import type { GameTextMark } from '@/lib/ffx/game-text-parser';
+import { SOURCE_LANG } from '@/lib/ffx/save-all';
 import type { EntryRow } from '@/lib/ffx/tree-data';
 import type { EntryView } from '../../entry-view-store';
 import { columnHelper, MISSING_SIDE } from '../table-types';
@@ -46,23 +46,10 @@ export function buildTranslatedColumn({
       // têm namespaces separados. Ler sem a fonte esconderia a edição
       // feita pela ref (na def de outra entrada — inclusive de .vbf).
       const edited = entry
-        ? drafts.editOf(
-            version,
-            entry.kind,
-            entry.id,
-            row,
-            SOURCE_LANG,
-            entry.vbf?.root ?? ''
-          )
+        ? drafts.editOf(version, entry.kind, entry.id, row, SOURCE_LANG, entry.vbf?.root ?? '')
         : undefined;
       const divergent = entry
-        ? drafts.isDivergent(
-            version,
-            entry.kind,
-            entry.id,
-            row,
-            entry.vbf?.root ?? ''
-          )
+        ? drafts.isDivergent(version, entry.kind, entry.id, row, entry.vbf?.root ?? '')
         : false;
       // Enquanto a escolha de divergência está no rascunho, a edição
       // local vence o link e a célula deixa de parecer azul.
@@ -93,18 +80,12 @@ export function buildTranslatedColumn({
                 entry.id,
                 row,
                 SOURCE_LANG,
-                entry.vbf?.root ?? ''
+                entry.vbf?.root ?? '',
               ) !== undefined
             : false;
         const divergentDraft =
           !missing && entry
-            ? drafts.isDivergent(
-                version,
-                entry.kind,
-                entry.id,
-                row,
-                entry.vbf?.root ?? ''
-              )
+            ? drafts.isDivergent(version, entry.kind, entry.id, row, entry.vbf?.root ?? '')
             : false;
         if (missing) {
           return (
@@ -158,6 +139,6 @@ export function buildTranslatedColumn({
           />
         );
       },
-    }
+    },
   );
 }

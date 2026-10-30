@@ -174,14 +174,8 @@ export function resolveEventGroup(
  * (mmmc → "mm", local sem nome conhecido), o sufixo seria redundante e sai.
  * Sem nome → o fragmento cru, igual à pasta no disco (aí a busca encontra).
  */
-export function formatEventGroupLabel(
-  name: string,
-  target: string,
-  count: number
-): string {
+export function formatEventGroupLabel(name: string, target: string, count: number): string {
   if (!name) return `${target} - ${count}`;
   const parent = target.slice(0, 2);
-  return name === parent
-    ? `${name} - ${count}`
-    : `${name} (${parent}) - ${count}`;
+  return name === parent ? `${name} - ${count}` : `${name} (${parent}) - ${count}`;
 }

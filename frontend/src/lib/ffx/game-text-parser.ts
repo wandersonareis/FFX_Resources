@@ -1,7 +1,7 @@
 import type { JSONContent } from '@tiptap/core';
 import {
-  COLOR_RESET_TAG,
   buttonSpriteClasses,
+  COLOR_RESET_TAG,
   extractChipLabel,
   getColorTagName,
   getResolvedColorFromTag,
@@ -88,7 +88,7 @@ export const gameTextParser = {
   parseGameTextToHTML(
     rawText: string,
     validate?: ChipValidator,
-    options?: GameTextRenderOptions
+    options?: GameTextRenderOptions,
   ): string {
     if (!rawText) return '<p></p>';
 
@@ -108,8 +108,7 @@ export const gameTextParser = {
     for (let s = 0; s < segments.length; s += 2) {
       const para = segments[s];
       const paraStart = cursor;
-      cursor +=
-        para.length + (s + 1 < segments.length ? segments[s + 1].length : 0);
+      cursor += para.length + (s + 1 < segments.length ? segments[s + 1].length : 0);
 
       // Quebra real DEPOIS deste parágrafo (s+1 = separador \n ou
       // {TEXT_NEWLINE}): o chip entra no FIM da linha — junto do ponto onde
@@ -117,9 +116,7 @@ export const gameTextParser = {
       // seguinte. Contagem: 1 chip por quebra (linha vazia entre duas
       // quebras também ganha o seu).
       const lineChip =
-        options?.newlineChip === true && s + 1 < segments.length
-          ? NEWLINE_CHIP_HTML
-          : '';
+        options?.newlineChip === true && s + 1 < segments.length ? NEWLINE_CHIP_HTML : '';
 
       if (para.trim() === '') {
         htmlParagraphs.push(lineChip ? `<p>${lineChip}</p>` : '<p></p>');
@@ -132,9 +129,8 @@ export const gameTextParser = {
       let lastIndex = 0;
 
       const tagRegex = /\{([^{}]+)\}/g;
-      let match: RegExpExecArray | null;
 
-      while ((match = tagRegex.exec(para)) !== null) {
+      for (let match = tagRegex.exec(para); match !== null; match = tagRegex.exec(para)) {
         const matchIndex = match.index;
         const inner = match[1].trim();
 
@@ -153,7 +149,7 @@ export const gameTextParser = {
               paraStart + lastIndex,
               currentColor,
               italicActive,
-              marks
+              marks,
             );
           }
         }
@@ -185,15 +181,13 @@ export const gameTextParser = {
               btnClasses
                 .map(
                   (cls) =>
-                    `<span class="gb-sprite ${cls}" title="${this.escapeAttr(
-                      label
-                    )}"></span>`
+                    `<span class="gb-sprite ${cls}" title="${this.escapeAttr(label)}"></span>`,
                 )
                 .join('') +
               '</span>';
           } else {
             chipHTML = `<span data-game-tag="${this.escapeAttr(
-              fullTag
+              fullTag,
             )}" class="game-tag-chip${locked ? ' locked' : ''}${
               invalid ? ' invalid' : ''
             }"${locked ? ' data-locked="true"' : ''}${
@@ -223,7 +217,7 @@ export const gameTextParser = {
             paraStart + lastIndex,
             currentColor,
             italicActive,
-            marks
+            marks,
           );
         }
       }
@@ -240,7 +234,7 @@ export const gameTextParser = {
    * Parágrafos unidos com {TEXT_NEWLINE} (espelha WriteLinebreaksAsCommands).
    */
   serializeJSONToGameText(json: JSONContent): string {
-    if (!json || !json.content) return '';
+    if (!json?.content) return '';
 
     const paragraphTexts: string[] = [];
 
@@ -252,15 +246,15 @@ export const gameTextParser = {
       if (block.content && block.content.length > 0) {
         for (const inlineNode of block.content) {
           if (inlineNode.type === 'gameTag') {
-            const value = (inlineNode.attrs?.['value'] as string) || '';
+            const value = (inlineNode.attrs?.value as string) || '';
             if (value) blockText += value;
           } else if (inlineNode.type === 'text') {
             const text = inlineNode.text || '';
 
             const colorMark = inlineNode.marks?.find(
-              (m) => m.type === 'textStyle' && m.attrs?.['color']
+              (m) => m.type === 'textStyle' && m.attrs?.color,
             );
-            const colorVal = colorMark?.attrs?.['color'] as string | undefined;
+            const colorVal = colorMark?.attrs?.color as string | undefined;
             const nodeColorTag = colorVal ? getColorTagName(colorVal) : null;
 
             const hasItalic = !!inlineNode.marks?.some((m) => m.type === 'italic');
@@ -331,7 +325,7 @@ export const gameTextParser = {
     absoluteStart: number,
     color: string | null,
     italic: boolean,
-    marks: readonly ResolvedMark[]
+    marks: readonly ResolvedMark[],
   ): string {
     const absoluteEnd = absoluteStart + text.length;
     const hits = marks
@@ -350,7 +344,7 @@ export const gameTextParser = {
       const to = Math.min(mark.end, absoluteEnd) - absoluteStart;
       if (from > cursor) html += this.escapeHtml(text.slice(cursor, from));
       html += `<mark${mark.current ? ' class="find-current"' : ''}>${this.escapeHtml(
-        text.slice(from, to)
+        text.slice(from, to),
       )}</mark>`;
       cursor = to;
     }
@@ -363,28 +357,18 @@ export const gameTextParser = {
   },
 
   /** Itálico/cor sobre HTML JÁ escapado (pode conter <mark> interno). */
-  wrapStyledTextHtml(
-    html: string,
-    color: string | null,
-    italic: boolean
-  ): string {
+  wrapStyledTextHtml(html: string, color: string | null, italic: boolean): string {
     if (italic) html = `<em>${html}</em>`;
     if (color) html = `<span style="color: ${color}">${html}</span>`;
     return html;
   },
 
   /** markStart/markEnd legado OU marks[] -> intervalos UTF-16 (pode vir vazio). */
-  resolveMarks(
-    rawText: string,
-    options?: GameTextMarkOptions
-  ): ResolvedMark[] {
+  resolveMarks(rawText: string, options?: GameTextMarkOptions): ResolvedMark[] {
     const out: ResolvedMark[] = [];
     if (options?.markStart != null && options?.markEnd != null) {
       const start = toUtf16Index(rawText, Math.max(0, options.markStart));
-      const end = toUtf16Index(
-        rawText,
-        Math.max(options.markEnd, options.markStart)
-      );
+      const end = toUtf16Index(rawText, Math.max(options.markEnd, options.markStart));
       if (end > start) out.push({ start, end, current: false });
     }
     for (const mark of options?.marks ?? []) {
@@ -398,11 +382,7 @@ export const gameTextParser = {
   },
 
   /** Mark que intersecta o intervalo dado (o atual vence, senão o 1º). */
-  markOverlapping(
-    marks: readonly ResolvedMark[],
-    start: number,
-    end: number
-  ): ResolvedMark | null {
+  markOverlapping(marks: readonly ResolvedMark[], start: number, end: number): ResolvedMark | null {
     const hits = marks.filter((mark) => mark.start < end && mark.end > start);
     return hits.find((mark) => mark.current) ?? hits[0] ?? null;
   },
@@ -432,4 +412,3 @@ export const gameTextParser = {
       .replace(/\r/g, '&#13;');
   },
 };
-

@@ -10,28 +10,22 @@ describe('parseGameTextToHTML: chips', () => {
     const html = gameTextParser.parseGameTextToHTML('x{CMD:01:02}y');
     expect(html).toBe(
       '<p>x<span data-game-tag="{CMD:01:02}" class="game-tag-chip locked" ' +
-        'data-locked="true">{CMD:01:02}</span>y</p>'
+        'data-locked="true">{CMD:01:02}</span>y</p>',
     );
   });
 
   it('marca o chip inválido com data-invalid no fim', () => {
-    const html = gameTextParser.parseGameTextToHTML(
-      'Oi {PC:ZZ:YUNA}',
-      () => false
-    );
+    const html = gameTextParser.parseGameTextToHTML('Oi {PC:ZZ:YUNA}', () => false);
     expect(html).toBe(
       '<p>Oi <span data-game-tag="{PC:ZZ:YUNA}" class="game-tag-chip invalid" ' +
-        'data-invalid="true">YUNA</span></p>'
+        'data-invalid="true">YUNA</span></p>',
     );
   });
 
   it('chip válido não ganha data-locked/data-invalid', () => {
-    const html = gameTextParser.parseGameTextToHTML(
-      'Oi {PC:01:YUNA}',
-      () => true
-    );
+    const html = gameTextParser.parseGameTextToHTML('Oi {PC:01:YUNA}', () => true);
     expect(html).toBe(
-      '<p>Oi <span data-game-tag="{PC:01:YUNA}" class="game-tag-chip">YUNA</span></p>'
+      '<p>Oi <span data-game-tag="{PC:01:YUNA}" class="game-tag-chip">YUNA</span></p>',
     );
   });
 
@@ -45,7 +39,7 @@ describe('parseGameTextToHTML: chips', () => {
     const html = gameTextParser.parseGameTextToHTML('{BUTTON:31:X}');
     expect(html).toBe(
       '<p><span data-game-tag="{BUTTON:31:X}">' +
-        '<span class="gb-sprite gb-a" title="X"></span></span></p>'
+        '<span class="gb-sprite gb-a" title="X"></span></span></p>',
     );
   });
 
@@ -56,7 +50,7 @@ describe('parseGameTextToHTML: chips', () => {
         '<span data-game-tag="{BUTTON:43:Direcional Up+Right}">' +
         '<span class="gb-sprite gb-arrow-up" title="Direcional Up+Right"></span>' +
         '<span class="gb-sprite gb-arrow-right" title="Direcional Up+Right"></span>' +
-        '</span></p>'
+        '</span></p>',
     );
     // Triplas: 3 setas aninhadas na mesma ordem
     const html3 = gameTextParser.parseGameTextToHTML('{BUTTON:4B:Direcional Up+Left+Right}');
@@ -69,9 +63,7 @@ describe('parseGameTextToHTML: chips', () => {
   it('chips All e Direcional genérico usam o cursor ✛', () => {
     for (const tag of ['{BUTTON:4F:Direcional All}', '{BUTTON:40:Direcional}']) {
       const html = gameTextParser.parseGameTextToHTML(tag);
-      expect(html).toContain(
-        `<span data-game-tag="${tag}"><span class="gb-sprite gb-cursor"`
-      );
+      expect(html).toContain(`<span data-game-tag="${tag}"><span class="gb-sprite gb-cursor"`);
       expect(html).not.toContain('game-tag-chip');
     }
   });
@@ -86,12 +78,12 @@ describe('parseGameTextToHTML: chips', () => {
 describe('parseGameTextToHTML: escapamento', () => {
   it('aspas no texto ficam literais (igual à serialização do browser)', () => {
     expect(gameTextParser.parseGameTextToHTML('Ele disse "oi" & saiu')).toBe(
-      '<p>Ele disse "oi" &amp; saiu</p>'
+      '<p>Ele disse "oi" &amp; saiu</p>',
     );
   });
 
   it('apóstrofo no rótulo do chip fica literal', () => {
-    const html = gameTextParser.parseGameTextToHTML("{MCR:s01:l05:\"Yevon's\"}");
+    const html = gameTextParser.parseGameTextToHTML('{MCR:s01:l05:"Yevon\'s"}');
     expect(html).toContain(">Yevon's</span>");
     expect(html).not.toContain('&#039;');
   });
@@ -102,16 +94,14 @@ describe('parseGameTextToHTML: escapamento', () => {
   });
 
   it('escapa < e > do texto', () => {
-    expect(gameTextParser.parseGameTextToHTML('a < b > c')).toBe(
-      '<p>a &lt; b &gt; c</p>'
-    );
+    expect(gameTextParser.parseGameTextToHTML('a < b > c')).toBe('<p>a &lt; b &gt; c</p>');
   });
 });
 
 describe('parseGameTextToHTML: formatação não vira chip', () => {
   it('CLR/COLOR/TEXT_* ficam como marca, sem data-game-tag', () => {
     const html = gameTextParser.parseGameTextToHTML(
-      '{CLR:RED}oi{TEXT_ITALIC}!{TEXT_NORMAL}{TEXT_NEWLINE}fim'
+      '{CLR:RED}oi{TEXT_ITALIC}!{TEXT_NORMAL}{TEXT_NEWLINE}fim',
     );
     expect(html).not.toContain('data-game-tag');
     expect(html.split('<p>').length - 1).toBe(2);
@@ -122,15 +112,15 @@ describe('parseGameTextToHTML: destaque markStart/markEnd', () => {
   it('sem options a saída é idêntica (refs/tabela/editor não mudam)', () => {
     const raw = '{CLR:RED}Perigli{TEXT_ITALIC}oso{TEXT_NORMAL} do Yuna{CMD:01:02}';
     expect(gameTextParser.parseGameTextToHTML(raw, undefined, {})).toBe(
-      gameTextParser.parseGameTextToHTML(raw)
+      gameTextParser.parseGameTextToHTML(raw),
     );
   });
 
   it('intervalo vazio não gera destaque', () => {
     const raw = 'Tidus e Yuna';
-    expect(
-      gameTextParser.parseGameTextToHTML(raw, undefined, { markStart: 5, markEnd: 5 })
-    ).toBe(gameTextParser.parseGameTextToHTML(raw));
+    expect(gameTextParser.parseGameTextToHTML(raw, undefined, { markStart: 5, markEnd: 5 })).toBe(
+      gameTextParser.parseGameTextToHTML(raw),
+    );
   });
 
   it('envolve o texto do hit em <mark> por dentro da cor', () => {
@@ -157,7 +147,7 @@ describe('parseGameTextToHTML: destaque markStart/markEnd', () => {
     const html = gameTextParser.parseGameTextToHTML(
       'Press{TEXT_NEWLINE}Enter agora',
       undefined,
-      { markStart: 21, markEnd: 24 } // 'ter' de Enter
+      { markStart: 21, markEnd: 24 }, // 'ter' de Enter
     );
     expect(html).toBe('<p>Press</p><p>En<mark>ter</mark> agora</p>');
   });
@@ -175,9 +165,9 @@ describe('parseGameTextToHTML: destaque markStart/markEnd', () => {
 describe('parseGameTextToHTML: destaque múltiplo marks[] (busca local)', () => {
   it('sem marks[] a saída é idêntica (nada de highlight fantasma)', () => {
     const raw = 'Tidus e Yuna e Wakka';
-    expect(
-      gameTextParser.parseGameTextToHTML(raw, undefined, { marks: [] })
-    ).toBe(gameTextParser.parseGameTextToHTML(raw));
+    expect(gameTextParser.parseGameTextToHTML(raw, undefined, { marks: [] })).toBe(
+      gameTextParser.parseGameTextToHTML(raw),
+    );
   });
 
   it('destaca TODOS os intervalos', () => {
@@ -253,35 +243,27 @@ describe('serializeJSONToGameText', () => {
   }
 
   it('rgb() de marca vira o NOME da paleta, nunca {CLR:RGB(...)}', () => {
+    expect(gameTextParser.serializeJSONToGameText(paragraphWithColor('rgb(37, 99, 235)'))).toBe(
+      '{CLR:BLUE}Hi{CLR:WHITE}',
+    );
     expect(
-      gameTextParser.serializeJSONToGameText(paragraphWithColor('rgb(37, 99, 235)'))
-    ).toBe('{CLR:BLUE}Hi{CLR:WHITE}');
-    expect(
-      gameTextParser.serializeJSONToGameText(
-        paragraphWithColor('rgba(220, 38, 38, 0.5)')
-      )
+      gameTextParser.serializeJSONToGameText(paragraphWithColor('rgba(220, 38, 38, 0.5)')),
     ).toBe('{CLR:RED}Hi{CLR:WHITE}');
   });
 
   it('hex fora da paleta cai na cor do jogo mais proxima', () => {
-    const value = gameTextParser.serializeJSONToGameText(
-      paragraphWithColor('#1d4ed8')
-    );
+    const value = gameTextParser.serializeJSONToGameText(paragraphWithColor('#1d4ed8'));
     expect(value).toBe('{CLR:BLUE}Hi{CLR:WHITE}');
   });
 
   it('valor que nao e cor nao emite tag de cor', () => {
-    expect(
-      gameTextParser.serializeJSONToGameText(paragraphWithColor('inherit'))
-    ).toBe('Hi');
+    expect(gameTextParser.serializeJSONToGameText(paragraphWithColor('inherit'))).toBe('Hi');
   });
 });
 
 describe('parseGameTextToHTML: cor corrompida de rascunho antigo', () => {
   it('{CLR:RGB(...)} volta a ser marca de cor (nao vira chip)', () => {
-    const html = gameTextParser.parseGameTextToHTML(
-      '{CLR:RGB(37, 99, 235)}Oi'
-    );
+    const html = gameTextParser.parseGameTextToHTML('{CLR:RGB(37, 99, 235)}Oi');
     expect(html).toBe('<p><span style="color: #2563eb">Oi</span></p>');
     expect(html).not.toContain('data-game-tag');
   });

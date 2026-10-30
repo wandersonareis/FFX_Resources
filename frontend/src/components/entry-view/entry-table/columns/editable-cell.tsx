@@ -24,6 +24,10 @@ export function EditableCell({
 }) {
   return (
     <div className="group flex items-center gap-1">
+      {/* A célula é clicável, mas a abertura pelo teclado é da linha da tabela
+          (Enter com a <tr> focada); por isso não é um controle focável aqui. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: abertura pelo teclado tratada na linha (Enter/F2). */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: abertura pelo teclado tratada na linha (Enter/F2). */}
       <div
         className={`text-cell translated-cell min-w-0 px-2 flex-1${edited || canRevert ? ' edited' : ''}`}
         onClick={onOpen}

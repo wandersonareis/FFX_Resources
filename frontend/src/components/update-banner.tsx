@@ -1,14 +1,14 @@
 'use client';
 
-import { useEffect, useReducer, useState } from 'react';
 import { ArrowDownToLine, CheckCircle2, Loader2, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { loggedToast as toast } from '@/lib/ffx/toast-logged';
-import { parseError } from '@/lib/ffx/error-handler';
-import { useWailsEvent } from '@/lib/ffx/use-wails-event';
+import { useEffect, useReducer, useState } from 'react';
 import { CheckNow, CurrentVersion, Restart } from '@/bindings/ffxresources/updateservice';
-import type { UpProgress, UpRelease } from '@/lib/ffx/updater-types';
+import { Button } from '@/components/ui/button';
+import { parseError } from '@/lib/ffx/error-handler';
+import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { initialBannerState, updateBannerReducer } from '@/lib/ffx/update-banner-state';
+import type { UpProgress, UpRelease } from '@/lib/ffx/updater-types';
+import { useWailsEvent } from '@/lib/ffx/use-wails-event';
 
 /** Rótulos do estado 'working' por sub-etapa (mesmos textos da janela nativa). */
 const WORKING_LABEL = {
@@ -55,7 +55,7 @@ export function UpdateBanner() {
   useWailsEvent('wails:updater:check-started', () => dispatch({ type: 'checking' }));
   useWailsEvent('wails:updater:download-started', () => dispatch({ type: 'download-started' }));
   useWailsEvent('wails:updater:download-progress', (data) =>
-    dispatch({ type: 'download-progress', progress: data as UpProgress })
+    dispatch({ type: 'download-progress', progress: data as UpProgress }),
   );
   useWailsEvent('wails:updater:verifying', () => dispatch({ type: 'verifying' }));
   useWailsEvent('wails:updater:installing', () => dispatch({ type: 'installing' }));
@@ -102,9 +102,7 @@ export function UpdateBanner() {
             <p className="text-sm font-semibold">Atualização disponível</p>
             <p className="text-xs text-muted-foreground">
               {currentVersion ? `v${currentVersion} → ` : ''}v{state.release?.version}
-              {state.release?.artifact?.size
-                ? ` · ${fmtBytes(state.release.artifact.size)}`
-                : ''}
+              {state.release?.artifact?.size ? ` · ${fmtBytes(state.release.artifact.size)}` : ''}
             </p>
             <div className="mt-2 flex gap-2">
               <Button size="sm" onClick={handleCheck}>

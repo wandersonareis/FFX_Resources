@@ -1,4 +1,4 @@
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 
 /**
  * Regras de seleção do modal de importação de imagens — funções puras, para
@@ -40,24 +40,22 @@ export function plannedWrites(preview: dto.ImageImportPreview): number {
  * selecionáveis e todas as cópias estão marcadas. Entradas com erro nunca
  * são selecionáveis.
  */
-export function allSelectedState(
-  preview: dto.ImageImportPreview
-): boolean | 'indeterminate' {
+export function allSelectedState(preview: dto.ImageImportPreview): boolean | 'indeterminate' {
   const selectable = preview.entries.filter((e) => !e.validation_error);
   if (selectable.length === 0) return false;
   const allMarked = selectable.every(
-    (e) => e.selected && (e.copies ?? []).every((copy) => copy.selected)
+    (e) => e.selected && (e.copies ?? []).every((copy) => copy.selected),
   );
   if (allMarked) return true;
   const noneMarked = selectable.every(
-    (e) => !e.selected && (e.copies ?? []).every((copy) => !copy.selected)
+    (e) => !e.selected && (e.copies ?? []).every((copy) => !copy.selected),
   );
   return noneMarked ? false : 'indeterminate';
 }
 
 /** Monta o payload do apply a partir do estado do modal. */
 export function buildImageImportSelection(
-  preview: dto.ImageImportPreview
+  preview: dto.ImageImportPreview,
 ): dto.ImageImportSelection {
   const entries: dto.ImageImportSelectionEntry[] = [];
   for (const entry of preview.entries) {

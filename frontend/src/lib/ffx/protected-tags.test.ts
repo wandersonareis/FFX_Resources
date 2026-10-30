@@ -33,28 +33,19 @@ describe('missingProtectedTags', () => {
     const text = 'Press {BUTTON:31:X} to jump{CMD:01}';
     expect(missingProtectedTags(text, text)).toEqual([]);
     // Renomear texto livre não mexe nas tags.
-    expect(
-      missingProtectedTags(text, 'Aperte {BUTTON:31:X} para pular{CMD:01}')
-    ).toEqual([]);
+    expect(missingProtectedTags(text, 'Aperte {BUTTON:31:X} para pular{CMD:01}')).toEqual([]);
   });
 
   it('lista as removidas, na ordem do original', () => {
     const original = 'a {VAR:n} b {CMD:FF} c {PUA:A0:X} d';
     const edited = 'a b c d';
-    expect(missingProtectedTags(original, edited)).toEqual([
-      '{VAR:n}',
-      '{CMD:FF}',
-      '{PUA:A0:X}',
-    ]);
+    expect(missingProtectedTags(original, edited)).toEqual(['{VAR:n}', '{CMD:FF}', '{PUA:A0:X}']);
   });
 
   it('conta multiplicidade (duas iguais, uma sumiu → uma faltando)', () => {
     const original = '{CMD:01} {CMD:01} fim';
     expect(missingProtectedTags(original, '{CMD:01} fim')).toEqual(['{CMD:01}']);
-    expect(missingProtectedTags(original, 'fim')).toEqual([
-      '{CMD:01}',
-      '{CMD:01}',
-    ]);
+    expect(missingProtectedTags(original, 'fim')).toEqual(['{CMD:01}', '{CMD:01}']);
   });
 
   it('ignora tags não protegidas removidas de propósito', () => {
@@ -66,9 +57,7 @@ describe('missingProtectedTags', () => {
 describe('restoreProtectedTags', () => {
   it('devolve o texto intacto quando não falta nada', () => {
     const original = 'Hello {VAR:x} world';
-    expect(restoreProtectedTags(original, 'Olá {VAR:x} mundo')).toBe(
-      'Olá {VAR:x} mundo'
-    );
+    expect(restoreProtectedTags(original, 'Olá {VAR:x} mundo')).toBe('Olá {VAR:x} mundo');
     expect(restoreProtectedTags(original, original)).toBe(original);
   });
 
@@ -113,9 +102,7 @@ describe('fragmentos abertos', () => {
     expect(findUnclosedFragment('abc')).toBeNull();
     expect(findUnclosedFragment('a{b}c')).toBeNull();
     expect(findUnclosedFragment('texto {PC')).toBe('{PC');
-    expect(findUnclosedFragment('fecha {PC:01:YUNA} e abre {MCR')).toBe(
-      '{MCR'
-    );
+    expect(findUnclosedFragment('fecha {PC:01:YUNA} e abre {MCR')).toBe('{MCR');
   });
 
   it('newUnclosedFragment só acusa o que a edição introduziu', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import {
   allSelectedState,
   buildImageImportSelection,
@@ -17,7 +17,7 @@ function entry(
     selected: boolean;
     copies: Array<{ id: string; selected: boolean }>;
     error: string;
-  }> = {}
+  }> = {},
 ): dto.ImageImportPreviewEntry {
   return {
     id,
@@ -118,18 +118,13 @@ describe('estado do Todas (3 estados)', () => {
     expect(allSelectedState(on)).toBe(true);
     expect(nextAllSelected(on)).toBe(false);
 
-    const partial = preview([
-      entry('a', { selected: true }),
-      entry('b', { selected: false }),
-    ]);
+    const partial = preview([entry('a', { selected: true }), entry('b', { selected: false })]);
     expect(allSelectedState(partial)).toBe('indeterminate');
     expect(nextAllSelected(partial)).toBe(true);
   });
 
   it('considera as cópias: imagem marcada com cópia desmarcada é indeterminada', () => {
-    const p = preview([
-      entry('a', { selected: true, copies: [{ id: 'a1', selected: false }] }),
-    ]);
+    const p = preview([entry('a', { selected: true, copies: [{ id: 'a1', selected: false }] })]);
     expect(allSelectedState(p)).toBe('indeterminate');
   });
 

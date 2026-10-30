@@ -14,9 +14,7 @@ describe('vbfSelection: regras recursivas da árvore', () => {
 
     expect(vbfSelection.has(ROOT, one)).toBe(false);
     expect(vbfSelection.has(ROOT, two)).toBe(true);
-    expect(
-      vbfSelection.checkedOf(ROOT, dir, [{ path: one }, { path: two }])
-    ).toBe('indeterminate');
+    expect(vbfSelection.checkedOf(ROOT, dir, [{ path: one }, { path: two }])).toBe('indeterminate');
     expect(vbfSelection.pathsOf(ROOT)).toEqual([dir, `!${one}`]);
 
     vbfSelection.clear(ROOT);

@@ -1,27 +1,23 @@
 'use client';
 
-import { useState } from 'react';
 import { useSelector } from '@tanstack/react-store';
-import type { EntryRow } from '@/lib/ffx/tree-data';
-import { resolveEntryLabel } from '@/lib/ffx/display-names';
-import { usePersistedLayout } from '@/lib/ffx/use-persisted-layout';
-import { LAYOUT_DEFAULTS_PX } from '@/lib/ffx/layout-storage';
-import { imageInfoStore, toggleImageInfo } from '@/lib/ffx/image-info-store';
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable';
-import type { EntryMenuTarget } from '@/lib/ffx/content-tree/menu-target';
-import type { EntryView } from '@/components/entry-view/entry-view-store';
+import { useState } from 'react';
 import { EntryActionsMenu } from '@/components/entry-view/entry-actions-menu';
-import { ImageToolbar } from './toolbar';
-import { ImagePreview } from './image-preview';
+import type { EntryView } from '@/components/entry-view/entry-view-store';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import type { EntryMenuTarget } from '@/lib/ffx/content-tree/menu-target';
+import { resolveEntryLabel } from '@/lib/ffx/display-names';
+import { imageInfoStore, toggleImageInfo } from '@/lib/ffx/image-info-store';
+import { LAYOUT_DEFAULTS_PX } from '@/lib/ffx/layout-storage';
+import type { EntryRow } from '@/lib/ffx/tree-data';
+import { usePersistedLayout } from '@/lib/ffx/use-persisted-layout';
 import { ImageInfoPanel } from './image-info-panel';
+import { ImagePreview } from './image-preview';
 import { ImageImportDialog } from './import-dialog';
 import { ImportImagesDetailedDialog } from './import-images-detailed-dialog';
-import { useImagePreview } from './use-image-preview';
+import { ImageToolbar } from './toolbar';
 import { useImageActions } from './use-image-actions';
+import { useImagePreview } from './use-image-preview';
 
 /**
  * Painel da textura (kind=images): ocupa o lugar da tabela Original/
@@ -102,28 +98,20 @@ export function ImagePanel({ view }: { view: EntryView }) {
   if (!entry) return null;
   if (loading && !image) return <p className="mt-8 opacity-70">Carregando…</p>;
   if (!image) {
-    return (
-      <p className="mt-8 opacity-70">Não foi possível carregar a textura.</p>
-    );
+    return <p className="mt-8 opacity-70">Não foi possível carregar a textura.</p>;
   }
 
   const duplicates = image.duplicates ?? [];
   const copyTotal = duplicates.length + 1;
 
   /** Navega para uma cópia (a árvore já tem o entry — é só selecionar). */
-  const goToCopy = async (
-    id: string,
-    key: string,
-    vbfPath?: string
-  ): Promise<void> => {
+  const goToCopy = async (id: string, key: string, vbfPath?: string): Promise<void> => {
     const target: EntryRow = {
       kind: 'images',
       id,
       key,
       label: resolveEntryLabel('images', id),
-      ...(entry.vbf && vbfPath
-        ? { vbf: { root: entry.vbf.root, path: vbfPath } }
-        : {}),
+      ...(entry.vbf && vbfPath ? { vbf: { root: entry.vbf.root, path: vbfPath } } : {}),
     };
     await view.actions.selectEntry(target);
   };
@@ -150,9 +138,7 @@ export function ImagePanel({ view }: { view: EntryView }) {
     >
       <div
         className="flex h-full flex-col gap-4 pt-4"
-        onContextMenuCapture={() =>
-          setMenuTarget(readOnly ? null : panelTarget)
-        }
+        onContextMenuCapture={() => setMenuTarget(readOnly ? null : panelTarget)}
       >
         <ImageToolbar
           busy={busy}

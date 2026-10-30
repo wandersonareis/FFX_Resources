@@ -1,6 +1,5 @@
 'use client';
 
-import { memo } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -11,19 +10,17 @@ import {
   Image as ImageIcon,
   Loader2,
 } from 'lucide-react';
+import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  vbfNodeCheckState,
-  type VbfSelectionTreeNode,
-} from '@/lib/ffx/vbf-selection';
 import {
   EMPTY_IDS,
   entryCheckState,
   entryNodeId,
-  TEXT_ROOT_NODE_ID,
   type SideNode,
+  TEXT_ROOT_NODE_ID,
 } from '@/lib/ffx/content-tree/model';
+import { type VbfSelectionTreeNode, vbfNodeCheckState } from '@/lib/ffx/vbf-selection';
 import { useContentTree } from './tree-context';
 
 /**
@@ -35,27 +32,13 @@ import { useContentTree } from './tree-context';
  * PRÓPRIO nó muda (expansão/seleção/marcação) — mudanças de estado da view
  * que não tocam no nó passam reto.
  */
-export const TreeItem = memo(function TreeItem({
-  node,
-  depth,
-}: {
-  node: SideNode;
-  depth: number;
-}) {
-  const {
-    expanded,
-    selectedId,
-    selectedByKind,
-    vbfSelectionByRoot,
-    onToggle,
-    onSelect,
-    onCheck,
-  } = useContentTree();
+export const TreeItem = memo(function TreeItem({ node, depth }: { node: SideNode; depth: number }) {
+  const { expanded, selectedId, selectedByKind, vbfSelectionByRoot, onToggle, onSelect, onCheck } =
+    useContentTree();
 
   // Diretório do .vbf ainda sem filhos (ou grupo de macrodic) também é
   // expansível: o chevron aparece ANTES da listagem chegar.
-  const hasChildren =
-    (!!node.children && node.children.length > 0) || (node.expandable ?? false);
+  const hasChildren = (!!node.children && node.children.length > 0) || (node.expandable ?? false);
   const isExpanded = expanded.has(node.id);
   const isSelected = node.entry ? selectedId === entryNodeId(node.entry) : false;
   // O container .vbf é somente leitura, mas seus caminhos podem ser
@@ -73,9 +56,7 @@ export const TreeItem = memo(function TreeItem({
   const selectable = !isVbfContainerRoot && !isTextRoot && !!node.kind;
   const vbfRoot = node.vbfRoot ?? node.entry?.vbf?.root;
   const vbfPath = node.vbfPath ?? node.entry?.vbf?.path ?? '';
-  const selected = node.kind
-    ? (selectedByKind.get(node.kind) ?? EMPTY_IDS)
-    : EMPTY_IDS;
+  const selected = node.kind ? (selectedByKind.get(node.kind) ?? EMPTY_IDS) : EMPTY_IDS;
 
   let checked: boolean | 'indeterminate' = false;
   if (selectable) checked = entryCheckState(node, selected);
@@ -86,11 +67,7 @@ export const TreeItem = memo(function TreeItem({
       path: child.vbfPath ?? child.entry?.vbf?.path ?? '',
       children: child.children?.map(asSelectionNode),
     });
-    checked = vbfNodeCheckState(
-      paths,
-      vbfPath,
-      node.children?.map(asSelectionNode)
-    );
+    checked = vbfNodeCheckState(paths, vbfPath, node.children?.map(asSelectionNode));
   }
 
   return (
@@ -108,11 +85,9 @@ export const TreeItem = memo(function TreeItem({
         data-node-vbf-path={vbfPath}
       >
         {node.loading ? (
-          <span
-            className="w-8 shrink-0 grid place-items-center opacity-60"
-            aria-label={`Carregando ${node.label}`}
-          >
-            <Loader2 size={16} className="animate-spin" />
+          <span className="w-8 shrink-0 grid place-items-center opacity-60">
+            <Loader2 size={16} className="animate-spin" aria-hidden />
+            <span className="sr-only">{`Carregando ${node.label}`}</span>
           </span>
         ) : hasChildren ? (
           <Button

@@ -1,20 +1,20 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import { useEditDraft, rowKey } from '@/lib/ffx/edit-draft';
-import { SOURCE_LANG } from '@/lib/ffx/save-all';
-import { linkedRowText } from '@/lib/ffx/hash-ref';
-import { locFromVbfPath } from '@/lib/ffx/tree-data';
-import type { EntryRow } from '@/lib/ffx/tree-data';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import type { EntryKind } from '@/lib/ffx/display-names';
+import { rowKey, useEditDraft } from '@/lib/ffx/edit-draft';
 import type { GameTextMark } from '@/lib/ffx/game-text-parser';
+import { linkedRowText } from '@/lib/ffx/hash-ref';
+import { SOURCE_LANG } from '@/lib/ffx/save-all';
+import type { EntryRow } from '@/lib/ffx/tree-data';
+import { locFromVbfPath } from '@/lib/ffx/tree-data';
 import type { EntryView } from '../entry-view-store';
-import { columnHelper } from './table-types';
 import { buildIndexColumn } from './columns/index-column';
 import { buildNameColumn } from './columns/name-column';
 import { buildOriginalColumn } from './columns/original-column';
 import { buildTranslatedColumn } from './columns/translated-column';
+import { columnHelper } from './table-types';
 
 /**
  * Colunas da tabela e os dados derivados que só existem por causa delas:
@@ -39,7 +39,7 @@ export function useEntryTableColumns({
   /** Destaques da busca local (rowKey → intervalos em <mark>). */
   matchesByRow: Map<string, GameTextMark[]>;
 }) {
-  const { store: drafts, snapshot } = useEditDraft();
+  const { store: drafts } = useEditDraft();
 
   // Texto da célula LINKADA (row de ref): estado atual da def — rascunho
   // dela inclusive. O "$hash" do backend nunca é pintado.
@@ -50,17 +50,10 @@ export function useEntryTableColumns({
       if (!link) return undefined;
       if (!entry) return link.text ?? '';
       return linkedRowText(entry.id, link, (defId, defKey) =>
-        drafts.editTextOf(
-          version,
-          entry.kind,
-          defId,
-          defKey,
-          SOURCE_LANG,
-          entry.vbf?.root ?? ''
-        )
+        drafts.editTextOf(version, entry.kind, defId, defKey, SOURCE_LANG, entry.vbf?.root ?? ''),
       );
     },
-    [refLinks, selectedEntry, drafts, version]
+    [refLinks, selectedEntry, drafts, version],
   );
 
   // lockit: numeração própria por grupo (game/utf8), sem expor o índice
@@ -103,7 +96,18 @@ export function useEntryTableColumns({
         }),
       ]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeKind, selectedEntry, version, snapshot.revision, drafts, actions, lockitSeq, refLinks, linkedValueOf, matchesByRow]
+    [
+      activeKind,
+      selectedEntry,
+      version,
+      drafts,
+      actions,
+      lockitSeq,
+      refLinks,
+      linkedValueOf,
+      matchesByRow,
+      textLoc,
+    ],
   );
 
   return columns;

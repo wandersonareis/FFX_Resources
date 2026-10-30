@@ -1,13 +1,8 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
-import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { Copy, Download, FolderOpen, HardDriveDownload, Trash2 } from 'lucide-react';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import type { EntryMenuTarget } from '@/lib/ffx/content-tree/menu-target';
-import { EXPORT_FORMAT_LABELS, exportSelection } from '@/lib/ffx/export-selection';
-import { imageDuplicates, revealEntry } from '@/lib/ffx/tree-data';
-import { parseError } from '@/lib/ffx/error-handler';
+import { type ReactNode, useEffect, useState } from 'react';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -16,6 +11,11 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import type { EntryMenuTarget } from '@/lib/ffx/content-tree/menu-target';
+import { parseError } from '@/lib/ffx/error-handler';
+import { EXPORT_FORMAT_LABELS, exportSelection } from '@/lib/ffx/export-selection';
+import { loggedToast as toast } from '@/lib/ffx/toast-logged';
+import { imageDuplicates, revealEntry } from '@/lib/ffx/tree-data';
 import type { EntryView } from './entry-view-store';
 
 /**
@@ -103,14 +103,7 @@ export function EntryActionsMenu({
     return () => {
       dead = true;
     };
-  }, [
-    targetId,
-    isImage,
-    initialId,
-    initialDuplicates,
-    fetched,
-    version,
-  ]);
+  }, [targetId, isImage, initialId, initialDuplicates, fetched, version]);
 
   const canFile = targetId !== null;
   const canExtract = isImage && canFile;
@@ -151,9 +144,7 @@ export function EntryActionsMenu({
           desconhecidas quebra o posicionamento e libera o menu do navegador. */}
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent>
-        {target?.label ? (
-          <ContextMenuLabel>{target.label}</ContextMenuLabel>
-        ) : null}
+        {target?.label ? <ContextMenuLabel>{target.label}</ContextMenuLabel> : null}
         {isVbf ? (
           <>
             <ContextMenuItem onSelect={() => onVbfExtract?.('data')}>
@@ -195,10 +186,7 @@ export function EntryActionsMenu({
             </ContextMenuItem>
             {isImage ? (
               <>
-                <ContextMenuItem
-                  disabled={!canReplicate}
-                  onSelect={() => openAction('replicate')}
-                >
+                <ContextMenuItem disabled={!canReplicate} onSelect={() => openAction('replicate')}>
                   <Copy size={16} />
                   {replicateLabel}
                 </ContextMenuItem>
@@ -212,10 +200,7 @@ export function EntryActionsMenu({
                   Extrair {selectedImageCount}{' '}
                   {selectedImageCount === 1 ? 'imagem selecionada' : 'imagens selecionadas'}
                 </ContextMenuItem>
-                <ContextMenuItem
-                  variant="destructive"
-                  onSelect={onDeleteImageSelection}
-                >
+                <ContextMenuItem variant="destructive" onSelect={onDeleteImageSelection}>
                   <Trash2 size={16} />
                   Deletar {selectedImageCount}{' '}
                   {selectedImageCount === 1 ? 'imagem selecionada' : 'imagens selecionadas'}
@@ -236,4 +221,3 @@ export function EntryActionsMenu({
     </ContextMenu>
   );
 }
-

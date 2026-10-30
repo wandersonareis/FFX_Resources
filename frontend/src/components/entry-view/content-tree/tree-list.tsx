@@ -1,14 +1,14 @@
 'use client';
 
-import type { MouseEvent, RefObject } from 'react';
 import { useSelector } from '@tanstack/react-store';
 import { Settings } from 'lucide-react';
+import type { MouseEvent, RefObject } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { configStore } from '@/lib/ffx/config-store';
 import { openConfigDialog } from '@/lib/ffx/config-dialog-store';
-import { hasOwnVbfContainer } from '@/lib/ffx/game-version';
+import { configStore } from '@/lib/ffx/config-store';
 import type { SideNode } from '@/lib/ffx/content-tree/model';
+import { hasOwnVbfContainer } from '@/lib/ffx/game-version';
 import { TreeItem } from './tree-item';
 
 /**
@@ -35,8 +35,7 @@ function VbfMissing() {
         data-vbf-missing=""
         className="mx-2 mt-1 rounded-md border border-border px-2 py-1.5 text-xs text-muted-foreground"
       >
-        Nenhum <code>.vbf</code> encontrado ao lado do executável
-        configurado.
+        Nenhum <code>.vbf</code> encontrado ao lado do executável configurado.
       </p>
     );
   }
@@ -48,15 +47,10 @@ function VbfMissing() {
     >
       <span className="font-medium">Nenhum container .vbf</span>
       <span>
-        Aponte o executável do jogo (FFX.exe ou FFX-2.exe) nas
-        Configurações — dele saem os containers exibidos na árvore.
+        Aponte o executável do jogo (FFX.exe ou FFX-2.exe) nas Configurações — dele saem os
+        containers exibidos na árvore.
       </span>
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-7 w-fit"
-        onClick={openConfigDialog}
-      >
+      <Button size="sm" variant="outline" className="h-7 w-fit" onClick={openConfigDialog}>
         <Settings size={14} />
         Abrir Configurações
       </Button>
@@ -88,9 +82,7 @@ export function TreeList({
 }) {
   // Abas sem container próprio (Eternal Calm, Last Mission) nunca têm
   // raízes — a seção vazia lá é por design e não é erro.
-  const vbfExpected = hasOwnVbfContainer(version as Parameters<
-    typeof hasOwnVbfContainer
-  >[0]);
+  const vbfExpected = hasOwnVbfContainer(version as Parameters<typeof hasOwnVbfContainer>[0]);
   return (
     <ScrollArea
       id="entry-tree"

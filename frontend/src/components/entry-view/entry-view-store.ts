@@ -1,35 +1,35 @@
 import { createStore } from '@tanstack/store';
 import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import * as services from '@/bindings/ffxresources/backend/services/models';
+import type * as services from '@/bindings/ffxresources/backend/services/models';
+import { isBlankSourceRow } from '@/lib/ffx/blank-us';
 import {
-  KIND_LABELS,
-  IMAGE_TREE_PREFIX,
-  resolveEntryLabel,
+  ancestorPathOf,
+  buildNodeIndex,
+  type SideNode,
+  TEXT_ROOT_NODE_ID,
+} from '@/lib/ffx/content-tree/model';
+import {
   type EntryKind,
+  IMAGE_TREE_PREFIX,
+  KIND_LABELS,
+  resolveEntryLabel,
 } from '@/lib/ffx/display-names';
-import {
-  formatEventGroupLabel,
-  resolveEventGroup,
-  shortenedOf,
-} from '@/lib/ffx/event-group-names';
+import { editDraft, rowKey } from '@/lib/ffx/edit-draft';
+import { type EntryProgress, entryProgress } from '@/lib/ffx/entry-progress';
+import { sendErrorNotification, sendErrorNotificationWithMessage } from '@/lib/ffx/error-handler';
+import { formatEventGroupLabel, resolveEventGroup, shortenedOf } from '@/lib/ffx/event-group-names';
 import type { GameVersionId } from '@/lib/ffx/game-version';
+import { SOURCE_LANG } from '@/lib/ffx/save-all';
+import { invalidateTextSearchResults } from '@/lib/ffx/search-store';
 import {
-  type EntryRow,
   allKindsFor,
+  type EntryRow,
   imageExists,
-  loadImage,
   loadEntry,
+  loadImage,
   loadKindEntries,
   locFromVbfPath,
 } from '@/lib/ffx/tree-data';
-import { editDraft, rowKey } from '@/lib/ffx/edit-draft';
-import { entryProgress, type EntryProgress } from '@/lib/ffx/entry-progress';
-import {
-  sendErrorNotification,
-  sendErrorNotificationWithMessage,
-} from '@/lib/ffx/error-handler';
-import { isBlankSourceRow } from '@/lib/ffx/blank-us';
-import { SOURCE_LANG } from '@/lib/ffx/save-all';
 import {
   invalidateVbfCache,
   loadVbfDir,
@@ -39,13 +39,6 @@ import {
   loadVbfRoots,
   type VbfNode,
 } from '@/lib/ffx/vbf';
-import {
-  TEXT_ROOT_NODE_ID,
-  ancestorPathOf,
-  buildNodeIndex,
-  type SideNode,
-} from '@/lib/ffx/content-tree/model';
-import { invalidateTextSearchResults } from '@/lib/ffx/search-store';
 
 /** Estado de carga de um item principal da árvore. */
 export type KindLoadStatus = 'loading' | 'ready' | 'error';
@@ -226,12 +219,7 @@ export interface EntryActions {
    * (target, row, lang) via rascunho e repinta a tabela — o MESMO caminho do
    * commit do editor, sem abrir diálogo. O salvar existente persiste depois.
    */
-  applyCellEdit(
-    target: TranslationTarget,
-    row: dto.TextRow,
-    lang: string,
-    text: string
-  ): void;
+  applyCellEdit(target: TranslationTarget, row: dto.TextRow, lang: string, text: string): void;
   /** Navegação ←/→ do modal sem fechar (value aplicado como rascunho). */
   navigateRow(direction: 'prev' | 'next', value?: string): void;
   /** Fechamento do modal (value != undefined aplica a edição). */
@@ -335,9 +323,10 @@ function loadingRootNode(kind: EntryKind): SideNode {
 }
 
 function loadingStatuses(kinds: EntryKind[]): Record<EntryKind, KindLoadStatus> {
-  return Object.fromEntries(
-    kinds.map((k) => [k, 'loading' as const])
-  ) as Record<EntryKind, KindLoadStatus>;
+  return Object.fromEntries(kinds.map((k) => [k, 'loading' as const])) as Record<
+    EntryKind,
+    KindLoadStatus
+  >;
 }
 
 /**
@@ -437,10 +426,7 @@ function imageTreeNodes(entries: EntryRow[]): SideNode[] {
     const category = firstSlash < 0 ? rel : rel.slice(0, firstSlash);
     const rest = firstSlash < 0 ? '' : rel.slice(firstSlash + 1);
     const lastSlash = rest.lastIndexOf('/');
-    const dir =
-      lastSlash < 0
-        ? ''
-        : rest.slice(0, lastSlash).replace(/(^|\/)d3d11$/, '');
+    const dir = lastSlash < 0 ? '' : rest.slice(0, lastSlash).replace(/(^|\/)d3d11$/, '');
     const byDir = byCategory.get(category) ?? new Map<string, EntryRow[]>();
     const list = byDir.get(dir) ?? [];
     list.push(entry);
@@ -450,7 +436,7 @@ function imageTreeNodes(entries: EntryRow[]): SideNode[] {
 
   const nodes: SideNode[] = [];
   for (const [category, byDir] of [...byCategory.entries()].sort(([a], [b]) =>
-    a.localeCompare(b)
+    a.localeCompare(b),
   )) {
     const count = [...byDir.values()].reduce((n, list) => n + list.length, 0);
     nodes.push({
@@ -499,7 +485,7 @@ export function createEntryView(version: GameVersionId): EntryView {
           ? { ...node, ...partial }
           : node.children
             ? { ...node, children: walk(node.children) }
-            : node
+            : node,
       );
     store.setState((prev) => ({
       ...prev,
@@ -521,9 +507,7 @@ export function createEntryView(version: GameVersionId): EntryView {
     patchNode(node.id, { loading: true });
     try {
       const path = node.vbfPath ?? '';
-      const list = node.macro
-        ? await loadVbfMacroChunks(root, path)
-        : await loadVbfDir(root, path);
+      const list = node.macro ? await loadVbfMacroChunks(root, path) : await loadVbfDir(root, path);
       const children = list.map((child) => vbfSideNode(root, child));
       patchNode(node.id, {
         children,
@@ -570,22 +554,13 @@ export function createEntryView(version: GameVersionId): EntryView {
       // Rascunho por fonte: data/ e o .vbf têm namespaces separados (o
       // mesmo id pode existir nos dois). A tabela aberta pelo .vbf alimenta
       // o rascunho do container: o salvar roteia ao binding de .vbf.
-      editDraft.setBase(
-        version,
-        entry.kind,
-        entry.id,
-        full,
-        entry.vbf?.root ?? ''
-      );
+      editDraft.setBase(version, entry.kind, entry.id, full, entry.vbf?.root ?? '');
       // Progresso por row: FIXO na abertura (não acompanha rascunho).
       // Entrada vbf de idioma não-us: contagem por 'us' não se aplica — o
       // texto deste binário já está na coluna exibida.
       const vbfLocProgress = entry.vbf ? locFromVbfPath(entry.vbf.path) : null;
       patch({
-        progress:
-          vbfLocProgress && vbfLocProgress !== SOURCE_LANG
-            ? null
-            : entryProgress(full),
+        progress: vbfLocProgress && vbfLocProgress !== SOURCE_LANG ? null : entryProgress(full),
       });
       // Anotações de link das refs dedupadas (texto da def + origem) —
       // alimenta o texto linkado na tabela (cor própria, tooltip).
@@ -597,14 +572,13 @@ export function createEntryView(version: GameVersionId): EntryView {
       // Filtro de linhas: para .vbf de idioma não-us, olha o idioma do
       // binário clicado (o .vbf é só visualização — nada a traduzir).
       const vbfLoc = entry.vbf ? locFromVbfPath(entry.vbf.path) : null;
-      const searchRowKey = searchMatch
-        ? `${searchMatch.index}:${searchMatch.name ?? ''}`
-        : null;
-      const rows = (full.rows ?? []).filter((r) =>
-        (vbfLoc && vbfLoc !== SOURCE_LANG
-          ? !isBlankSourceRow(r.text?.[vbfLoc])
-          : !isBlankSourceRow(r.text?.[SOURCE_LANG])) ||
-        (searchRowKey !== null && rowKey(r) === searchRowKey)
+      const searchRowKey = searchMatch ? `${searchMatch.index}:${searchMatch.name ?? ''}` : null;
+      const rows = (full.rows ?? []).filter(
+        (r) =>
+          (vbfLoc && vbfLoc !== SOURCE_LANG
+            ? !isBlankSourceRow(r.text?.[vbfLoc])
+            : !isBlankSourceRow(r.text?.[SOURCE_LANG])) ||
+          (searchRowKey !== null && rowKey(r) === searchRowKey),
       );
       patch({ rows });
     } catch (error) {
@@ -649,14 +623,14 @@ export function createEntryView(version: GameVersionId): EntryView {
           const entries = await loadKindEntries(kind, version);
           if (gen !== generationCounter.current) return;
           store.setState((prev) => {
-            const byKind = new Map(prev.roots.map((r) => [r.kind!, r] as const));
+            const byKind = new Map(
+              prev.roots.flatMap((r) => (r.kind ? [[r.kind, r] as const] : [])),
+            );
             // Kind sem nada (ex.: images numa versão sem texturas) não vira
             // raiz vazia "Imagens (0)" — a árvore só mostra o que existe.
             if (entries.length === 0) byKind.delete(kind);
             else byKind.set(kind, buildKindNode(kind, entries));
-            const roots = kinds
-              .map((k) => byKind.get(k))
-              .filter((n): n is SideNode => Boolean(n));
+            const roots = kinds.map((k) => byKind.get(k)).filter((n): n is SideNode => Boolean(n));
             // A árvore nasce FECHADA, inclusive a de data/: nada é expandido
             // automaticamente. O expanded que já está aqui guarda só o que
             // o USUÁRIO abriu, e sobrevive ao reload (união) — quem quer ver
@@ -702,7 +676,7 @@ export function createEntryView(version: GameVersionId): EntryView {
           }));
           sendErrorNotification(error);
         }
-      })
+      }),
     );
   };
 
@@ -852,9 +826,7 @@ export function createEntryView(version: GameVersionId): EntryView {
   const resolvePendingReveal = (): void => {
     const pending = store.state.pendingReveal;
     if (!pending) return;
-    if (
-      !buildNodeIndex(store.state.roots, store.state.vbfRoots).get(pending.leafId)
-    ) {
+    if (!buildNodeIndex(store.state.roots, store.state.vbfRoots).get(pending.leafId)) {
       return;
     }
     patch({ pendingReveal: null });
@@ -896,7 +868,7 @@ export function createEntryView(version: GameVersionId): EntryView {
         const path = vbfPathOf(t.source, t.id);
         if (path === undefined) {
           sendErrorNotificationWithMessage(
-            `O arquivo da def (${t.id}) não está na árvore deste .vbf — abra-o na sidebar para editá-lo pela ref.`
+            `O arquivo da def (${t.id}) não está na árvore deste .vbf — abra-o na sidebar para editá-lo pela ref.`,
           );
           return false;
         }
@@ -920,9 +892,7 @@ export function createEntryView(version: GameVersionId): EntryView {
       if (node.vbf && node.unsupported) {
         // Fora do escopo do app (áudio, vídeo, .exe…): avisa SEM tentar
         // decodificar — só o caminho do arquivo aparece, nunca conteúdo.
-        sendErrorNotificationWithMessage(
-          `Formato fora do escopo do app: ${node.label}`
-        );
+        sendErrorNotificationWithMessage(`Formato fora do escopo do app: ${node.label}`);
         return;
       }
       if (node.vbf && !node.entry) {
@@ -955,19 +925,12 @@ export function createEntryView(version: GameVersionId): EntryView {
       const entry = store.state.selectedEntry;
       if (entry?.vbf && !EDITABLE_VBF_KINDS.has(entry.kind)) {
         sendErrorNotificationWithMessage(
-          `Edição de ${KIND_LABELS[entry.kind]} a partir do .vbf ainda não é suportada — abra pela árvore de data/.`
+          `Edição de ${KIND_LABELS[entry.kind]} a partir do .vbf ainda não é suportada — abra pela árvore de data/.`,
         );
         return;
       }
       const current = entry
-        ? editDraft.editOf(
-            version,
-            entry.kind,
-            entry.id,
-            row,
-            SOURCE_LANG,
-            entry.vbf?.root ?? ''
-          )
+        ? editDraft.editOf(version, entry.kind, entry.id, row, SOURCE_LANG, entry.vbf?.root ?? '')
         : undefined;
       const dialogRow =
         current === undefined
@@ -996,9 +959,7 @@ export function createEntryView(version: GameVersionId): EntryView {
       let def: dto.TextRow | undefined;
       if (!link.sourceId || link.sourceId === entry.id) {
         def = store.state.rows.find(
-          (r) =>
-            r.index === link.sourceIndex &&
-            (r.name ?? '') === (link.sourceName ?? '')
+          (r) => r.index === link.sourceIndex && (r.name ?? '') === (link.sourceName ?? ''),
         );
       }
       // Def em OUTRA entrada (ex.: ref de 236 apontando o 235): row
@@ -1017,7 +978,7 @@ export function createEntryView(version: GameVersionId): EntryView {
         target.id,
         rKey,
         SOURCE_LANG,
-        target.source
+        target.source,
       );
       const defRow =
         def ??
@@ -1031,9 +992,7 @@ export function createEntryView(version: GameVersionId): EntryView {
           // editor (só 'us' aparecia). Fallback para o 'us' único do tooltip.
           original:
             link.originals ??
-            (link.original !== undefined
-              ? { [SOURCE_LANG]: link.original }
-              : undefined),
+            (link.original !== undefined ? { [SOURCE_LANG]: link.original } : undefined),
         });
       const defText =
         live ??
@@ -1053,38 +1012,28 @@ export function createEntryView(version: GameVersionId): EntryView {
       });
     },
     navigateRow: (direction, value) => {
-      const {
-        translationRow: row,
-        translationTarget: target,
-        translationCopyRow,
-      } = store.state;
+      const { translationRow: row, translationTarget: target, translationCopyRow } = store.state;
       if (translationCopyRow) return;
       const entry = store.state.selectedEntry;
-      if (value !== undefined && row && (target || entry)) {
-        const t = target ?? {
-          kind: entry!.kind,
-          id: entry!.id,
-          source: entry!.vbf?.root ?? '',
-        };
-        editDraft.setCell(version, t.kind, t.id, row, SOURCE_LANG, value, t.source);
+      const owner =
+        target ??
+        (entry ? { kind: entry.kind, id: entry.id, source: entry.vbf?.root ?? '' } : null);
+      if (value !== undefined && row && owner) {
+        editDraft.setCell(version, owner.kind, owner.id, row, SOURCE_LANG, value, owner.source);
         patch({ rows: [...store.state.rows] });
       }
       if (target) return; // alvo override: navegação desabilitada (row única)
-      const idx = store.state.rows.findIndex(
-        (r) => rowKey(r) === (row ? rowKey(row) : null)
-      );
-      const next =
-        store.state.rows[idx + (direction === 'next' ? 1 : -1)];
+      const idx = store.state.rows.findIndex((r) => rowKey(r) === (row ? rowKey(row) : null));
+      const next = store.state.rows[idx + (direction === 'next' ? 1 : -1)];
       if (next) patch({ translationRow: next });
     },
     commitRow: (value, divergentChoice) => {
-      const {
-        translationRow: row,
-        translationTarget: target,
-        translationCopyRow,
-      } = store.state;
+      const { translationRow: row, translationTarget: target, translationCopyRow } = store.state;
       const entry = store.state.selectedEntry;
-      if (value !== undefined && row && (target || entry)) {
+      const owner =
+        target ??
+        (entry ? { kind: entry.kind, id: entry.id, source: entry.vbf?.root ?? '' } : null);
+      if (value !== undefined && row && owner) {
         if (divergentChoice && translationCopyRow && entry) {
           editDraft.setCell(
             version,
@@ -1094,15 +1043,10 @@ export function createEntryView(version: GameVersionId): EntryView {
             SOURCE_LANG,
             value,
             entry.vbf?.root ?? '',
-            true
+            true,
           );
         } else {
-          const t = target ?? {
-            kind: entry!.kind,
-            id: entry!.id,
-            source: entry!.vbf?.root ?? '',
-          };
-          editDraft.setCell(version, t.kind, t.id, row, SOURCE_LANG, value, t.source);
+          editDraft.setCell(version, owner.kind, owner.id, row, SOURCE_LANG, value, owner.source);
         }
         patch({ rows: [...store.state.rows] });
       }
@@ -1126,7 +1070,7 @@ export function createEntryView(version: GameVersionId): EntryView {
         SOURCE_LANG,
         original,
         entry.vbf?.root ?? '',
-        true
+        true,
       );
       patch({ rows: [...store.state.rows] });
     },
@@ -1140,15 +1084,7 @@ export function createEntryView(version: GameVersionId): EntryView {
       return ensureDraftBase(target);
     },
     applyCellEdit: (target, row, lang, text) => {
-      editDraft.setCell(
-        version,
-        target.kind,
-        target.id,
-        row,
-        lang,
-        text,
-        target.source
-      );
+      editDraft.setCell(version, target.kind, target.id, row, lang, text, target.source);
       patch({ rows: [...store.state.rows] });
     },
     openImageAction: (action) => {

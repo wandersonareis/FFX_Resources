@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Download, FolderInput, FolderOpen, Save } from 'lucide-react';
+import { ChevronDown, FolderOpen, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,9 +10,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  imageExportFormatSelection,
   IMAGE_EXPORT_FORMAT_LABELS,
-  ImageExportFormat,
+  type ImageExportFormat,
   useImageExportFormat,
 } from '@/lib/ffx/image-export-selection';
 
@@ -29,13 +28,10 @@ import {
  */
 export function ImageExportMenu({
   disabled,
-  readOnly,
   onExport,
   onExtractTo,
 }: {
   disabled: boolean;
-  /** true = textura veio do .vbf (extração não abre diálogo de alcance). */
-  readOnly: boolean;
   /** Exporta no formato selecionado para mods/images (sem diálogo). */
   onExport: (format: ImageExportFormat) => void;
   /** Exporta no formato selecionado para pasta customizada (com diálogo). */
@@ -57,10 +53,7 @@ export function ImageExportMenu({
           <ChevronDown size={12} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="min-w-56"
-      >
+      <DropdownMenuContent align="start" className="min-w-56">
         <DropdownMenuItem
           onClick={() => onExport(format)}
           title={`Exporta como ${IMAGE_EXPORT_FORMAT_LABELS[format]} para mods/images (sem diálogo)`}

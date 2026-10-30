@@ -1,8 +1,8 @@
 import { createStore, type Store } from '@tanstack/store';
-import * as services from '@/bindings/ffxresources/backend/services/models';
+import type * as services from '@/bindings/ffxresources/backend/services/models';
+import { sendErrorNotification } from './error-handler';
 import type { GameVersionId } from './game-version';
 import { searchTextEntries } from './tree-data';
-import { sendErrorNotification } from './error-handler';
 
 /**
  * Modal de busca por ABA/VERSÃO — um store de módulo por versão, fora do
@@ -70,10 +70,7 @@ export function closeSearchDialog(version: GameVersionId): void {
  * EXECUTADO) — o rascunho do input nunca toca no estado da busca, senão o
  * guard do debounce do dialog compara draft === query e nunca agenda.
  */
-export async function runTextSearch(
-  version: GameVersionId,
-  query: string
-): Promise<void> {
+export async function runTextSearch(version: GameVersionId, query: string): Promise<void> {
   const store = searchStoreFor(version);
   const trimmed = query.trim();
   const sequence = (sequences.get(version) ?? 0) + 1;

@@ -1,7 +1,8 @@
 'use client';
 
 import { Copy } from 'lucide-react';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
+import { DuplicateList } from '@/components/dialogs/image-duplicate-list';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { DuplicateList } from '@/components/dialogs/image-duplicate-list';
 import type { ImageBusy } from './use-image-actions';
 
 /**
@@ -53,10 +53,9 @@ export function ImageImportDialog({
         <DialogHeader>
           <DialogTitle>Importar em {total} texturas?</DialogTitle>
           <DialogDescription>
-            Esta imagem tem {duplicates.length} cópias idênticas — a
-            otimização do DVD repetiu o mesmo conteúdo por caminho. O mesmo
-            .dds pode ser reempacotado sobre todas para mantê-las
-            sincronizadas. Cópias divergentes serão sobrescritas.
+            Esta imagem tem {duplicates.length} cópias idênticas — a otimização do DVD repetiu o
+            mesmo conteúdo por caminho. O mesmo .dds pode ser reempacotado sobre todas para
+            mantê-las sincronizadas. Cópias divergentes serão sobrescritas.
           </DialogDescription>
         </DialogHeader>
 
@@ -66,11 +65,7 @@ export function ImageImportDialog({
           <Button variant="outline" disabled={busy !== null} onClick={onCancel}>
             Cancelar
           </Button>
-          <Button
-            variant="outline"
-            disabled={busy !== null}
-            onClick={onImportOne}
-          >
+          <Button variant="outline" disabled={busy !== null} onClick={onImportOne}>
             Só nesta
           </Button>
           <Button disabled={busy !== null} onClick={onImportAll}>

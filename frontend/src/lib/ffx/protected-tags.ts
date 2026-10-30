@@ -31,10 +31,7 @@ function protectedCounts(text: string): Map<string, number> {
  * repetindo as ocorrências (duas iguais, uma sumiu → uma faltando).
  * Lista vazia = nada protegido foi removido → salvamento liberado.
  */
-export function missingProtectedTags(
-  original: string,
-  edited: string
-): string[] {
+export function missingProtectedTags(original: string, edited: string): string[] {
   const remaining = protectedCounts(edited);
   const missing: string[] = [];
   for (const match of original.matchAll(TAG_RE)) {
@@ -63,8 +60,7 @@ function tokenize(text: string): string[] {
   const tokens: string[] = [];
   let last = 0;
   const tags = /\{[^{}]+\}/g;
-  let match: RegExpExecArray | null;
-  while ((match = tags.exec(text)) !== null) {
+  for (let match = tags.exec(text); match !== null; match = tags.exec(text)) {
     pushWords(tokens, text.slice(last, match.index));
     tokens.push(match[0]);
     last = match.index + match[0].length;
@@ -170,10 +166,7 @@ function restoreByAnchors(original: string, edited: string): string {
  * posição alinhada ao texto ao redor (LCS palavra-a-palavra). Se nada faltar,
  * devolve `edited` intacto. A conferência é sempre via missingProtectedTags.
  */
-export function restoreProtectedTags(
-  original: string,
-  edited: string
-): string {
+export function restoreProtectedTags(original: string, edited: string): string {
   if (missingProtectedTags(original, edited).length === 0) return edited;
   const originalTokens = tokenize(original);
   const editedTokens = tokenize(edited);
@@ -200,10 +193,7 @@ export function findUnclosedFragment(text: string): string | null {
  * introduziu. O gate de salvamento bloqueia por ele (o original intocado
  * não pode travar a célula).
  */
-export function newUnclosedFragment(
-  original: string,
-  edited: string
-): string | null {
+export function newUnclosedFragment(original: string, edited: string): string | null {
   const now = findUnclosedFragment(edited);
   if (now === null) return null;
   if (now === findUnclosedFragment(original)) return null;
@@ -218,10 +208,7 @@ export function newUnclosedFragment(
  * caso contrário some também o espaço que o usuário digitou junto com a
  * tentativa abortada (senão sobraria `Olá ` no lugar de `Olá`).
  */
-export function removeUnclosedFragment(
-  text: string,
-  original?: string
-): string {
+export function removeUnclosedFragment(text: string, original?: string): string {
   const match = UNCLOSED_FRAGMENT_RE.exec(text);
   if (!match) return text;
   const before = text.slice(0, match.index);

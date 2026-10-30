@@ -1,6 +1,7 @@
 'use client';
 
-import { isDesktop } from '@/lib/ffx/env';
+import { LogPanel } from '@/components/log-panel';
+import { LogPanelControls } from '@/components/log-panel-controls';
 import {
   Sheet,
   SheetContent,
@@ -8,8 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { LogPanel } from '@/components/log-panel';
-import { LogPanelControls } from '@/components/log-panel-controls';
+import { isDesktop } from '@/lib/ffx/env';
 import { setLogWindowOpen, useLogWindowOpen } from '@/lib/ffx/log-window-store';
 
 /**
@@ -27,16 +27,10 @@ export function LogDrawer() {
   if (isDesktop()) return null;
   return (
     <Sheet open={open} modal={false} onOpenChange={setLogWindowOpen}>
-      <SheetContent
-        side="right"
-        overlay={false}
-        className="w-[420px] max-w-[420px] gap-0 p-0"
-      >
+      <SheetContent side="right" overlay={false} className="w-[420px] max-w-[420px] gap-0 p-0">
         <SheetHeader className="border-b border-border/60 px-4 py-3">
           <div className="flex items-center gap-2">
-            <SheetTitle className="text-xs font-medium text-muted-foreground">
-              Logs
-            </SheetTitle>
+            <SheetTitle className="text-xs font-medium text-muted-foreground">Logs</SheetTitle>
             {/* mr-9 desvia do X absoluto do SheetContent (top-2 right-2). */}
             <LogPanelControls className="ml-auto mr-9" />
           </div>

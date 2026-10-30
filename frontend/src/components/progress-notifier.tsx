@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useProgressBatch } from '@/lib/ffx/progress-store';
 import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { useWailsEvent } from '@/lib/ffx/use-wails-event';
-import { useProgressBatch } from '@/lib/ffx/progress-store';
 
 /** Cap da fila de toasts de ciclo aberto (descarta o mais antigo). */
 const NOTIFY_QUEUE_CAP = 50;

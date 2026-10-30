@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { Download } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,9 +12,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { parseError } from '@/lib/ffx/error-handler';
+import { loggedToast as toast } from '@/lib/ffx/toast-logged';
 import { extractImageGroup } from '@/lib/ffx/tree-data';
+import { type ActionProps, reportBatch, useActionDuplicates } from './image-action-shared';
 import { DuplicateList } from './image-duplicate-list';
-import { reportBatch, useActionDuplicates, type ActionProps } from './image-action-shared';
 
 /** "Extrair só esta ou todas as cópias" — a confirmação de duplicatas. */
 export function ExtractImageDialog({ view, action }: ActionProps) {
@@ -52,17 +52,15 @@ export function ExtractImageDialog({ view, action }: ActionProps) {
         <DialogHeader>
           <DialogTitle>Extrair {action.label}?</DialogTitle>
           <DialogDescription>
-            Gera .dds e .png em mods/images (a cópia de trabalho, sem
-            tocar em data/ nem em mods/*.dds.phyre). Escolha o alcance.
+            Gera .dds e .png em mods/images (a cópia de trabalho, sem tocar em data/ nem em
+            mods/*.dds.phyre). Escolha o alcance.
           </DialogDescription>
         </DialogHeader>
 
         {list === null ? (
           <p className="text-sm opacity-70">Carregando cópias…</p>
         ) : copies.length === 0 ? (
-          <p className="text-sm opacity-70">
-            Imagem única: não há cópias para extrair junto.
-          </p>
+          <p className="text-sm opacity-70">Imagem única: não há cópias para extrair junto.</p>
         ) : (
           <>
             <p className="text-sm">
@@ -74,8 +72,7 @@ export function ExtractImageDialog({ view, action }: ActionProps) {
               {divergent > 0
                 ? `${divergent} com edição própria (divergente${divergent > 1 ? 's' : ''})`
                 : ''}{' '}
-              — extrair todas deixa os arquivos lado a lado para conferir
-              a duplicata.
+              — extrair todas deixa os arquivos lado a lado para conferir a duplicata.
             </p>
             <DuplicateList id={action.id} list={copies} />
           </>

@@ -50,10 +50,7 @@ const RANK: Record<BannerPhase, number> = {
   ready: 3,
 };
 
-export function updateBannerReducer(
-  state: BannerState,
-  action: BannerAction
-): BannerState {
+export function updateBannerReducer(state: BannerState, action: BannerAction): BannerState {
   switch (action.type) {
     // Só sobe: um update-available atrasado não volta de working/ready.
     case 'available':

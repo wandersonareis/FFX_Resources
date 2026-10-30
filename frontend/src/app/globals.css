@@ -300,8 +300,7 @@
   flex-shrink: 0;
   background-image: url("/pad_icon.png");
   background-repeat: no-repeat;
-  background-size: calc(408px * var(--gb-l) * var(--gb-c))
-    calc(272px * var(--gb-l) * var(--gb-c));
+  background-size: calc(408px * var(--gb-l) * var(--gb-c)) calc(272px * var(--gb-l) * var(--gb-c));
   background-position: calc(-1 * var(--x) * var(--gb-l) * var(--gb-c))
     calc(-1 * var(--y) * var(--gb-l) * var(--gb-c));
   width: calc(var(--w) * var(--gb-l) * var(--gb-c));

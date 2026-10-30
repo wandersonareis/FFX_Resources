@@ -11,7 +11,7 @@
 //   - só dentro do MESMO textblock (seleção entre parágrafos fica intacta);
 //   - só apara espaços/tabs/NBSP no fim (nunca esvazia a seleção).
 import { Extension } from '@tiptap/core';
-import { Plugin, TextSelection, type EditorState } from '@tiptap/pm/state';
+import { type EditorState, Plugin, TextSelection } from '@tiptap/pm/state';
 
 const TRAILING_WHITESPACE = /[\t \u00A0]+$/;
 

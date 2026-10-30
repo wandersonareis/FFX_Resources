@@ -1,7 +1,7 @@
 import { GitBranch } from 'lucide-react';
 import { GameTextView } from '@/components/game-text-view';
-import { LINKED_SIDE } from '@/lib/ffx/hash-ref';
 import type { GameTextMark } from '@/lib/ffx/game-text-parser';
+import { LINKED_SIDE } from '@/lib/ffx/hash-ref';
 
 /**
  * Célula de linha LINKADA (ref dedupada): o texto da def em cor própria, com
@@ -28,6 +28,10 @@ export function LinkedCell({
 }) {
   return (
     <div className="group flex items-center gap-1">
+      {/* A célula é clicável, mas a abertura pelo teclado é da linha da tabela
+          (Enter com a <tr> focada); por isso não é um controle focável aqui. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: abertura pelo teclado tratada na linha (Enter/F2). */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: abertura pelo teclado tratada na linha (Enter/F2). */}
       <div
         className={`text-cell translated-cell px-2 min-w-0 flex-1${defTranslated ? ' edited' : ''}`}
         title={
@@ -37,7 +41,13 @@ export function LinkedCell({
         }
         onClick={onOpen}
       >
-        <GameTextView text={defText} fallback="—" className={LINKED_SIDE} marks={marks} newlineChip />
+        <GameTextView
+          text={defText}
+          fallback="—"
+          className={LINKED_SIDE}
+          marks={marks}
+          newlineChip
+        />
       </div>
       {!readOnly ? (
         <button

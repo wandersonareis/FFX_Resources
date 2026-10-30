@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { formatGameTextForDisplay, formatGameTextSnippetForSearch } from './game-text-format';
 import { gameTextParser } from './game-text-parser';
-import {
-  formatGameTextForDisplay,
-  formatGameTextSnippetForSearch,
-} from './game-text-format';
 
 // A camada de orquestração é a ponte entre o parser (fonte única com a
 // tabela, refs e editor) e os dois consumidores: GameTextView e o snippet
@@ -14,9 +11,7 @@ describe('formatGameTextForDisplay', () => {
   it('é o MESMO HTML do parser sobre o corpo (regressão do GameTextView)', () => {
     const raw = '  \n{CLR:RED}Oi{TEXT_NORMAL}!';
     const formatted = formatGameTextForDisplay(raw);
-    expect(formatted.html).toBe(
-      gameTextParser.parseGameTextToHTML('{CLR:RED}Oi{TEXT_NORMAL}!')
-    );
+    expect(formatted.html).toBe(gameTextParser.parseGameTextToHTML('{CLR:RED}Oi{TEXT_NORMAL}!'));
     expect(formatted.paddingSummary).toBe('{TEXT_NEWLINE} ×1 · ␣ ×2');
   });
 
@@ -55,7 +50,7 @@ describe('formatGameTextSnippetForSearch', () => {
     // Removendo o destaque sobra EXATAMENTE o HTML da tabela — o <mark> é a
     // única diferença.
     expect(html.replace('<mark>', '').replace('</mark>', '')).toBe(
-      gameTextParser.parseGameTextToHTML(full)
+      gameTextParser.parseGameTextToHTML(full),
     );
   });
 
@@ -87,9 +82,7 @@ describe('formatGameTextSnippetForSearch', () => {
   });
 
   it('janela vazia devolve string vazia (o dialog mostra o placeholder)', () => {
-    expect(
-      formatGameTextSnippetForSearch({ before: '', hit: '', after: '' })
-    ).toBe('');
+    expect(formatGameTextSnippetForSearch({ before: '', hit: '', after: '' })).toBe('');
   });
 
   it('quebra de linha vira \\n visível e um único parágrafo (sem unir palavras)', () => {
@@ -98,9 +91,7 @@ describe('formatGameTextSnippetForSearch', () => {
       hit: 'acampamento',
       after: ' aqui.',
     });
-    expect(html).toBe(
-      '<p>Por isso instalamos nosso\\n<mark>acampamento</mark> aqui.</p>'
-    );
+    expect(html).toBe('<p>Por isso instalamos nosso\\n<mark>acampamento</mark> aqui.</p>');
   });
 
   it('CRLF real do dado vira um único marcador', () => {
@@ -136,36 +127,33 @@ describe('formatGameTextForDisplay · chip de quebra (só a tabela)', () => {
   const CHIP = '<span class="newline-chip">LF</span>';
 
   it('sem a opção o HTML continua sem chip (editor/busca/refs intactos)', () => {
-    expect(formatGameTextForDisplay('A{TEXT_NEWLINE}B').html).toBe(
-      '<p>A</p><p>B</p>'
-    );
+    expect(formatGameTextForDisplay('A{TEXT_NEWLINE}B').html).toBe('<p>A</p><p>B</p>');
   });
 
   it('com newlineChip a quebra real vira chip LF no FIM da linha', () => {
     expect(
       formatGameTextForDisplay('A{TEXT_NEWLINE}B', undefined, {
         newlineChip: true,
-      }).html
+      }).html,
     ).toBe(`<p>A${CHIP}</p><p>B</p>`);
   });
 
   it('CRLF e \\n do dado contam como quebra igual à tag do jogo', () => {
-    expect(
-      formatGameTextForDisplay('A\r\nB\nC', undefined, { newlineChip: true })
-        .html
-    ).toBe(`<p>A${CHIP}</p><p>B${CHIP}</p><p>C</p>`);
+    expect(formatGameTextForDisplay('A\r\nB\nC', undefined, { newlineChip: true }).html).toBe(
+      `<p>A${CHIP}</p><p>B${CHIP}</p><p>C</p>`,
+    );
   });
 
   it('um chip por quebra — a linha vazia entre duas ganha o dela', () => {
-    expect(
-      formatGameTextForDisplay('A\n\nB', undefined, { newlineChip: true }).html
-    ).toBe(`<p>A${CHIP}</p><p>${CHIP}</p><p>B</p>`);
+    expect(formatGameTextForDisplay('A\n\nB', undefined, { newlineChip: true }).html).toBe(
+      `<p>A${CHIP}</p><p>${CHIP}</p><p>B</p>`,
+    );
   });
 
   it('quebra no FIM do texto marca a última linha (o <p> vazio de antes segue)', () => {
-    expect(
-      formatGameTextForDisplay('Oi\n', undefined, { newlineChip: true }).html
-    ).toBe(`<p>Oi${CHIP}</p><p></p>`);
+    expect(formatGameTextForDisplay('Oi\n', undefined, { newlineChip: true }).html).toBe(
+      `<p>Oi${CHIP}</p><p></p>`,
+    );
     // Sem a opção continua exatamente como era (regressão).
     expect(formatGameTextForDisplay('Oi\n').html).toBe('<p>Oi</p><p></p>');
   });
@@ -179,11 +167,9 @@ describe('formatGameTextForDisplay · chip de quebra (só a tabela)', () => {
   });
 
   it('marks[] convivem com o chip (a busca continua destacando)', () => {
-    const html = formatGameTextForDisplay(
-      'A{TEXT_NEWLINE}B',
-      [{ start: 15, end: 16 }],
-      { newlineChip: true }
-    ).html;
+    const html = formatGameTextForDisplay('A{TEXT_NEWLINE}B', [{ start: 15, end: 16 }], {
+      newlineChip: true,
+    }).html;
     expect(html).toBe(`<p>A${CHIP}</p><p><mark>B</mark></p>`);
   });
 });

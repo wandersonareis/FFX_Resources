@@ -2,10 +2,10 @@
 
 import { useSelector } from '@tanstack/react-store';
 import type { EntryView } from '@/components/entry-view/entry-view-store';
-import { ExtractImageDialog } from './image-extract-dialog';
-import { ReplicateImageDialog } from './image-replicate-dialog';
 import { DeleteImageDialog } from './image-delete-dialog';
 import { DeleteImageSelectionDialog } from './image-delete-selection-dialog';
+import { ExtractImageDialog } from './image-extract-dialog';
+import { ReplicateImageDialog } from './image-replicate-dialog';
 
 /**
  * Diálogos das ações de imagem (extrair / replicar / deletar).

@@ -1,12 +1,8 @@
-"use client";
+'use client';
 
-import { AlertTriangle } from "lucide-react";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -14,9 +10,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 
-export type ModsGuardDecision = "save" | "discard";
+export type ModsGuardDecision = 'save' | 'discard';
 
 /**
  * Guarda do checkbox "Preferir binários traduzidos (mods)" (#EnableMods):
@@ -70,10 +66,9 @@ export function ModsToggleGuardDialog({
           <AlertTitle>Todo o conteúdo será recarregado</AlertTitle>
           <AlertDescription>
             <p>
-              Escolher <strong>Salvar e recarregar</strong> ou{" "}
-              <strong>Descartar e recarregar</strong> aplica a nova
-              preferência de mods e recarrega todo o conteúdo — a
-              tradução exibida muda de acordo.
+              Escolher <strong>Salvar e recarregar</strong> ou{' '}
+              <strong>Descartar e recarregar</strong> aplica a nova preferência de mods e recarrega
+              todo o conteúdo — a tradução exibida muda de acordo.
             </p>
             <p>
               Somente <strong>Cancelar</strong> mantém tudo como está.
@@ -84,14 +79,10 @@ export function ModsToggleGuardDialog({
           <Button id="ModsGuardCancel" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button
-            id="ModsGuardDiscard"
-            variant="destructive"
-            onClick={() => onDecision("discard")}
-          >
+          <Button id="ModsGuardDiscard" variant="destructive" onClick={() => onDecision('discard')}>
             Descartar e recarregar
           </Button>
-          <Button id="ModsGuardSave" onClick={() => onDecision("save")}>
+          <Button id="ModsGuardSave" onClick={() => onDecision('save')}>
             Salvar e recarregar
           </Button>
         </DialogFooter>

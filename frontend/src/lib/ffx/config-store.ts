@@ -123,8 +123,7 @@ export async function loadConfigSnapshot(): Promise<void> {
 }
 
 function notify(error: unknown): void {
-  const message =
-    error instanceof Error ? error.message : String(error ?? 'Erro');
+  const message = error instanceof Error ? error.message : String(error ?? 'Erro');
   // loggedToast.error já copia para o log do backend (WriteLog) — não
   // emitir "Notify" aqui: o evento circularia de volta ao ProgressNotifier.
   toast.error(message, { duration: 4000 });
@@ -137,10 +136,7 @@ function notify(error: unknown): void {
  * derivação do translated, exe recusado). Erro → rollback consultando o
  * que realmente ficou persistido.
  */
-async function commit(
-  optimistic: Partial<AppConfig>,
-  call: () => Promise<unknown>
-): Promise<void> {
+async function commit(optimistic: Partial<AppConfig>, call: () => Promise<unknown>): Promise<void> {
   configStore.setState((prev) => ({ ...prev, ...optimistic }));
   try {
     await call();
@@ -155,10 +151,7 @@ export function commitGameLocation(path: string): Promise<void> {
 }
 
 export function commitTranslateLocation(path: string): Promise<void> {
-  return commit(
-    { translateLocation: path },
-    () => SetTranslateLocation(path)
-  );
+  return commit({ translateLocation: path }, () => SetTranslateLocation(path));
 }
 
 export function commitGameExeLocation(path: string): Promise<void> {

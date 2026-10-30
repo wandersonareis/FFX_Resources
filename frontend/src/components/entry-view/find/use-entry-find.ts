@@ -1,24 +1,10 @@
 'use client';
 
-import { useCallback, useDeferredValue, useMemo } from 'react';
 import { useSelector } from '@tanstack/react-store';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import { loggedToast as toast } from '@/lib/ffx/toast-logged';
-import { useEditDraft, rowKey } from '@/lib/ffx/edit-draft';
-import { SOURCE_LANG } from '@/lib/ffx/save-all';
-import { locFromVbfPath } from '@/lib/ffx/tree-data';
-import {
-  findMatches,
-  replaceMatches,
-  type FindRange,
-} from '@/lib/ffx/find-in-text';
-import {
-  displayedTranslatedText,
-  translatedEditTarget,
-  type TranslatedEditTarget,
-  type TranslatedTextDeps,
-} from '@/lib/ffx/translated-text';
-import type { GameTextMark } from '@/lib/ffx/game-text-parser';
+import { useCallback, useDeferredValue, useMemo } from 'react';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
+import { rowKey, useEditDraft } from '@/lib/ffx/edit-draft';
+import { type FindRange, findMatches, replaceMatches } from '@/lib/ffx/find-in-text';
 import {
   closeFileFind,
   findStoreFor,
@@ -30,6 +16,16 @@ import {
   toggleFindReplace,
   toggleFindWholeWord,
 } from '@/lib/ffx/find-store';
+import type { GameTextMark } from '@/lib/ffx/game-text-parser';
+import { SOURCE_LANG } from '@/lib/ffx/save-all';
+import { loggedToast as toast } from '@/lib/ffx/toast-logged';
+import {
+  displayedTranslatedText,
+  type TranslatedEditTarget,
+  type TranslatedTextDeps,
+  translatedEditTarget,
+} from '@/lib/ffx/translated-text';
+import { locFromVbfPath } from '@/lib/ffx/tree-data';
 import type { EntryView } from '../entry-view-store';
 
 /** Um match da busca local: a linha da tabela + o intervalo no texto dela. */
@@ -85,7 +81,8 @@ export function useEntryFind(view: EntryView): EntryFind {
   const loading = useSelector(store, (s) => s.loading);
   const find = useSelector(findStoreFor(version), (s) => s);
   // Rascunho em edição muda o texto exibido → recompõe os matches.
-  const { snapshot } = useEditDraft();
+  // O hook assina o store (revision) por dentro; aqui só a assinatura importa.
+  useEditDraft();
 
   // Idioma do binário exibido (mesmo cálculo das colunas).
   const textLoc = selectedEntry?.vbf?.path
@@ -94,7 +91,7 @@ export function useEntryFind(view: EntryView): EntryFind {
 
   const deps: TranslatedTextDeps = useMemo(
     () => ({ version, entry: selectedEntry, refLinks, textLoc }),
-    [version, selectedEntry, refLinks, textLoc]
+    [version, selectedEntry, refLinks, textLoc],
   );
 
   // Query ADIADO: o cálculo de matches (que varre todas as rows e re-renderiza
@@ -128,14 +125,10 @@ export function useEntryFind(view: EntryView): EntryFind {
     loading,
     rows,
     deps,
-    snapshot.revision,
   ]);
 
   // Índice ativo limitado ao tamanho real (a lista muda a cada substituição).
-  const activeIndex =
-    matches.length === 0
-      ? 0
-      : Math.min(find.activeIndex, matches.length - 1);
+  const activeIndex = matches.length === 0 ? 0 : Math.min(find.activeIndex, matches.length - 1);
 
   const activeMatch = matches.length > 0 ? (matches[activeIndex] ?? null) : null;
 
@@ -207,11 +200,7 @@ export function useEntryFind(view: EntryView): EntryFind {
       const group = groups.get(key);
       if (group) {
         // O link exibe o MESMO texto da def → ranges idênticos; deduplica.
-        if (
-          !group.ranges.some(
-            (r) => r.start === match.range.start && r.end === match.range.end
-          )
-        ) {
+        if (!group.ranges.some((r) => r.start === match.range.start && r.end === match.range.end)) {
           group.ranges.push(match.range);
         }
       } else {
@@ -249,20 +238,17 @@ export function useEntryFind(view: EntryView): EntryFind {
     }
     setFindActiveIndex(version, 0);
     if (replaced === 0) return;
-    toast.success(
-      `Substituídas ${replaced} ocorrência(s) em ${groups.size} linha(s).`,
-      {
-        duration: 8000,
-        action: {
-          label: 'Desfazer',
-          onClick: () => {
-            for (const item of snapshot) {
-              actions.applyCellEdit(item.target, item.row, item.lang, item.before);
-            }
-          },
+    toast.success(`Substituídas ${replaced} ocorrência(s) em ${groups.size} linha(s).`, {
+      duration: 8000,
+      action: {
+        label: 'Desfazer',
+        onClick: () => {
+          for (const item of snapshot) {
+            actions.applyCellEdit(item.target, item.row, item.lang, item.before);
+          }
         },
-      }
-    );
+      },
+    });
   }, [matches, selectedEntry, rows, deps, find.replaceText, actions, version]);
 
   return {

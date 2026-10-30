@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useState, type ReactNode } from "react";
-import { Window } from "@wailsio/runtime";
-import { Copy, Minus, Square, X } from "lucide-react";
-import { cn } from "cn";
+import { Window } from '@wailsio/runtime';
+import { cn } from 'cn';
+import { Copy, Minus, Square, X } from 'lucide-react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 /**
  * Chrome da janela filha (frameless): titlebar com região de arrasto
@@ -38,13 +38,13 @@ export function WindowChrome({
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         e.preventDefault();
         void Window.Close().catch(() => undefined);
       }
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
   const toggleMaximise = async (): Promise<void> => {
@@ -64,9 +64,7 @@ export function WindowChrome({
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-popover text-popover-foreground [--wails-resize:all]">
       <div className="flex h-9 shrink-0 items-center justify-between border-b border-border/60 pr-1 pl-4 select-none [--wails-draggable:drag]">
-        <span className="truncate text-xs font-medium text-muted-foreground">
-          {title}
-        </span>
+        <span className="truncate text-xs font-medium text-muted-foreground">{title}</span>
         {titleExtra ? (
           <div className="flex min-w-0 items-center gap-2 [--wails-draggable:no-drag]">
             {titleExtra}
@@ -86,8 +84,8 @@ export function WindowChrome({
             type="button"
             className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [--wails-draggable:no-drag]"
             onClick={() => void toggleMaximise()}
-            aria-label={maximised ? "Restaurar" : "Maximizar"}
-            title={maximised ? "Restaurar" : "Maximizar"}
+            aria-label={maximised ? 'Restaurar' : 'Maximizar'}
+            title={maximised ? 'Restaurar' : 'Maximizar'}
           >
             {maximised ? <Copy size={14} /> : <Square size={14} />}
           </button>
@@ -102,9 +100,7 @@ export function WindowChrome({
           </button>
         </div>
       </div>
-      <div className={cn("min-h-0 flex-1 overflow-auto", className)}>
-        {children}
-      </div>
+      <div className={cn('min-h-0 flex-1 overflow-auto', className)}>{children}</div>
     </div>
   );
 }

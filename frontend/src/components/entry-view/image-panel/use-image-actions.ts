@@ -1,10 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
+import type { EntryView } from '@/components/entry-view/entry-view-store';
+import { parseError } from '@/lib/ffx/error-handler';
 import { loggedToast as toast } from '@/lib/ffx/toast-logged';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
 import type { EntryRow } from '@/lib/ffx/tree-data';
 import {
+  imageExportPath,
   importImage,
   importImageGroup,
   importImages,
@@ -12,12 +15,7 @@ import {
   refreshImageDuplicates,
   saveImage,
   selectImageFile,
-  imageExportPath,
 } from '@/lib/ffx/tree-data';
-import {
-  buildImageImportSelection,
-  nextAllSelected,
-} from './import-selection';
 import {
   extractVbfImagesSelection,
   importVbfImage,
@@ -26,8 +24,7 @@ import {
   selectVbfImageExtractDir,
   vbfImageExportPath,
 } from '@/lib/ffx/vbf';
-import { parseError } from '@/lib/ffx/error-handler';
-import type { EntryView } from '@/components/entry-view/entry-view-store';
+import { buildImageImportSelection, nextAllSelected } from './import-selection';
 
 export type ImageBusy =
   | 'extract'
@@ -70,9 +67,7 @@ export function useImageActions({
    * marcadas) vive dentro do preview — quem aplica é o confirm, com o
    * payload montado por buildImageImportSelection.
    */
-  const [pendingPreview, setPendingPreview] = useState<dto.ImageImportPreview | null>(
-    null
-  );
+  const [pendingPreview, setPendingPreview] = useState<dto.ImageImportPreview | null>(null);
 
   /**
    * Textura aberta pelo navegador de .vbf: o container é somente leitura;
@@ -85,7 +80,7 @@ export function useImageActions({
     if (!readOnly) return false;
     toast.message(
       'Exclusão e replicação estão disponíveis apenas para imagens da árvore de data/.',
-      { duration: 4000 }
+      { duration: 4000 },
     );
     return true;
   };
@@ -173,7 +168,7 @@ export function useImageActions({
   };
 
   const onExtractTo = async (format: 'dds' | 'png' | 'dds+png') => {
-    if (!entry || !entry.vbf) return;
+    if (!entry?.vbf) return;
     setBusy('extractTo');
     try {
       const destRoot = await selectVbfImageExtractDir();
@@ -216,14 +211,11 @@ export function useImageActions({
         const targets = duplicates.map((d) => d.id);
         const result = await importImageGroup(entry.id, path, targets, version);
         if (result.failed.length > 0) {
-          toast.warning(
-            `Importadas ${result.updated.length} de ${result.total} texturas.`,
-            { description: result.failed.slice(0, 3).join('; ') }
-          );
+          toast.warning(`Importadas ${result.updated.length} de ${result.total} texturas.`, {
+            description: result.failed.slice(0, 3).join('; '),
+          });
         } else {
-          toast.success(
-            `Textura importada em ${result.updated.length} textura(s) idêntica(s).`
-          );
+          toast.success(`Textura importada em ${result.updated.length} textura(s) idêntica(s).`);
         }
       }
       // Recarrega árvore + textura: os containers em mods/ mudaram.
@@ -302,15 +294,11 @@ export function useImageActions({
       const result = await importImages(version, selection);
       setPendingPreview(null);
       if (result.updated.length === 0) {
-        const motivo =
-          result.failed.length > 0
-            ? ` (${result.failed.length} falharam)`
-            : '';
+        const motivo = result.failed.length > 0 ? ` (${result.failed.length} falharam)` : '';
         toast.info(`Nada foi gravado em mods/.${motivo}`, { id: toastId });
         return;
       }
-      const falhas =
-        result.failed.length > 0 ? ` (${result.failed.length} falharam)` : '';
+      const falhas = result.failed.length > 0 ? ` (${result.failed.length} falharam)` : '';
       toast.success(
         `${result.updated.length} de ${result.total} imagem(ns) gravada(s) em mods/.${falhas}`,
         {
@@ -318,7 +306,7 @@ export function useImageActions({
           ...(result.failed.length > 0
             ? { description: result.failed.slice(0, 3).join('; ') }
             : {}),
-        }
+        },
       );
       await actions.reload();
     } catch (error) {
@@ -346,7 +334,7 @@ export function useImageActions({
                 ...e,
                 selected: next,
                 copies: (e.copies ?? []).map((c) => ({ ...c, selected: next })),
-              }
+              },
         ),
       };
     });
@@ -358,9 +346,7 @@ export function useImageActions({
       if (!prev) return prev;
       return {
         ...prev,
-        entries: prev.entries.map((e) =>
-          e.id === entryId ? { ...e, selected: !e.selected } : e
-        ),
+        entries: prev.entries.map((e) => (e.id === entryId ? { ...e, selected: !e.selected } : e)),
       };
     });
   };
@@ -376,10 +362,10 @@ export function useImageActions({
             ? {
                 ...e,
                 copies: (e.copies ?? []).map((c) =>
-                  c.id === copyId ? { ...c, selected: !c.selected } : c
+                  c.id === copyId ? { ...c, selected: !c.selected } : c,
                 ),
               }
-            : e
+            : e,
         ),
       };
     });

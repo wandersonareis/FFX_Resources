@@ -1,28 +1,21 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Info, X } from 'lucide-react';
 import { useSelector } from '@tanstack/react-store';
 import { cn } from 'cn';
+import { AlertTriangle, Info, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { activeFileStore, clearActiveFile } from '@/lib/ffx/active-file-store';
 import { KIND_LABELS } from '@/lib/ffx/display-names';
-import {
-  activeFileStore,
-  clearActiveFile,
-} from '@/lib/ffx/active-file-store';
+import { hotkeyLabel, SHORTCUTS, shortcutTip } from '@/lib/ffx/shortcuts';
 import {
   dismissStatusBarWarning,
   pushStatusBarWarning,
-  useStatusBarWarnings,
   type StatusBarWarning,
+  useStatusBarWarnings,
 } from '@/lib/ffx/statusbar-store';
 import { useWailsEvent } from '@/lib/ffx/use-wails-event';
-import { SHORTCUTS, hotkeyLabel, shortcutTip } from '@/lib/ffx/shortcuts';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 /**
  * Intervalo da rotação de avisos do backend (ms) — mais de um aviso ativo
@@ -82,9 +75,7 @@ export function StatusBar() {
   const warnings = useStatusBarWarnings();
 
   const [warnIndex, setWarnIndex] = useState(0);
-  const [openPanel, setOpenPanel] = useState<'progress' | 'warning' | null>(
-    null
-  );
+  const [openPanel, setOpenPanel] = useState<'progress' | 'warning' | null>(null);
 
   // Rotação: só quando há mais de um aviso. O índice é normalizado contra
   // a lista corrente (dismiss encurta a lista sem quebrar a rotação).
@@ -92,7 +83,7 @@ export function StatusBar() {
     if (warnings.length <= 1) return;
     const timer = setInterval(
       () => setWarnIndex((i) => (i + 1) % warnings.length),
-      WARNING_ROTATION_MS
+      WARNING_ROTATION_MS,
     );
     return () => clearInterval(timer);
   }, [warnings.length]);
@@ -100,7 +91,7 @@ export function StatusBar() {
   // Reinicia a rotação quando a lista muda (novo aviso: o visível muda).
   useEffect(() => {
     setWarnIndex(0);
-  }, [warnings]);
+  }, []);
 
   // Fecho o painel quando o aviso exibido saiu da lista (dismiss externo).
   useEffect(() => {
@@ -116,13 +107,11 @@ export function StatusBar() {
       if (activeFile.version === null) return;
       clearActiveFile();
     },
-    [activeFile.version]
+    [activeFile.version],
   );
 
   const warning: StatusBarWarning | null =
-    warnings.length > 0
-      ? warnings[warnIndex % warnings.length]
-      : warnings[0] ?? null;
+    warnings.length > 0 ? warnings[warnIndex % warnings.length] : (warnings[0] ?? null);
 
   const progressPanelOpen = openPanel === 'progress';
   const warningPanelOpen = openPanel === 'warning';
@@ -133,15 +122,14 @@ export function StatusBar() {
         {/* Três colunas iguais: as setas começam na MESMA margem da
             sidebar (pl-3), o progresso cai no centro exato da janela e o
             aviso encosta à direita. */}
-        <div
-          className="flex min-w-0 flex-1 items-center gap-1 pl-3"
-          role="group"
+        <fieldset
+          className="m-0 flex min-w-0 flex-1 items-center gap-1 border-0 p-0 pl-3"
           aria-label={SHORTCUTS.navigation.label}
         >
           {NAV_HINTS.map((hint) => (
             <ArrowHint key={hint.key} hotkey={hint.key} label={hint.label} />
           ))}
-        </div>
+        </fieldset>
 
         {/* Progresso (meio): fixo na abertura do arquivo. */}
         <div className="flex min-w-0 flex-1 items-center justify-center">
@@ -151,9 +139,7 @@ export function StatusBar() {
               role="button"
               tabIndex={0}
               aria-expanded={progressPanelOpen}
-              onClick={() =>
-                setOpenPanel((p) => (p === 'progress' ? null : 'progress'))
-              }
+              onClick={() => setOpenPanel((p) => (p === 'progress' ? null : 'progress'))}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
@@ -182,9 +168,7 @@ export function StatusBar() {
               role="button"
               tabIndex={0}
               aria-expanded={warningPanelOpen}
-              onClick={() =>
-                setOpenPanel((p) => (p === 'warning' ? null : 'warning'))
-              }
+              onClick={() => setOpenPanel((p) => (p === 'warning' ? null : 'warning'))}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
@@ -193,7 +177,7 @@ export function StatusBar() {
               }}
               className={cn(
                 'h-6 w-fit max-w-full cursor-pointer items-center border-0 bg-transparent px-2 py-0 grid-cols-[auto_auto] shadow-none',
-                warningPanelOpen && 'font-medium'
+                warningPanelOpen && 'font-medium',
               )}
             >
               <AlertTriangle className="shrink-0" />
@@ -218,13 +202,13 @@ export function StatusBar() {
           </AlertTitle>
           <AlertDescription>
             <p>
-              {activeFile.progress.translated} de {activeFile.progress.total}{' '}
-              linhas comparáveis traduzidas ({activeFile.progress.pct}%).
+              {activeFile.progress.translated} de {activeFile.progress.total} linhas comparáveis
+              traduzidas ({activeFile.progress.pct}%).
             </p>
             <p className="text-xs opacity-70">
-              Contagem fixa na abertura do arquivo; linhas sem original de
-              data/ ficam fora da contagem. As repetições linkadas (dedup)
-              aparecem na tabela, mas o texto vive na def — não contam aqui.
+              Contagem fixa na abertura do arquivo; linhas sem original de data/ ficam fora da
+              contagem. As repetições linkadas (dedup) aparecem na tabela, mas o texto vive na def —
+              não contam aqui.
             </p>
           </AlertDescription>
         </Alert>
@@ -262,34 +246,26 @@ export function StatusBar() {
             {warning.details ? (
               <div className="mt-1 flex flex-col gap-0.5 text-xs">
                 <span>
-                  {Number(warning.details['mods_rows'] ?? 0)} linhas no
-                  binário atual ·{' '}
-                  {Number(warning.details['data_rows'] ?? 0)} no original de
-                  data/
+                  {Number(warning.details.mods_rows ?? 0)} linhas no binário atual ·{' '}
+                  {Number(warning.details.data_rows ?? 0)} no original de data/
                 </span>
-                {Array.isArray(warning.details['rows_somente_mods']) &&
-                  warning.details['rows_somente_mods'].length > 0 && (
+                {Array.isArray(warning.details.rows_somente_mods) &&
+                  warning.details.rows_somente_mods.length > 0 && (
                     <span>
                       Só na tradução:{' '}
-                      {formatDiagRows(
-                        warning.details['rows_somente_mods'] as DiagRow[]
-                      )}
+                      {formatDiagRows(warning.details.rows_somente_mods as DiagRow[])}
                     </span>
                   )}
-                {Array.isArray(warning.details['rows_somente_data']) &&
-                  warning.details['rows_somente_data'].length > 0 && (
+                {Array.isArray(warning.details.rows_somente_data) &&
+                  warning.details.rows_somente_data.length > 0 && (
                     <span>
                       Só no original:{' '}
-                      {formatDiagRows(
-                        warning.details['rows_somente_data'] as DiagRow[]
-                      )}
+                      {formatDiagRows(warning.details.rows_somente_data as DiagRow[])}
                     </span>
                   )}
               </div>
             ) : null}
-            <p className="text-xs opacity-60">
-              Fechar este alerta descarta o aviso da sessão.
-            </p>
+            <p className="text-xs opacity-60">Fechar este alerta descarta o aviso da sessão.</p>
           </AlertDescription>
         </Alert>
       ) : null}

@@ -10,10 +10,7 @@ export interface TagSuggestionPopup {
   /** Elemento montado (entregue ao props.mount). */
   readonly element: HTMLElement;
   /** Repovoa a lista e define o callback de seleção (mudou a query). */
-  render: (
-    items: TagSuggestionItem[],
-    onSelect: (item: TagSuggestionItem) => void
-  ) => void;
+  render: (items: TagSuggestionItem[], onSelect: (item: TagSuggestionItem) => void) => void;
   /** Move a seleção com as setas (circular); devolve o novo índice. */
   move: (delta: number) => number;
   activeIndex: () => number;
@@ -56,7 +53,7 @@ export function createTagSuggestionPopup(): TagSuggestionPopup {
     label('inserir'),
     kbd('Esc'),
     label('cancelar'),
-    note
+    note,
   );
 
   element.append(list, empty, footer);
@@ -91,20 +88,20 @@ export function createTagSuggestionPopup(): TagSuggestionPopup {
 
   list.addEventListener('click', (event) => {
     const li = (event.target as HTMLElement | null)?.closest?.(
-      'li[data-index]'
+      'li[data-index]',
     ) as HTMLElement | null;
     if (!li) return;
-    const index = Number(li.dataset['index']);
+    const index = Number(li.dataset.index);
     const item = items[index];
     if (item && onSelect) onSelect(item);
   });
 
   list.addEventListener('mousemove', (event) => {
     const li = (event.target as HTMLElement | null)?.closest?.(
-      'li[data-index]'
+      'li[data-index]',
     ) as HTMLElement | null;
     if (!li) return;
-    const index = Number(li.dataset['index']);
+    const index = Number(li.dataset.index);
     if (!Number.isNaN(index) && index !== active) setActive(index);
   });
 
@@ -122,9 +119,7 @@ export function createTagSuggestionPopup(): TagSuggestionPopup {
       empty.hidden = hasItems;
       footer.hidden = !hasItems;
       if (hasItems) paint();
-      note.textContent = hasItems
-        ? 'Filtre digitando (ex.: s13 ou texto)'
-        : '';
+      note.textContent = hasItems ? 'Filtre digitando (ex.: s13 ou texto)' : '';
     },
     move(delta) {
       setActive(active + delta);
@@ -147,7 +142,7 @@ export function createTagSuggestionPopup(): TagSuggestionPopup {
 function itemNode(item: TagSuggestionItem, index: number): HTMLElement {
   const li = document.createElement('li');
   li.className = 'tag-suggestion-item';
-  li.dataset['index'] = String(index);
+  li.dataset.index = String(index);
   li.setAttribute('role', 'option');
   li.setAttribute('aria-selected', 'false');
 

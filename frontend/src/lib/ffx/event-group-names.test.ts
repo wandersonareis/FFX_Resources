@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  formatEventGroupLabel,
-  resolveEventGroup,
-  shortenedOf,
-} from './event-group-names';
+import { formatEventGroupLabel, resolveEventGroup, shortenedOf } from './event-group-names';
 
 describe('shortenedOf', () => {
   it('corta o eventID em 4 caracteres (o fragmento é a chave)', () => {
@@ -57,9 +53,22 @@ describe('resolveEventGroup', () => {
   // pasta caía em Home.
   it('não mistura shortenings quando o caller passa todos os fragmentos', () => {
     const todos = [
-      'azit', 'azmm', 'bsil', 'bsvr', 'bsyt', 'bvyt',
-      'genk', 'gemm', 'kino', 'lchb', 'lumm', 'mihn',
-      'maca', 'mamm', 'isho', 'kamm',
+      'azit',
+      'azmm',
+      'bsil',
+      'bsvr',
+      'bsyt',
+      'bvyt',
+      'genk',
+      'gemm',
+      'kino',
+      'lchb',
+      'lumm',
+      'mihn',
+      'maca',
+      'mamm',
+      'isho',
+      'kamm',
     ];
     // bsyt não pode pular para "azit" (Home) só porque ele é o menor nomeado.
     expect(resolveEventGroup('ffx', 'bsyt', todos)).toEqual({
@@ -88,9 +97,7 @@ describe('resolveEventGroup', () => {
   });
 
   it('scen só é nomeado na aba eternalcalm', () => {
-    expect(resolveEventGroup('eternalcalm', 'scen', ['scen']).name).toBe(
-      'Eternal Calm'
-    );
+    expect(resolveEventGroup('eternalcalm', 'scen', ['scen']).name).toBe('Eternal Calm');
     expect(resolveEventGroup('ffx', 'scen', ['scen']).name).toBe('');
   });
 });
@@ -98,9 +105,7 @@ describe('resolveEventGroup', () => {
 describe('formatEventGroupLabel', () => {
   it('sufixa o diretório pai no nome do local', () => {
     expect(formatEventGroupLabel('Home', 'azit', 12)).toBe('Home (az) - 12');
-    expect(formatEventGroupLabel('Besaid Temple', 'bvyt', 9)).toBe(
-      'Besaid Temple (bv) - 9'
-    );
+    expect(formatEventGroupLabel('Besaid Temple', 'bvyt', 9)).toBe('Besaid Temple (bv) - 9');
   });
 
   it('omite o sufixo quando o nome já é o código do pai', () => {

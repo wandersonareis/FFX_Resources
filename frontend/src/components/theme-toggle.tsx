@@ -1,15 +1,11 @@
 'use client';
 
-import { SetTheme } from '@/bindings/ffxresources/configservice';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
+import { SetTheme } from '@/bindings/ffxresources/configservice';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
  * Toggle light/dark do app. Alterna a classe `.dark` no <html> via
@@ -50,9 +46,7 @@ export function ThemeToggle() {
           {isDark ? <Sun size={20} /> : <Moon size={20} />}
         </Button>
       </TooltipTrigger>
-      <TooltipContent>
-        {isDark ? 'Tema claro' : 'Tema escuro'}
-      </TooltipContent>
+      <TooltipContent>{isDark ? 'Tema claro' : 'Tema escuro'}</TooltipContent>
     </Tooltip>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as services from '@/bindings/ffxresources/backend/services/models';
+import type * as services from '@/bindings/ffxresources/backend/services/models';
 import type { SideNode } from './model';
 import { buildSearchItems, foldDiacritics, searchTreeNames } from './search';
 
@@ -18,13 +18,23 @@ const roots: SideNode[] = [
             id: 'leaf:events:azit0000',
             label: 'azit0000',
             kind: 'events',
-            entry: { kind: 'events', id: 'azit0000', key: 'ffx/event/azit0000.bin', label: 'azit0000' },
+            entry: {
+              kind: 'events',
+              id: 'azit0000',
+              key: 'ffx/event/azit0000.bin',
+              label: 'azit0000',
+            },
           },
           {
             id: 'leaf:events:azmm0000',
             label: 'azmm0000',
             kind: 'events',
-            entry: { kind: 'events', id: 'azmm0000', key: 'ffx/event/azmm0000.bin', label: 'azmm0000' },
+            entry: {
+              kind: 'events',
+              id: 'azmm0000',
+              key: 'ffx/event/azmm0000.bin',
+              label: 'azmm0000',
+            },
           },
         ],
       },
@@ -39,7 +49,12 @@ const roots: SideNode[] = [
         id: 'leaf:objects:command',
         label: 'Comandos',
         kind: 'objects',
-        entry: { kind: 'objects', id: 'command', key: 'ffx/battle/kernel/command.bin', label: 'Comandos' },
+        entry: {
+          kind: 'objects',
+          id: 'command',
+          key: 'ffx/battle/kernel/command.bin',
+          label: 'Comandos',
+        },
       },
     ],
   },
@@ -53,10 +68,7 @@ describe('searchTreeNames', () => {
 
   it('keeps the deepest leaf nodes and never returns groups', () => {
     const hits = searchTreeNames(roots, 'az');
-    expect(hits.map((node) => node.id)).toEqual([
-      'leaf:events:azit0000',
-      'leaf:events:azmm0000',
-    ]);
+    expect(hits.map((node) => node.id)).toEqual(['leaf:events:azit0000', 'leaf:events:azmm0000']);
   });
 
   it('caps the number of name matches and returns nothing for a blank query', () => {
@@ -86,13 +98,9 @@ describe('searchTreeNames', () => {
       },
     ];
     // Sem acento acha com acento e vice-versa (label e key).
-    expect(
-      searchTreeNames(accented, 'coracao').map((node) => node.entry?.id)
-    ).toEqual(['coracao']);
+    expect(searchTreeNames(accented, 'coracao').map((node) => node.entry?.id)).toEqual(['coracao']);
     expect(searchTreeNames(accented, 'CORACAO')).toHaveLength(1);
-    expect(
-      searchTreeNames(accented, 'dificil').map((node) => node.entry?.id)
-    ).toEqual(['coracao']);
+    expect(searchTreeNames(accented, 'dificil').map((node) => node.entry?.id)).toEqual(['coracao']);
     expect(searchTreeNames(accented, 'difícil')).toHaveLength(1);
   });
 });
@@ -153,9 +161,9 @@ describe('buildSearchItems', () => {
       'leaf:events:azmm0000',
       'leaf:objects:command',
     ]);
-    const nameItem = items.at(-1)!;
+    const nameItem = items.at(-1);
     expect(nameItem).toMatchObject({ key: 'leaf:objects:command|name', rowCount: 0 });
-    expect(nameItem.match).toBeUndefined();
+    expect(nameItem?.match).toBeUndefined();
   });
 
   it('produces stable keys for repeated queries', () => {

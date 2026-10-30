@@ -3,7 +3,7 @@
 // com "$" E o resto casa com o hash PRÓPRIO da row. Prefixo sozinho não
 // basta: um texto literal que comece com "$" não pode virar linha oculta.
 
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 
 /**
  * Kinds cujo view sai com dedup global (refs "$hash" na entrega): os
@@ -37,7 +37,7 @@ export const DEDUP_VIEW_KINDS: ReadonlySet<string> = new Set([
  */
 export function isRefText(
   text: string | undefined | null,
-  hash: string | undefined | null
+  hash: string | undefined | null,
 ): boolean {
   if (!text || !hash) return false;
   return text.startsWith('$') && text.slice(1) === hash;
@@ -66,7 +66,7 @@ export const LINKED_SIDE = 'text-sky-600 dark:text-sky-300';
 export function linkedRowText(
   entryId: string,
   link: dto.RefLink | null | undefined,
-  liveOf: (defId: string, defKey: string) => string | undefined
+  liveOf: (defId: string, defKey: string) => string | undefined,
 ): string | undefined {
   if (!link) return undefined;
   const defId = link.sourceId ? link.sourceId : entryId;

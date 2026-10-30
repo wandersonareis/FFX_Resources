@@ -1,29 +1,22 @@
 'use client';
 
-import { useCallback, useMemo, useRef, type MouseEvent } from 'react';
+import { type MouseEvent, useCallback, useMemo, useRef } from 'react';
+import type { TreeCtxNode } from '@/lib/ffx/content-tree/menu-target';
+import { entryIdsInNode, isKindRootNode, type SideNode } from '@/lib/ffx/content-tree/model';
+import { parseError } from '@/lib/ffx/error-handler';
+import { exportLangs } from '@/lib/ffx/export-langs';
+import { exportSelection } from '@/lib/ffx/export-selection';
+import { progressWasShown } from '@/lib/ffx/progress-store';
 import { loggedToast as toast } from '@/lib/ffx/toast-logged';
-import {
-  exportArtifactBatch,
-  extractImageSelection,
-} from '@/lib/ffx/tree-data';
+import type { EntryRow } from '@/lib/ffx/tree-data';
+import { exportArtifactBatch, extractImageSelection } from '@/lib/ffx/tree-data';
 import {
   exportVbfSelection,
   extractVbfImagesSelection,
   invalidateVbfImage,
   selectVbfImageExtractDir,
 } from '@/lib/ffx/vbf';
-import { parseError } from '@/lib/ffx/error-handler';
-import { progressWasShown } from '@/lib/ffx/progress-store';
-import { exportSelection } from '@/lib/ffx/export-selection';
-import { exportLangs } from '@/lib/ffx/export-langs';
 import { vbfSelection } from '@/lib/ffx/vbf-selection';
-import {
-  entryIdsInNode,
-  isKindRootNode,
-  type SideNode,
-} from '@/lib/ffx/content-tree/model';
-import type { TreeCtxNode } from '@/lib/ffx/content-tree/menu-target';
-import type { EntryRow } from '@/lib/ffx/tree-data';
 import type { EntryView } from '../entry-view-store';
 import type { VbfExtractRequest } from './vbf-extract-dialog';
 
@@ -57,10 +50,8 @@ export function useContentTreeActions({
   // menu, não troca a seleção por esse nó.
   const vbfPathsForContext = useMemo(
     () =>
-      ctxNode?.vbfRoot
-        ? (ctxNode.selectedVbfPaths ?? vbfSelection.pathsOf(ctxNode.vbfRoot))
-        : [],
-    [ctxNode]
+      ctxNode?.vbfRoot ? (ctxNode.selectedVbfPaths ?? vbfSelection.pathsOf(ctxNode.vbfRoot)) : [],
+    [ctxNode],
   );
 
   // Checkbox de data/: folha = 1 id; grupo = todos os filhos; raiz do kind
@@ -81,15 +72,9 @@ export function useContentTreeActions({
       // A raiz do kind (kind:<kind>) cobre tudo que a árvore serve dele:
       // marcar ela é marcar o kind inteiro — daí o `whole`.
       const whole = isKindRootNode(node) && checked;
-      exportSelection.setMany(
-        version,
-        node.kind,
-        entryIdsInNode(node),
-        checked,
-        whole
-      );
+      exportSelection.setMany(version, node.kind, entryIdsInNode(node), checked, whole);
     },
-    [version]
+    [version],
   );
 
   const onExtractSelectedImages = useCallback(async () => {
@@ -144,7 +129,7 @@ export function useContentTreeActions({
         [{ kind, ids, complete }],
         version,
         exportLangs.langsOf(),
-        format
+        format,
       );
       if ((paths ?? []).length === 0) {
         toast.info('Nada para exportar.');
@@ -166,7 +151,7 @@ export function useContentTreeActions({
       });
       setCtxNode(null);
     },
-    [ctxNode, openExtractRequest, setCtxNode, vbfPathsForContext]
+    [ctxNode, openExtractRequest, setCtxNode, vbfPathsForContext],
   );
 
   const onVbfExtractImages = useCallback(
@@ -186,10 +171,9 @@ export function useContentTreeActions({
           if (result.total === 0) {
             toast.info('A seleção não contém imagens compatíveis para extrair.');
           } else if (result.failed.length > 0) {
-            toast.warning(
-              `Extraídas ${result.done.length} de ${result.total} imagens.`,
-              { description: result.failed.slice(0, 3).join('; ') }
-            );
+            toast.warning(`Extraídas ${result.done.length} de ${result.total} imagens.`, {
+              description: result.failed.slice(0, 3).join('; '),
+            });
           } else {
             toast.success(`Extraídas ${result.done.length} imagens do .vbf.`);
           }
@@ -202,7 +186,7 @@ export function useContentTreeActions({
         }
       })();
     },
-    [actions, ctxNode, selectedEntry, setCtxNode, vbfPathsForContext]
+    [actions, ctxNode, selectedEntry, setCtxNode, vbfPathsForContext],
   );
 
   const onVbfExport = useCallback(() => {
@@ -239,9 +223,7 @@ export function useContentTreeActions({
         setCtxNode(null);
         return;
       }
-      const kind = row.getAttribute('data-node-kind') as
-        | TreeCtxNode['kind']
-        | null;
+      const kind = row.getAttribute('data-node-kind') as TreeCtxNode['kind'] | null;
       const isVbf = row.getAttribute('data-node-vbf') === 'true';
       const id = row.getAttribute('data-node-id') ?? '';
       const label = row.getAttribute('data-node-label') ?? '';
@@ -259,13 +241,13 @@ export function useContentTreeActions({
         setCtxNode(
           vbfRoot && paths.length > 0
             ? { id, label, vbfRoot, vbfPath: clickedPath, selectedVbfPaths: paths }
-            : null
+            : null,
         );
         return;
       }
       setCtxNode(kind ? { id, kind, label } : null);
     },
-    [setCtxNode]
+    [setCtxNode],
   );
 
   return {

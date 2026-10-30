@@ -12,9 +12,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   IMAGE_EXPORT_FORMAT_LABELS,
+  type ImageExportFormat,
   imageExportFormatSelection,
   useImageExportFormat,
-  ImageExportFormat,
 } from '@/lib/ffx/image-export-selection';
 
 /**
@@ -43,7 +43,9 @@ export function ImageExportFormatMenu() {
         <DropdownMenuLabel className="text-muted-foreground">Formato</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={format}
-          onValueChange={(value) => imageExportFormatSelection.setFormat(value as ImageExportFormat)}
+          onValueChange={(value) =>
+            imageExportFormatSelection.setFormat(value as ImageExportFormat)
+          }
         >
           {(Object.keys(IMAGE_EXPORT_FORMAT_LABELS) as ImageExportFormat[]).map((fmt) => (
             <DropdownMenuRadioItem key={fmt} value={fmt}>

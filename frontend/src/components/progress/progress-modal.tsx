@@ -1,16 +1,8 @@
 'use client';
 
+import { AlertTriangle, CheckCircle2, CircleDashed, Loader2, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useWailsEvent } from '@/lib/ffx/use-wails-event';
-import {
-  clearProgressBatch,
-  progressEnded,
-  progressStarted,
-  progressUpdated,
-  useProgressBatch,
-  type ProgressBatch,
-  type ProgressStep,
-} from '@/lib/ffx/progress-store';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -19,14 +11,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
 import {
-  AlertTriangle,
-  CheckCircle2,
-  CircleDashed,
-  Loader2,
-  XCircle,
-} from 'lucide-react';
+  clearProgressBatch,
+  type ProgressBatch,
+  type ProgressStep,
+  progressEnded,
+  progressStarted,
+  progressUpdated,
+  useProgressBatch,
+} from '@/lib/ffx/progress-store';
+import { useWailsEvent } from '@/lib/ffx/use-wails-event';
 
 const fmt = (n: number): string => n.toLocaleString('pt-BR');
 
@@ -148,7 +142,9 @@ export function ProgressModal() {
 
   const open = batch !== null && !dismissed;
   const done = batch?.done ?? false;
-  const action = batch ? `${Math.min(batch.current + 1, batch.steps.length)} de ${batch.steps.length}` : '';
+  const action = batch
+    ? `${Math.min(batch.current + 1, batch.steps.length)} de ${batch.steps.length}`
+    : '';
   const anyIssue = (batch?.issueCount ?? 0) > 0 || (batch?.failed ?? false);
 
   return (
@@ -184,8 +180,8 @@ export function ProgressModal() {
             <BatchResult batch={batch} />
           ) : (
             <div className="space-y-2.5 py-1">
-              {batch.steps.map((step, i) => (
-                <StepRow key={`${i}-${step.label}`} step={step} />
+              {batch.steps.map((step) => (
+                <StepRow key={step.label} step={step} />
               ))}
             </div>
           )

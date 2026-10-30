@@ -1,7 +1,7 @@
 'use client';
 
-import { Trash2 } from 'lucide-react';
 import { cn } from 'cn';
+import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { uiLog, useUILog } from '@/lib/ffx/uilog-store';
 
@@ -15,9 +15,7 @@ export function LogPanelControls({ className }: { className?: string }) {
   const { entries } = useUILog();
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      <span className="text-xs text-muted-foreground select-none">
-        {entries.length} linha(s)
-      </span>
+      <span className="text-xs text-muted-foreground select-none">{entries.length} linha(s)</span>
       <Button
         variant="ghost"
         size="sm"

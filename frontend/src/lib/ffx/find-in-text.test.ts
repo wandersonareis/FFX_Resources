@@ -87,7 +87,7 @@ describe('replaceMatches', () => {
         { start: 0, end: 1 },
         { start: 4, end: 5 },
       ],
-      'X'
+      'X',
     );
     expect(out).toBe('X b X');
   });

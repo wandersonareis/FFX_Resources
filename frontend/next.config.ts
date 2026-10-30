@@ -1,7 +1,7 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  output: "export",
+  output: 'export',
   // Export com barra final: cada rota sai como <rota>/index.html em vez de
   // <rota>.html. Obrigatório para o asset server do Wails v3 — o export do
   // Next também cria o DIRETÓRIO <rota>/ (metadados RSC __next.*) ao lado do
@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
     // (`from "./backend/dto/models.js"`) apontando para arquivos .ts.
     // Sem isso o Turbopack não resolve o specifier e o build quebra.
     extensionAlias: {
-      ".js": [".ts", ".tsx", ".js"],
+      '.js': ['.ts', '.tsx', '.js'],
     },
   },
   images: {

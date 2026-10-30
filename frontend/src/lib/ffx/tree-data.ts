@@ -1,3 +1,25 @@
+import type * as dto from '@/bindings/ffxresources/backend/dto/models';
+import type * as services from '@/bindings/ffxresources/backend/services/models';
+import {
+  DeleteImageSelection,
+  DeleteImages,
+  ExtractImageGroup,
+  ExtractImageSelection,
+  GetImageEntry,
+  ImageDuplicates,
+  ImageExists,
+  ImageExportPath,
+  ImageSelectionCopies,
+  ImportImage,
+  ImportImageGroup,
+  ImportImages,
+  PreviewImportImages,
+  RefreshImageDuplicates,
+  ReplicateImage,
+  SaveImage,
+  SelectImageFile,
+  SelectImageSavePath,
+} from '@/bindings/ffxresources/imageservice';
 import {
   ExportArtifactBatch,
   ExportEntry,
@@ -13,31 +35,9 @@ import {
   SelectImportFile,
   WarmTextSearch,
 } from '@/bindings/ffxresources/textservice';
-import {
-  DeleteImages,
-  DeleteImageSelection,
-  ExtractImageGroup,
-  ExtractImageSelection,
-  GetImageEntry,
-  ImageDuplicates,
-  ImageExportPath,
-  ImageSelectionCopies,
-  ImageExists,
-  ImportImage,
-  ImportImageGroup,
-  ImportImages,
-  PreviewImportImages,
-  RefreshImageDuplicates,
-  ReplicateImage,
-  SaveImage,
-  SelectImageFile,
-  SelectImageSavePath,
-} from '@/bindings/ffxresources/imageservice';
-import * as dto from '@/bindings/ffxresources/backend/dto/models';
-import * as services from '@/bindings/ffxresources/backend/services/models';
-import { resolveEntryLabel, EntryKind } from './display-names';
-import type { GameVersionId } from './game-version';
+import { type EntryKind, resolveEntryLabel } from './display-names';
 import type { ExportFormat } from './export-selection';
+import type { GameVersionId } from './game-version';
 
 export interface EntryRow {
   kind: EntryKind;
@@ -74,7 +74,8 @@ export function entryKindsFor(version: GameVersionId): EntryKind[] {
   // do jogo-pai mas não têm essas folhas próprias.
   if (version === 'eternalcalm') return ['events'];
   if (version === 'lastmiss') return ['events', 'objects'];
-  if (version === 'ffx') return ['events', 'objects', 'macro', 'lockit', 'help', 'battletext', 'cloud', 'menumain'];
+  if (version === 'ffx')
+    return ['events', 'objects', 'macro', 'lockit', 'help', 'battletext', 'cloud', 'menumain'];
   return ['events', 'objects', 'macro', 'lockit', 'battletext', 'cloud', 'tutorial'];
 }
 
@@ -104,11 +105,11 @@ export function allKindsFor(version: GameVersionId): EntryKind[] {
  */
 export async function loadKindEntries(
   kind: EntryKind,
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<EntryRow[]> {
   const summaries: services.EntrySummary[] = await ListTextEntries(
     kind,
-    version as Parameters<typeof ListTextEntries>[1]
+    version as Parameters<typeof ListTextEntries>[1],
   );
   return (summaries ?? [])
     .map((s) => ({
@@ -123,12 +124,9 @@ export async function loadKindEntries(
 /** Busca no texto decodificado de data/ e mods/ (idioma us), sem trazer DTOs. */
 export function searchTextEntries(
   version: GameVersionId,
-  query: string
+  query: string,
 ): Promise<services.TextSearchResponse> {
-  return SearchTextEntries(
-    version as Parameters<typeof SearchTextEntries>[0],
-    query
-  );
+  return SearchTextEntries(version as Parameters<typeof SearchTextEntries>[0], query);
 }
 
 /**
@@ -142,13 +140,9 @@ export function warmTextSearch(version: GameVersionId): void {
 export async function loadEntry(
   kind: EntryKind,
   id: string,
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<dto.FileEntry> {
-  return GetTextEntry(
-    kind,
-    id,
-    version as Parameters<typeof GetTextEntry>[2]
-  );
+  return GetTextEntry(kind, id, version as Parameters<typeof GetTextEntry>[2]);
 }
 
 // ---- Imagens (.dds.phyre) ----
@@ -156,29 +150,13 @@ export async function loadEntry(
 // texto. Cada chamada abaixo espelha um binding do App.
 
 /** Carrega a textura e devolve a pré-visualização (data URL) + metadados. */
-export async function loadImage(
-  id: string,
-  version: GameVersionId
-): Promise<dto.ImageEntry> {
-  return GetImageEntry(
-    'images',
-    id,
-    version as Parameters<typeof GetImageEntry>[2]
-  );
+export async function loadImage(id: string, version: GameVersionId): Promise<dto.ImageEntry> {
+  return GetImageEntry('images', id, version as Parameters<typeof GetImageEntry>[2]);
 }
 
 /** Reempacota um .dds sobre o container pristine e grava em mods/. */
-export function importImage(
-  id: string,
-  ddsPath: string,
-  version: GameVersionId
-): Promise<void> {
-  return ImportImage(
-    'images',
-    id,
-    ddsPath,
-    version as Parameters<typeof ImportImage>[3]
-  );
+export function importImage(id: string, ddsPath: string, version: GameVersionId): Promise<void> {
+  return ImportImage('images', id, ddsPath, version as Parameters<typeof ImportImage>[3]);
 }
 
 /**
@@ -187,10 +165,7 @@ export function importImage(
  * "não encontrada em data/ nem em mods/" só faria confusão. Falha de
  * binding = não existe (não serve para exibição).
  */
-export async function imageExists(
-  id: string,
-  version: GameVersionId
-): Promise<boolean> {
+export async function imageExists(id: string, version: GameVersionId): Promise<boolean> {
   try {
     return await ImageExists('images', id, version);
   } catch {
@@ -207,14 +182,14 @@ export function importImageGroup(
   id: string,
   ddsPath: string,
   targets: string[],
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<dto.ImageImportResult> {
   return ImportImageGroup(
     'images',
     id,
     ddsPath,
     targets,
-    version as Parameters<typeof ImportImageGroup>[4]
+    version as Parameters<typeof ImportImageGroup>[4],
   );
 }
 
@@ -223,9 +198,7 @@ export function importImageGroup(
  * por .dds.phyre encontrado (novas, iguais ao binário e inválidas), com as
  * cópias ausentes do grupo anexadas à primeira entrada exibida de cada grupo.
  */
-export function previewImportImages(
-  version: GameVersionId
-): Promise<dto.ImageImportPreview> {
+export function previewImportImages(version: GameVersionId): Promise<dto.ImageImportPreview> {
   return PreviewImportImages(version as Parameters<typeof PreviewImportImages>[0]);
 }
 
@@ -236,12 +209,9 @@ export function previewImportImages(
  */
 export function importImages(
   version: GameVersionId,
-  selection: dto.ImageImportSelection
+  selection: dto.ImageImportSelection,
 ): Promise<dto.ImageImportResult> {
-  return ImportImages(
-    version as Parameters<typeof ImportImages>[0],
-    selection
-  );
+  return ImportImages(version as Parameters<typeof ImportImages>[0], selection);
 }
 
 /**
@@ -249,10 +219,7 @@ export function importImages(
  * textura) — existe para edição EXTERNA em hex editor, que o cache não vê.
  */
 export function refreshImageDuplicates(version: GameVersionId): Promise<void> {
-  return RefreshImageDuplicates(
-    'images',
-    version as Parameters<typeof RefreshImageDuplicates>[1]
-  );
+  return RefreshImageDuplicates('images', version as Parameters<typeof RefreshImageDuplicates>[1]);
 }
 
 /**
@@ -260,52 +227,38 @@ export function refreshImageDuplicates(version: GameVersionId): Promise<void> {
  * o menu de contexto e os diálogos de extrair/replicar/deletar pedem para
  * agir sobre o NÓ CLICADO, que pode não ser a entry selecionada.
  */
-export function imageDuplicates(
-  id: string,
-  version: GameVersionId
-): Promise<dto.ImageDuplicates> {
-  return ImageDuplicates(
-    'images',
-    id,
-    version as Parameters<typeof ImageDuplicates>[2]
-  );
+export function imageDuplicates(id: string, version: GameVersionId): Promise<dto.ImageDuplicates> {
+  return ImageDuplicates('images', id, version as Parameters<typeof ImageDuplicates>[2]);
 }
 
 /** União de cópias adicionais dos ids selecionados, sem carregar imagens. */
-export function imageSelectionCopies(
-  ids: string[],
-  version: GameVersionId
-): Promise<string[]> {
-  return ImageSelectionCopies(
-    'images',
-    ids,
-    version as Parameters<typeof ImageSelectionCopies>[2]
-  );
+export function imageSelectionCopies(ids: string[], version: GameVersionId): Promise<string[]> {
+  return ImageSelectionCopies('images', ids, version as Parameters<typeof ImageSelectionCopies>[2]);
 }
 
 /** Extrai .dds + .png desta textura e das cópias escolhidas (lote). */
 export function extractImageGroup(
   id: string,
   targets: string[],
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<dto.BatchResult> {
   return ExtractImageGroup(
     'images',
     id,
     targets,
-    version as Parameters<typeof ExtractImageGroup>[3]
+    version as Parameters<typeof ExtractImageGroup>[3],
   );
 }
 
 /** Extrai somente as imagens marcadas, sem incluir cópias não selecionadas. */
 export function extractImageSelection(
   ids: string[],
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<dto.BatchResult> {
   return ExtractImageSelection(
     'images',
     ids,
-    version as Parameters<typeof ExtractImageSelection>[2]
+    version as Parameters<typeof ExtractImageSelection>[2],
   );
 }
 
@@ -316,14 +269,9 @@ export function extractImageSelection(
 export function replicateImage(
   id: string,
   targets: string[],
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<dto.BatchResult> {
-  return ReplicateImage(
-    'images',
-    id,
-    targets,
-    version as Parameters<typeof ReplicateImage>[3]
-  );
+  return ReplicateImage('images', id, targets, version as Parameters<typeof ReplicateImage>[3]);
 }
 
 /**
@@ -334,15 +282,9 @@ export function deleteImages(
   id: string,
   targets: string[],
   scope: 'data' | 'mods' | 'both',
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<dto.BatchResult> {
-  return DeleteImages(
-    'images',
-    id,
-    targets,
-    scope,
-    version as Parameters<typeof DeleteImages>[4]
-  );
+  return DeleteImages('images', id, targets, scope, version as Parameters<typeof DeleteImages>[4]);
 }
 
 /** Delete em lote das imagens marcadas; a opção de cópias vale para cada id. */
@@ -350,14 +292,14 @@ export function deleteImageSelection(
   ids: string[],
   withCopies: boolean,
   scope: 'data' | 'mods' | 'both',
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<dto.BatchResult> {
   return DeleteImageSelection(
     'images',
     ids,
     withCopies,
     scope,
-    version as Parameters<typeof DeleteImageSelection>[4]
+    version as Parameters<typeof DeleteImageSelection>[4],
   );
 }
 
@@ -365,16 +307,8 @@ export function deleteImageSelection(
  * "Abrir até o arquivo": abre o explorador já com o arquivo da entrada
  * selecionado, resolvido mods-first (o arquivo que está valendo).
  */
-export function revealEntry(
-  kind: EntryKind,
-  id: string,
-  version: GameVersionId
-): Promise<void> {
-  return RevealEntryFile(
-    kind,
-    id,
-    version as Parameters<typeof RevealEntryFile>[2]
-  );
+export function revealEntry(kind: EntryKind, id: string, version: GameVersionId): Promise<void> {
+  return RevealEntryFile(kind, id, version as Parameters<typeof RevealEntryFile>[2]);
 }
 
 /** Salva .dds ou .png no caminho escolhido pelo usuário. */
@@ -382,23 +316,14 @@ export function saveImage(
   id: string,
   format: 'dds' | 'png',
   destPath: string,
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<void> {
-  return SaveImage(
-    'images',
-    id,
-    format,
-    destPath,
-    version as Parameters<typeof SaveImage>[4]
-  );
+  return SaveImage('images', id, format, destPath, version as Parameters<typeof SaveImage>[4]);
 }
 
 /** Seletor nativo para escolher um .dds a importar (abre em mods/images/<raiz>/<dir do id>). */
 export function selectImageFile(id: string, version: GameVersionId): Promise<string> {
-  return SelectImageFile(
-    id,
-    version as Parameters<typeof SelectImageFile>[1]
-  );
+  return SelectImageFile(id, version as Parameters<typeof SelectImageFile>[1]);
 }
 
 /** Diálogo "Salvar como" para .dds/.png, já no diretório de trabalho da textura. */
@@ -406,13 +331,13 @@ export function selectImageSavePath(
   format: 'dds' | 'png',
   suggestedName: string,
   id: string,
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<string> {
   return SelectImageSavePath(
     format,
     suggestedName,
     id,
-    version as Parameters<typeof SelectImageSavePath>[3]
+    version as Parameters<typeof SelectImageSavePath>[3],
   );
 }
 
@@ -420,14 +345,9 @@ export function selectImageSavePath(
 export function imageExportPath(
   id: string,
   format: 'dds' | 'png',
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<string> {
-  return ImageExportPath(
-    'images',
-    id,
-    format,
-    version as Parameters<typeof ImageExportPath>[3]
-  );
+  return ImageExportPath('images', id, format, version as Parameters<typeof ImageExportPath>[3]);
 }
 
 /** Exporta a entrada em JSON + .strings (mods/edits). */
@@ -435,27 +355,18 @@ export async function exportEntry(
   kind: EntryKind,
   id: string,
   version: GameVersionId,
-  langs: string[] = []
+  langs: string[] = [],
 ): Promise<string[]> {
-  return ExportEntry(
-    kind,
-    id,
-    version as Parameters<typeof ExportEntry>[2],
-    langs
-  );
+  return ExportEntry(kind, id, version as Parameters<typeof ExportEntry>[2], langs);
 }
 
 /** Lê o artefato JSON padrão em mods/edits e aplica no binário. */
 export async function importEntry(
   kind: EntryKind,
   id: string,
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<string[]> {
-  return ImportEntry(
-    kind,
-    id,
-    version as Parameters<typeof ImportEntry>[2]
-  );
+  return ImportEntry(kind, id, version as Parameters<typeof ImportEntry>[2]);
 }
 
 /** Exporta o lote como UMA operação agrupada: um item {kind, ids} por ação
@@ -470,7 +381,7 @@ export async function exportArtifactBatch(
   items: { kind: EntryKind; ids: string[]; complete?: boolean }[],
   version: GameVersionId,
   langs: string[] = [],
-  format: ExportFormat
+  format: ExportFormat,
 ): Promise<string[]> {
   return ExportArtifactBatch(
     items.map((it) => ({
@@ -480,7 +391,7 @@ export async function exportArtifactBatch(
     })),
     version as Parameters<typeof ExportArtifactBatch>[1],
     langs,
-    format
+    format,
   );
 }
 
@@ -504,16 +415,13 @@ export function selectImportFile(): Promise<string> {
 /** Valida o arquivo e devolve o resumo do modal (sem aplicar nada). */
 export async function previewImport(
   path: string,
-  version: GameVersionId
+  version: GameVersionId,
 ): Promise<dto.ImportSummary> {
   return PreviewImport(path, version as Parameters<typeof PreviewImport>[1]);
 }
 
 /** Aplica o arquivo validado; devolve quantos textos 'us' mudaram. */
-export async function importFile(
-  path: string,
-  version: GameVersionId
-): Promise<number> {
+export async function importFile(path: string, version: GameVersionId): Promise<number> {
   return ImportFile(path, version as Parameters<typeof ImportFile>[1]);
 }
 
@@ -523,12 +431,9 @@ export async function importFile(
  */
 export async function previewImportTranslated(
   version: GameVersionId,
-  kinds: EntryKind[]
+  kinds: EntryKind[],
 ): Promise<dto.ImportBatch> {
-  return PreviewImportTranslated(
-    version as Parameters<typeof PreviewImportTranslated>[0],
-    kinds
-  );
+  return PreviewImportTranslated(version as Parameters<typeof PreviewImportTranslated>[0], kinds);
 }
 
 /**
@@ -537,10 +442,7 @@ export async function previewImportTranslated(
  */
 export async function importTranslated(
   version: GameVersionId,
-  kinds: EntryKind[]
+  kinds: EntryKind[],
 ): Promise<dto.ImportBatch> {
-  return ImportTranslated(
-    version as Parameters<typeof ImportTranslated>[0],
-    kinds
-  );
+  return ImportTranslated(version as Parameters<typeof ImportTranslated>[0], kinds);
 }
