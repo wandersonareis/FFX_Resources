@@ -5,6 +5,7 @@
     "clientKind": "git",
     "useIgnoreFile": true
   },
+  // `!!` = fora de TUDO do Biome (lint, format, grafo de módulos).
   "files": {
     "includes": [
       "**",
@@ -14,6 +15,11 @@
       "!!**/build",
       "!!**/coverage",
       "!!**/dist",
+      // Bindings gerados pelo Wails (regenerados a cada build): não editar,
+      // não formatar. O formatter remove as aspas das propriedades de classe
+      // ("time": number -> time: number) e o TypeScript passa a acusar
+      // TS2564 (strictPropertyInitialization) em todas as models geradas —
+      // as aspas são load-bearing.
       "!!**/bindings"
     ]
   },
