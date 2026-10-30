@@ -103,8 +103,18 @@ diálogo de Configurações, confere o erro e devolve o valor original.
 - `export-all-disabled-mods.spec` — **export bulk com o toggle de mods
   desligado**: "Exportar — todos os tipos" lê os ORIGINAIS de data/ e
   grava TUDO em `mods/edits` (artefatos `.strings`, nada fora de edits/; o
-  mainmenu sai em inglês) — é a guarda e2e do carregamento completo dos
-  eventos no export bulk (`ensureAllEventsLoaded`);
+  mainmenu sai em inglês no `text`/`source` e com a tradução no `target`) —
+  é a guarda e2e do carregamento completo dos eventos no export bulk
+  (`ensureAllEventsLoaded`);
+- `export-import-roundtrip.spec` — **o par source/target do formato CAT no
+  ambiente real**: exporta um kind (Textos de batalha) em JSON, confere
+  `source` (data/) e `target` (mods/) no artefato, isola o lote
+  `mods/translated/text` com ele e importa SEM edição — a prévia tem 0
+  textos alterados, nenhuma entrada/arquivo pulado e nenhum binário é
+  regravado; o `PreviewImport` do mesmo artefato (binding pelo runtime do
+  Wails) devolve `skipped` vazio (guarda do falso positivo de tag de
+  controle em row no-op). O fixture `translated/text` é copiado antes e
+  restaurado arquivo a arquivo no fim;
 - `vbf.spec` — raízes do container, arquivo de texto e textura do
   container, diálogo de extração e o erro "aponte o executável".
 

@@ -8,13 +8,13 @@ import (
 	"strings"
 	"testing"
 
-	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/fileFormats/eventtable"
 	"ffxresources/backend/formatters"
 	jsonfmt "ffxresources/backend/formatters/json"
 	strfmt "ffxresources/backend/formatters/strings"
+	"ffxresources/testData/tempdir"
 )
 
 // repoDataRootLocal sobe do arquivo de teste até o go.mod e devolve
@@ -278,7 +278,7 @@ func TestExportBulkImportRoundtripBinary(t *testing.T) {
 }
 
 // bulkImportRoundtripScenario roda o ciclo em um GameFilesRoot temporário
-// próprio (os dois formatos não compartilham estado de store/mods).
+// próprio (os formatos não compartilham estado de store/mods).
 func bulkImportRoundtripScenario(t *testing.T, format string) {
 	t.Helper()
 	tableBulkFixtures(t, common.GameVersionFFX, []string{
@@ -319,7 +319,7 @@ func bulkImportRoundtripScenario(t *testing.T, format string) {
 	editID, editIndex, oldText, newText := pickBulkEditableRow(t, imported)
 	for i := range imported[editID].Rows {
 		if imported[editID].Rows[i].Index == editIndex {
-			imported[editID].Rows[i].Text[common.DefaultLocalization] = newText
+			imported[editID].Rows[i].Target = newText
 			break
 		}
 	}
@@ -384,7 +384,8 @@ func parseBulkArtifact(t *testing.T, format, path string) dto.Collection {
 	if err != nil {
 		t.Fatalf("ler artefato: %v", err)
 	}
-	if format == "json" {
+	switch format {
+	case "json":
 		c, err := jsonfmt.JSONFormatter{}.Unmarshal(raw)
 		if err != nil {
 			t.Fatalf("parse json: %v", err)
@@ -401,7 +402,8 @@ func parseBulkArtifact(t *testing.T, format, path string) dto.Collection {
 // marshalBulkArtifact serializa o DTO editado de volta ao formato de origem.
 func marshalBulkArtifact(t *testing.T, format string, c dto.Collection) []byte {
 	t.Helper()
-	if format == "json" {
+	switch format {
+	case "json":
 		raw, err := jsonfmt.JSONFormatter{}.Marshal(c)
 		if err != nil {
 			t.Fatalf("marshal json: %v", err)

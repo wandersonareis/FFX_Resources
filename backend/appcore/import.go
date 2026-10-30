@@ -1,6 +1,6 @@
-// ImportText: artefato de texto APONTADO (.json/.strings/.csv/.xlsx) + binários
-// APONTADOS (multi-seleção) → binários reconstruídos em imported/ ao lado
-// de CADA binário. O import é ON THE FLY: tudo acontece apenas ali —
+// ImportText: artefato de texto APONTADO (.json/.strings/.csv/.xlsx) +
+// binários APONTADOS (multi-seleção) → binários reconstruídos em imported/
+// ao lado de CADA binário. O import é ON THE FLY: tudo acontece apenas ali —
 // nenhum store do frontend é mutado, nada vai para mods/.
 //
 // O casamento texto↔binário é por NOME (basename): as operações do menu
@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"ffxresources/backend/builders"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/formatters"
@@ -53,14 +54,24 @@ func ImportText(ctx context.Context, req ImportRequest) (ImportResult, error) {
 	if strings.TrimSpace(req.Text) == "" {
 		return ImportResult{}, fmt.Errorf("nenhum arquivo de texto selecionado")
 	}
+
+	art, err := readArtifact(req.Text)
+	if err != nil {
+		return ImportResult{}, err
+	}
+	return importCollection(ctx, req, art)
+}
+
+// importCollection aplica uma Collection já parseada nos binários do pedido.
+// É o caminho ÚNICO de import por arquivo: ImportText (JSON/CSV/XLSX) lê o
+// artefato e chama aqui. O DTO do artefato traz o texto alvo em Target — os
+// appliers avulsos consomem Text[us], daí a projeção ApplyTargetAsText.
+func importCollection(ctx context.Context, req ImportRequest, art dto.Collection) (ImportResult, error) {
 	if len(req.Binaries) == 0 {
 		return ImportResult{}, fmt.Errorf("nenhum binário selecionado")
 	}
 
-	art, artFormat, err := readArtifact(req.Text)
-	if err != nil {
-		return ImportResult{}, err
-	}
+	art = builders.ApplyTargetAsText(art)
 
 	kind, version, err := artifactTarget(art, req.Kind)
 	if err != nil {
@@ -78,13 +89,13 @@ func ImportText(ctx context.Context, req ImportRequest) (ImportResult, error) {
 			return result, ctx.Err()
 		default:
 		}
-		result.Outcomes = append(result.Outcomes, importOne(req, art, artFormat, kind, version, binary))
+		result.Outcomes = append(result.Outcomes, importOne(req, art, kind, version, binary))
 	}
 	return result, nil
 }
 
 // importOne processa UM binário do lote.
-func importOne(req ImportRequest, art dto.Collection, artFormat ArtifactFormat, kind string, version common.GameVersion, binary string) FileOutcome {
+func importOne(req ImportRequest, art dto.Collection, kind string, version common.GameVersion, binary string) FileOutcome {
 	outcome := FileOutcome{Input: binary, Kind: kind, Version: version.String(), Status: StatusFailed}
 
 	d, err := DetectFile(binary)
@@ -165,37 +176,28 @@ func importOne(req ImportRequest, art dto.Collection, artFormat ArtifactFormat, 
 // conteúdo — o sniff pega o artefato trocado antes do parse genérico).
 // O formatter vem do registry (chave canônica do formato); o parse é o
 // MESMO para todo kind — os bytes JSON/strings são idênticos.
-func readArtifact(path string) (dto.Collection, ArtifactFormat, error) {
+func readArtifact(path string) (dto.Collection, error) {
 	d, err := DetectFile(path)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	var format ArtifactFormat
-	switch d.Format {
-	case FormatArtifactJSON:
-		format = FormatJSON
-	case FormatArtifactStrings:
-		format = FormatStrings
-	case FormatArtifactCSV:
-		format = FormatCSV
-	case FormatArtifactXLSX:
-		format = FormatXLSX
-	default:
-		return nil, 0, Incompatible(path, "artefato de texto", d.Format.String(), "arquivo não é .json, .strings, .csv nem .xlsx")
+	format := d.Format.artifactRegistryKey()
+	if format == "" {
+		return nil, Incompatible(path, "artefato de texto", d.Format.String(), "arquivo não é .json, .strings, .csv nem .xlsx")
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	f, ok := formatters.Get(format.String())
+	f, ok := formatters.Get(format)
 	if !ok {
-		return nil, 0, fmt.Errorf("formatter %s não registrado", format)
+		return nil, fmt.Errorf("formatter %s não registrado", format)
 	}
 	c, err := f.Unmarshal(raw)
 	if err != nil {
-		return nil, 0, fmt.Errorf("falha ao analisar %s: %w", format, err)
+		return nil, fmt.Errorf("falha ao analisar %s: %w", format, err)
 	}
-	return c, format, nil
+	return c, nil
 }
 
 // artifactTarget valida as keys do artefato: kind único, versão presente e

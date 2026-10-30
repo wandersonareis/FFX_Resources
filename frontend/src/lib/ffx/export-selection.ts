@@ -18,7 +18,12 @@ const FORMAT_STORAGE_KEY = 'ffx.export-format';
 function loadStoredFormat(): ExportFormat {
   try {
     const stored = localStorage.getItem(FORMAT_STORAGE_KEY);
-    if (stored === 'strings' || stored === 'csv' || stored === 'xlsx') {
+    if (
+      stored === 'json' ||
+      stored === 'strings' ||
+      stored === 'csv' ||
+      stored === 'xlsx'
+    ) {
       return stored;
     }
     return 'json';

@@ -99,6 +99,9 @@ func marshalCollectionOpt(c dto.Collection, langs []string, dedup bool) ([]byte,
 					r.Text[lang] = t
 				}
 			}
+			// Copy Source and Target fields
+			r.Source = row.Source
+			r.Target = row.Target
 			if t := r.Text[common.DefaultLocalization]; !row.Divergent && dedup && hash.IsDedupEligible(t) {
 				if h, _ := hash.Strip(r.Hash[common.DefaultLocalization]); h != "" {
 					if _, ok := seen[h]; ok {

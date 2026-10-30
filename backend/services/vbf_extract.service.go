@@ -547,6 +547,9 @@ func (s *MetadataService) ExportVbfSelection(vbfPath, format string, paths []str
 			step.End()
 			continue
 		}
+		// text/source vêm do CONTAINER (é o export do .vbf); target vem de
+		// mods/ — a tradução, quando existir.
+		collection = s.projectTargets(kind, version, collection)
 		collection = filterExportRows(collection)
 		if len(collection) == 0 {
 			step.End()
@@ -565,11 +568,13 @@ func (s *MetadataService) ExportVbfSelection(vbfPath, format string, paths []str
 
 // vbfExportEntry decodifica um DTO RAW diretamente da fonte VBF. Não usa
 // GetVbfTextEntry, que aplica dedup de sessão para exibição na tabela e pode
-// produzir refs a arquivos que não fazem parte da seleção do export.
+// produzir refs a arquivos que não fazem parte da seleção do export. A
+// leitura é do CONTAINER (SourceVbf): o export do .vbf não deve herdar o
+// texto de mods/ — o target da tradução é projetado pelo chamador.
 func (s *MetadataService) vbfExportEntry(a *vbf.Archive, kind, id, clicked string, version common.GameVersion) (dto.FileEntry, error) {
 	target := vbfTarget{Kind: kind, ID: id, Version: version}
 	return vbfRun(a, target, clicked, func() (dto.FileEntry, error) {
-		_, entry, exists, err := s.decodeVbfEstado(target, common.SourceVbfPreferred)
+		_, entry, exists, err := s.decodeVbfEstado(target, common.SourceVbf)
 		if err != nil {
 			return dto.FileEntry{}, err
 		}

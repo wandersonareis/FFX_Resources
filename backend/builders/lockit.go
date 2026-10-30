@@ -119,7 +119,12 @@ func ApplyLockitDTO(version common.GameVersion, c dto.Collection) error {
 // ApplyLockitDTOWithScope é o apply com a fonte do arquivo escolhida pelo
 // chamador. A gravação é do próprio arquivo carregado (SaveLanguages →
 // mods/), então escopo nenhum precisa de hook de save.
+//
+// O payload pode vir do DTO de DISPLAY (refs "$hash" das cópias não
+// traduzidas): a ref é expandida antes de gravar — o applier escreve o texto
+// da row direto, e "$hash" como texto corromperia o binário.
 func ApplyLockitDTOWithScope(version common.GameVersion, c dto.Collection, scope LockitApplyScope) error {
+	c = ResolveApplyRefs(c)
 	for _, id := range c.SortedKeys() {
 		entry := c[id]
 		f, err := scope.Load(id)

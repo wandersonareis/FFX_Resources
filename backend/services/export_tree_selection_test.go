@@ -186,7 +186,7 @@ func TestTreeSelectionExportImportRoundtrip(t *testing.T) {
 			id, index, _, newText := pickBulkEditableRow(t, imported)
 			for i := range imported[id].Rows {
 				if imported[id].Rows[i].Index == index {
-					imported[id].Rows[i].Text[common.DefaultLocalization] = newText
+					imported[id].Rows[i].Target = newText
 					break
 				}
 			}

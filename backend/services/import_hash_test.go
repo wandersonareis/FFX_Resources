@@ -3,26 +3,29 @@ package services
 import (
 	"testing"
 
+	"ffxresources/backend/builders"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/formatters/hash"
 )
 
-// Matriz do casamento por hash (Passo 1 do plano):
-// N7-M  hash nunca é reescrito no merge,
-// N8    index trocado ainda casa (grupo de 1),
-// N11   artefato velho ⇒ inserted 0,
-// N12   1 traduzida + cópias ⇒ só a célula certa,
-// N12b  célula de grupo N já reivindicada ⇒ unmatched,
-// N13/N14 row em branco não é candidata nem loga,
-// N15   filtro de export pelo padrão 'us' (pt tem texto, us vazio ⇒ sai),
-// N16   RowCount recalculado no filtro,
-// N17   import parcial (menos textos que o total),
-// N18   ordem trocada,
-// N-hf  hash não encontrado é log, não erro do resumo.
+// Matriz do casamento do import (formato CAT: source/target):
+//
+//	N7-M  hash nunca é reescrito no merge,
+//	N8    ordem trocada no artefato não muda a célula,
+//	N11   coordenada ausente na store ⇒ unmatched (log, não erro),
+//	N12   dedup: cópias do mesmo texto são células distintas (coordenada),
+//	N12b  coordenada repetida no artefato ⇒ unmatched na segunda,
+//	N13   row sem target não é candidata nem loga,
+//	N15   filtro de export pelo padrão 'us' OU target preenchido,
+//	N16   RowCount recalculado no filtro,
+//	N17   import parcial (menos textos que o total),
+//	N18   ordem trocada,
+//	N-hf  origem divergente não é erro do resumo.
 
 var hTestMeta = func() dto.Metadata { return dto.Metadata{Key: "ffx/battle/kernel/btl_txt.bin", ID: "btl"} }
 
+// hRow é uma row da STORE: o texto atual do binário.
 func hRow(index int, name, text string) dto.TextRow {
 	return dto.TextRow{
 		Index: index,
@@ -32,18 +35,25 @@ func hRow(index int, name, text string) dto.TextRow {
 	}
 }
 
-// hEditRow simula a row editada por um tradutor: o TEXTO muda, o hash fica
-// o do texto vigente no export (staleness token) — é o hash que casa com a
-// store, nunca um derivado do texto editado.
+// hEditRow é uma row do ARTEFATO no formato CAT: text/source carregam a
+// referência (o texto de data/ no export) e target é a tradução — o ÚNICO
+// texto que o import aplica.
 func hEditRow(index int, name, exportText, newText string) dto.TextRow {
 	r := hRow(index, name, exportText)
-	r.Text[common.DefaultLocalization] = newText
+	r.Source = exportText
+	r.Target = newText
 	return r
 }
 
-// matchSimple casamento sem validação de tags (referência nil).
+// matchSimple casa sem referência de data/ (a checagem de origem/tags é
+// pulada — é a degradação quando data/ não está disponível).
 func matchSimple(imp, se dto.FileEntry) importMatch {
 	return matchImportEntry(imp, se, nil)
+}
+
+// matchWithOriginal casa validando a origem (hash do `us` de data/).
+func matchWithOriginal(imp, se, orig dto.FileEntry) importMatch {
+	return matchImportEntry(imp, se, &orig)
 }
 
 // store de 5 rows: 0 e 2 em branco ("-", texto próprio do jogo), 1 e 3 com
@@ -61,7 +71,18 @@ func hTestStore() dto.FileEntry {
 	}
 }
 
-func TestHashMatchSwappedOrder(t *testing.T) {
+// hTestOrig é a referência de data/ da store acima (o `us` original).
+func hTestOrig() dto.FileEntry {
+	return hTestStore()
+}
+
+// catArtifact projeta uma collection da store para o formato de artefato
+// (source/target preenchidos) — o export de uma árvore sem mods/.
+func catArtifact(c dto.Collection) dto.Collection {
+	return builders.ProjectSourceTarget(c, c)
+}
+
+func TestMatchRowsSwappedOrder(t *testing.T) {
 	store := hTestStore()
 	// Artefato com ordem trocada: [4, 3, 1] (e blank espremido no meio).
 	art := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
@@ -76,17 +97,17 @@ func TestHashMatchSwappedOrder(t *testing.T) {
 	if len(m.unmatched) != 0 {
 		t.Fatalf("ordem trocada não pode gerar unmatched: %d", len(m.unmatched))
 	}
-	if m.candidates != 3 || m.inserted != 3 {
-		t.Fatalf("candidates=%d inserted=%d, queria 3 e 3", m.candidates, m.inserted)
+	if m.candidates != 2 || m.inserted != 2 {
+		t.Fatalf("candidates=%d inserted=%d, queria 2 e 2 (só rows com target)", m.candidates, m.inserted)
 	}
 	if m.changed != 2 {
 		t.Fatalf("changed=%d, queria 2 (rows 4 e 3 mudaram)", m.changed)
 	}
 }
 
-func TestHashMatchPartialImport(t *testing.T) {
+func TestMatchRowsPartialImport(t *testing.T) {
 	store := hTestStore()
-	// Import parcial: só 1 das 3 rows traduzíveis vai no arquivo.
+	// Import parcial: só 1 das rows traduzíveis vai no arquivo.
 	art := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
 		hEditRow(4, "c", "Bravo line", "Bravo traduzido"),
 	}}
@@ -106,17 +127,15 @@ func TestHashMatchPartialImport(t *testing.T) {
 	}
 }
 
-func TestHashMatchNotFoundLogsNotErrors(t *testing.T) {
+func TestMatchRowsMissingCoordinateUnmatched(t *testing.T) {
 	store := hTestStore()
-	// Hash que não existe na store (texto mudou lá desde o export): a row
-	// traz hash estranho e texto estranho — nada casa.
-	artifact := hRow(1, "a", "Texto que ninguém tem mais")
-	artifact.Hash[common.DefaultLocalization] = "0123456789abcdef"
+	// Coordenada que não existe na store (binário mudou desde o export).
+	artifact := hEditRow(9, "zz", "Texto que ninguém tem mais", "Tradução órfã")
 
 	m := matchSimple(dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{artifact}}, store)
 
 	if len(m.unmatched) != 1 {
-		t.Fatalf("hash estranho deve ser unmatched: %d", len(m.unmatched))
+		t.Fatalf("coordenada ausente deve ser unmatched: %d", len(m.unmatched))
 	}
 	if m.inserted != 0 || m.changed != 0 {
 		t.Fatalf("inserted=%d changed=%d, queria 0 e 0", m.inserted, m.changed)
@@ -126,22 +145,41 @@ func TestHashMatchNotFoundLogsNotErrors(t *testing.T) {
 	// TestImportE2EUnknownEntry e TestImportE2EOverLimitEntrySkipped.)
 }
 
-func TestHashMatchDedupGroupTiebreak(t *testing.T) {
+func TestMatchRowsSourceChangedUnmatched(t *testing.T) {
+	store := hTestStore()
+	orig := hTestOrig()
+	// O segmento em data/ mudou depois do export: a row 1 agora é outro
+	// texto; a 4 continua igual.
+	orig.Rows[1] = hRow(1, "a", "Alpha line (revisada)")
+
+	art := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
+		hEditRow(1, "a", "Alpha line", "Alpha traduzida"),
+		hEditRow(4, "c", "Bravo line", "Bravo traduzido"),
+	}}
+
+	m := matchWithOriginal(art, store, orig)
+
+	if m.inserted != 1 || len(m.unmatched) != 1 {
+		t.Fatalf("inserted=%d unmatched=%d, queria 1 e 1", m.inserted, len(m.unmatched))
+	}
+	if m.pairs[0].store.Index != 4 {
+		t.Fatalf("par errado: %+v", m.pairs)
+	}
+}
+
+func TestMatchRowsDedupCopiesTargetOwnCoordinate(t *testing.T) {
 	store := hTestStore()
 	// "Alpha line" está nas rows 1 e 3 (mesmo hash). O artefato traduz
-	// APENAS a 3: grupo N, desempate pela coordenada (3,b).
+	// APENAS a 3: a coordenada diz exatamente qual célula recebe o texto.
 	art := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
 		hEditRow(3, "b", "Alpha line", "Alpha TRADUZIDA"),
-		hRow(1, "a", "Alpha line"),
+		hEditRow(1, "a", "Alpha line", "Alpha TRADUZIDA"),
 	}}
 
 	m := matchSimple(art, store)
 
-	if len(m.unmatched) != 0 || m.changed != 1 {
-		t.Fatalf("unmatched=%d changed=%d, queria 0 e 1", len(m.unmatched), m.changed)
-	}
-	if len(m.pairs) != 2 {
-		t.Fatalf("pairs=%d, queria 2", len(m.pairs))
+	if len(m.unmatched) != 0 || m.changed != 2 {
+		t.Fatalf("unmatched=%d changed=%d, queria 0 e 2", len(m.unmatched), m.changed)
 	}
 	for _, p := range m.pairs {
 		if p.store.Name != p.imported.Name {
@@ -150,10 +188,10 @@ func TestHashMatchDedupGroupTiebreak(t *testing.T) {
 	}
 }
 
-func TestHashMatchClaimedCellUnmatched(t *testing.T) {
+func TestMatchRowsClaimedCoordinateUnmatched(t *testing.T) {
 	store := hTestStore()
-	// Duas rows do artefato com o MESMO hash do grupo único (1,a): a segunda
-	// não tem célula livre ⇒ unmatched.
+	// Duas rows do artefato com a MESMA coordenada (1,a): a segunda não
+	// sobrescreve a primeira.
 	art := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
 		hEditRow(1, "a", "Alpha line", "Alpha v1"),
 		hEditRow(1, "a", "Alpha line", "Alpha v2"),
@@ -196,11 +234,13 @@ func TestMergeImportUsHashNeverRewritten(t *testing.T) {
 
 func TestMergeImportUsPreservesInferredDivergence(t *testing.T) {
 	store := hTestStore()
-	imported := hEditRow(3, "b", "Alpha line", "Beta for this copy")
-	imported.Divergent = true
-	merged := mergeImportUs(dto.Collection{"btl": store}, map[string][]rowPair{
-		"btl": {{store: store.Rows[3], imported: imported}},
-	})
+	art := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
+		hEditRow(3, "b", "Alpha line", "Beta for this copy"),
+	}}
+	art.Rows[0].Divergent = true
+
+	m := matchSimple(art, store)
+	merged := mergeImportUs(dto.Collection{"btl": store}, map[string][]rowPair{"btl": m.pairs})
 	row := merged["btl"].Rows[3]
 	if !row.Divergent {
 		t.Fatal("merge import must preserve the parser's divergent-copy marker")
@@ -210,9 +250,10 @@ func TestMergeImportUsPreservesInferredDivergence(t *testing.T) {
 	}
 }
 
-func TestBlankImportRowNeverCandidate(t *testing.T) {
+func TestBlankTargetNeverCandidate(t *testing.T) {
 	store := hTestStore()
 	art := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
+		// Sem target (segmento ainda não traduzido): não é candidata.
 		{Index: 9, Name: "zz", Hash: map[string]string{common.DefaultLocalization: "-"}, Text: map[string]string{common.DefaultLocalization: "-"}},
 		hEditRow(4, "c", "Bravo line", "Bravo traduzido"),
 	}}
@@ -220,23 +261,24 @@ func TestBlankImportRowNeverCandidate(t *testing.T) {
 	m := matchSimple(art, store)
 
 	if m.candidates != 1 || len(m.unmatched) != 0 {
-		t.Fatalf("candidates=%d unmatched=%d, queria 1 e 0 (blank nunca é candidato nem loga)",
+		t.Fatalf("candidates=%d unmatched=%d, queria 1 e 0 (sem target nunca é candidata nem loga)",
 			m.candidates, len(m.unmatched))
 	}
 }
 
-func TestFilterExportRowsUsOnly(t *testing.T) {
+func TestFilterExportRowsUsOrTarget(t *testing.T) {
 	c := dto.Collection{
 		"btl": dto.FileEntry{
 			Metadata: dto.Metadata{Key: "ffx/battle/kernel/btl_txt.bin", ID: "btl", RowCount: 5},
 			Rows: []dto.TextRow{
-				// us vazio, pt preenchido ⇒ SAI (padrão 'us'; sem 'us' os
-				// outros idiomas não interessam).
+				// us vazio E target vazio ⇒ SAI (nada a importar).
 				{Index: 0, Text: map[string]string{"pt": "tradução", common.DefaultLocalization: ""}},
 				hRow(1, "", "-"),
 				{Index: 2, Text: map[string]string{common.DefaultLocalization: "   "}},
 				hRow(3, "", "Texto real"),
 				hRow(4, "", "  -  "), // "-" após trim ⇒ blank
+				// sem us, mas com target: FICA (tradução precisa voltar).
+				{Index: 5, Target: "Tradução sem referência"},
 			},
 		},
 		"vazia": dto.FileEntry{
@@ -251,27 +293,26 @@ func TestFilterExportRowsUsOnly(t *testing.T) {
 		t.Fatal("entrada só com row em branco deve sair do artefato")
 	}
 	e := out["btl"]
-	if len(e.Rows) != 1 || e.Rows[0].Index != 3 {
+	if len(e.Rows) != 2 || e.Rows[0].Index != 3 || e.Rows[1].Index != 5 {
 		t.Fatalf("filtro errado: %+v", e.Rows)
 	}
-	if e.Metadata.RowCount != 1 {
-		t.Fatalf("RowCount=%d, queria 1 (recalculado)", e.Metadata.RowCount)
+	if e.Metadata.RowCount != 2 {
+		t.Fatalf("RowCount=%d, queria 2 (recalculado)", e.Metadata.RowCount)
 	}
 }
 
 func TestMatchTagLostRejectedFromPairs(t *testing.T) {
 	store := hTestStore()
+	orig := hTestOrig()
+	// row 1 tem PAUSE no original; row 4 não.
+	orig.Rows[1] = hRow(1, "a", "Alpha {PAUSE} line")
+
 	art := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
-		hEditRow(1, "a", "Alpha line", "Alpha {PAUSE} line"),
+		hEditRow(1, "a", "Alpha {PAUSE} line", "Alpha {PAUSE} traduzida"),
 		hEditRow(4, "c", "Bravo line", "Bravo {PAUSE} traduzido"),
 	}}
-	// original de data/: row 1 tem PAUSE no original; row 4 não.
-	origByText := map[string]string{
-		binaryRowKey(store.Rows[1]): "Alpha {PAUSE} line", // tags preservadas ⇒ ok
-		binaryRowKey(store.Rows[4]): "Bravo line",         // tradução criou PAUSE ⇒ sobra
-	}
 
-	m := matchImportEntry(art, store, func() map[string]string { return origByText })
+	m := matchWithOriginal(art, store, orig)
 
 	if m.inserted != 1 || len(m.tagLost) != 1 {
 		t.Fatalf("inserted=%d tagLost=%d, queria 1 e 1", m.inserted, len(m.tagLost))
@@ -286,14 +327,14 @@ func TestMatchTagLostRejectedFromPairs(t *testing.T) {
 	art2 := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
 		hEditRow(4, "c", "Bravo line", "Bravo {\\n} {CLR:0002} traduzido"),
 	}}
-	if m2 := matchImportEntry(art2, store, func() map[string]string { return origByText }); len(m2.tagLost) != 0 {
+	if m2 := matchWithOriginal(art2, store, orig); len(m2.tagLost) != 0 {
 		t.Fatalf("tag de texto não pode ser validada: %+v", m2.tagLost)
 	}
 }
 
-// Sem original (data/ ausente, nil) a validação de tags é pulada e a row
-// idêntica à store (texto puro) casa direto — sem falso positivo.
-func TestMatchWithoutOriginalSkipsTags(t *testing.T) {
+// Sem original (data/ ausente, nil) a validação é pulada e a row casa pela
+// coordenada — sem falso positivo.
+func TestMatchWithoutOriginalSkipsChecks(t *testing.T) {
 	m := matchImportEntry(
 		dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
 			hEditRow(1, "a", "Alpha line", "Alpha {PAUSE}"),
@@ -304,5 +345,62 @@ func TestMatchWithoutOriginalSkipsTags(t *testing.T) {
 	if len(m.tagLost) != 0 || m.inserted != 1 || m.changed != 1 {
 		t.Fatalf("sem original: tagLost=%d inserted=%d changed=%d, queria 0/1/1",
 			len(m.tagLost), m.inserted, m.changed)
+	}
+}
+
+// Re-import SEM edição: o target é o texto vigente da store, que tem uma tag
+// de controle que o original EN não tem (MCR de speaker de uma tradução
+// pré-existente). Como nada será gravado, a divergência não pode virar aviso
+// de "tag de controle divergente" — é o caso do round-trip export→import.
+func TestMatchNoOpRowSkipsTagValidation(t *testing.T) {
+	original := "{TEXT_NEWLINE}Call any aeon you like. 44"
+	translated := `{MCR:s06:l31:"Belgemine"}{TEXT_NEWLINE}Chame o aeon que você quiser. 44`
+
+	store := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
+		hRow(0, "", translated),
+	}}
+	orig := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
+		hRow(0, "", original),
+	}}
+	row := hRow(0, "", original)
+	row.Source = original
+	row.Target = translated
+	art := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{row}}
+
+	m := matchWithOriginal(art, store, orig)
+
+	if len(m.tagLost) != 0 {
+		t.Fatalf("row no-op não pode gerar tag divergente: %+v", m.tagLost)
+	}
+	if m.changed != 0 || m.inserted != 1 {
+		t.Fatalf("changed=%d inserted=%d, queria 0 e 1", m.changed, m.inserted)
+	}
+}
+
+// A mesma divergência numa row COM edição continua sendo validada (proteção
+// contra sumir/sobrar tag de controle numa tradução nova).
+func TestMatchChangedRowStillValidatesTags(t *testing.T) {
+	original := "{TEXT_NEWLINE}Call any aeon you like. 44"
+	translated := `{MCR:s06:l31:"Belgemine"}{TEXT_NEWLINE}Chame o aeon que você quiser. 44`
+	edited := `{MCR:s06:l31:"Belgemine"}{MCR:s06:l31:"Belgemine"}{TEXT_NEWLINE}Chame o aeon. 44`
+
+	store := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
+		hRow(0, "", translated),
+	}}
+	orig := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{
+		hRow(0, "", original),
+	}}
+	row := hRow(0, "", original)
+	row.Source = original
+	row.Target = edited
+	art := dto.FileEntry{Metadata: hTestMeta(), Rows: []dto.TextRow{row}}
+
+	m := matchWithOriginal(art, store, orig)
+
+	if len(m.tagLost) != 1 {
+		t.Fatalf("tagLost=%+v, queria 1 (sobra de MCR na tradução editada)", m.tagLost)
+	}
+	if m.changed != 0 || m.inserted != 0 {
+		t.Fatalf("changed=%d inserted=%d, queria 0 e 0", m.changed, m.inserted)
 	}
 }

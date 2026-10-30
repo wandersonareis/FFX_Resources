@@ -329,15 +329,18 @@ var _ = Describe("MetadataService", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(entry.Metadata.Key).NotTo(BeEmpty())
 
-		// Encurta um texto 'us' (capacity-safe) para gerar uma alteração.
-		// O Hash NÃO é re-derivado: o artefato carrega o hash do texto no
-		// momento do export, e é ele que casa com a store. Um tradutor mexe
-		// só no valor — re-derivar o hash faria a row casar com nada.
+		// Encurta um texto 'us' (capacity-safe) para gerar uma alteração. O
+		// artefato é o formato CAT: source = referência de data/ e target =
+		// a tradução que o import aplica. Um tradutor mexe só no target.
 		changed := false
 		for i := range entry.Rows {
 			if t := entry.Rows[i].Text[common.DefaultLocalization]; len(t) > 1 {
-				newText := t[:len(t)-1]
-				entry.Rows[i].Text[common.DefaultLocalization] = newText
+				src := entry.Rows[i].Original[common.DefaultLocalization]
+				if src == "" {
+					src = t
+				}
+				entry.Rows[i].Source = src
+				entry.Rows[i].Target = t[:len(t)-1]
 				changed = true
 				break
 			}
@@ -453,12 +456,16 @@ var _ = Describe("MetadataService", Ordered, func() {
 			}
 		}
 		Expect(ti).To(BeNumerically(">=", 0), "deve haver row game com texto 'us' único")
-		target := entry.Rows[ti]
 		const newText = "LOCKIT EDITADO"
-		Expect(target.Text[common.DefaultLocalization]).NotTo(Equal(newText))
-		// Hash fica como no export — é a chave de casamento e o sinal de
-		// staleness, não um derivado do texto editado.
-		target.Text[common.DefaultLocalization] = newText
+		Expect(entry.Rows[ti].Text[common.DefaultLocalization]).NotTo(Equal(newText))
+		// A projeção CAT: source = referência de data/, target = texto que o
+		// import aplica. O hash fica como no export (referência do segmento).
+		src := entry.Rows[ti].Original[common.DefaultLocalization]
+		if src == "" {
+			src = entry.Rows[ti].Text[common.DefaultLocalization]
+		}
+		entry.Rows[ti].Source = src
+		entry.Rows[ti].Target = newText
 
 		raw, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{id: entry})
 		Expect(err).NotTo(HaveOccurred())
@@ -502,7 +509,7 @@ var _ = Describe("MetadataService", Ordered, func() {
 		f, err := lockit.Load(l)
 		Expect(err).NotTo(HaveOccurred())
 		game, _ := f.IndexesByKind()
-		Expect(f.Records()[game[target.Index]].Text(common.DefaultLocalization)).To(Equal(newText))
+		Expect(f.Records()[game[entry.Rows[ti].Index]].Text(common.DefaultLocalization)).To(Equal(newText))
 	})
 
 	It("imports edited lockit strings back to the binary", func() {
@@ -533,7 +540,12 @@ var _ = Describe("MetadataService", Ordered, func() {
 		Expect(ti).To(BeNumerically(">=", 0), "deve haver row utf8 com texto 'us' único")
 		target := ti
 		const newText = "LOCKIT UTF8 EDITADO"
-		entry.Rows[target].Text[common.DefaultLocalization] = newText
+		src := entry.Rows[target].Original[common.DefaultLocalization]
+		if src == "" {
+			src = entry.Rows[target].Text[common.DefaultLocalization]
+		}
+		entry.Rows[target].Source = src
+		entry.Rows[target].Target = newText
 
 		raw, err := strfmt.Marshal(dto.Collection{id: entry})
 		Expect(err).NotTo(HaveOccurred())

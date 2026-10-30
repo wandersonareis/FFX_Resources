@@ -30,6 +30,14 @@ func TestControlTagDiff(t *testing.T) {
 			[]TagIssue{{Content: "ICON:01:A", First: "ICON", Delta: 1},
 				{Content: "ICON:02:B", First: "ICON", Delta: -1}}},
 		{"chave não fechada é literal igual nos dois lados", "a {PAUSE b c", "a {PAUSE b x", nil},
+		// O payload entre aspas da MCR é só display (writeMacro) e não é
+		// gravado no binário: com/sem dicionário é a MESMA tag.
+		{"MCR com payload vs sem payload", `{MCR:s06:l31:"Belgemine"}Olá`, "{MCR:s06:l31}Olá", nil},
+		{"MCR payload diferente por idioma", `{MCR:s06:l31:"Belgemine"}Olá`, `{MCR:s06:l31:"Belgemine"}Oi`, nil},
+		{"MCR de outra seção continua divergente", `{MCR:s06:l31:"Belgemine"}Olá`, `{MCR:s06:l32:"Belgemine"}Olá`,
+			[]TagIssue{{Content: "MCR:s06:l31", First: "MCR", Delta: 1},
+				{Content: "MCR:s06:l32", First: "MCR", Delta: -1}}},
+		{"MCR com payload e sem dicionário", `{MCR:s06:l31:"Belgemine"}Olá`, "{MCR:s06:l31:<Missing>}Olá", nil},
 	}
 	for _, tc := range cases {
 		got := ControlTagDiff(tc.orig, tc.hav)

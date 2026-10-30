@@ -71,7 +71,8 @@ func DedupDTO(c dto.Collection) dto.Collection {
 //
 // É o passo de aplicação do lote vindo do frontend (view dedupado) nos
 // formatos cujo apply não expande refs por conta própria (macro: o DTO
-// mesclado vai direto para o rebuild).
+// mesclado vai direto para o rebuild). Para o APPLY prefira
+// ResolveApplyRefs, que também descarta a ref órfã.
 func ResolveDedupRefs(c dto.Collection) dto.Collection {
 	defs := make(map[string]string)
 	for _, k := range c.SortedKeys() {
@@ -129,6 +130,70 @@ func refBare(row dto.TextRow, text string) (string, bool) {
 		return "", false
 	}
 	return bare, true
+}
+
+// ResolveApplyRefs devolve uma cópia da Collection pronta para o APPLY: as
+// refs "$hash" do lote (DTO de DISPLAY do Save) são expandidas contra as
+// defs do PRÓPRIO lote e as refs SEM def (órfãs) saem do lote — a row não
+// pede alteração nenhuma, então o binário mantém o texto atual.
+//
+// É a régua do collectTableChanges aplicada a quem grava a row direto
+// (objects/lockit): a ref NUNCA pode virar TEXTO no binário. Quando isso
+// acontece, a carga seguinte lê "$<hash>" como literal, o dedup de display
+// não consegue colapsar (texto ≠ original) e a view mostra o hash cru —
+// exatamente o que corrompeu o lm_accesary (57 rows) e o command (2 rows).
+//
+// Def divergente não é referência canônica (mesma regra do
+// ResolveDedupRefs). Entrada sem nada a aplicar fica fora do resultado.
+func ResolveApplyRefs(c dto.Collection) dto.Collection {
+	defs := make(map[string]string)
+	for _, k := range c.SortedKeys() {
+		for _, row := range c[k].Rows {
+			if row.Divergent {
+				continue
+			}
+			t := row.Text[common.DefaultLocalization]
+			if t == "" {
+				continue
+			}
+			if _, isRef := refBare(row, t); isRef {
+				continue
+			}
+			if h := row.Hash[common.DefaultLocalization]; h != "" {
+				defs[h] = t
+			}
+		}
+	}
+
+	out := make(dto.Collection, len(c))
+	for _, k := range c.SortedKeys() {
+		entry := c[k]
+		rows := make([]dto.TextRow, 0, len(entry.Rows))
+		for _, r := range entry.Rows {
+			bare, isRef := refBare(r, r.Text[common.DefaultLocalization])
+			if !isRef {
+				rows = append(rows, r)
+				continue
+			}
+			resolved, ok := defs[bare]
+			if !ok {
+				continue // órfã: nada a aplicar nesta row
+			}
+			text := make(map[string]string, len(r.Text))
+			for lk, lv := range r.Text {
+				text[lk] = lv
+			}
+			text[common.DefaultLocalization] = resolved
+			r.Text = text
+			rows = append(rows, r)
+		}
+		if len(rows) == 0 {
+			continue // entrada sem nada a aplicar não entra no lote
+		}
+		entry.Rows = rows
+		out[k] = entry
+	}
+	return out
 }
 
 // HashOrder é a régua "1ª ocorrência = def" do dedup de display, versão

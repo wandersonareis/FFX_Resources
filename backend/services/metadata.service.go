@@ -493,7 +493,7 @@ func (s *MetadataService) ExportEntry(kind string, version common.GameVersion, i
 		batch.End()
 	}()
 
-	c, err := s.GetCollection(kind, version, ids, step)
+	c, err := s.exportCollection(kind, version, ids, step)
 	if err != nil {
 		return nil, err
 	}
@@ -586,6 +586,13 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 	}
 	uilog.Info(importAction, "%s — aplicando artefato de %s (%s)", id, kind, version.String())
 
+	// O artefato de CAT traz o texto alvo no campo target; os appliers
+	// (builders.Apply*) consomem Text[us]. A substituição é feita no DTO
+	// lido — a store e o arquivo em disco não são tocados.
+	applyTarget := func(c dto.Collection) dto.Collection {
+		return builders.ApplyTargetAsText(c)
+	}
+
 	switch kind {
 	case KindEvents:
 		if err := s.ensureEventsLoaded(version); err != nil {
@@ -604,7 +611,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 			return nil, err
 		}
 		if _, err := applyRecorded(version, "Import", "importado de um json", func() error {
-			return builders.ApplyEventsDTO(version, read, []string{id})
+			return builders.ApplyEventsDTO(version, applyTarget(read), []string{id})
 		}); err != nil {
 			return nil, err
 		}
@@ -619,6 +626,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
+		read = applyTarget(read)
 		for _, key := range read.SortedKeys() {
 			entry := read[key]
 			if _, err := applyRecorded(version, "Import", "importado de um json", func() error {
@@ -639,7 +647,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 			return nil, err
 		}
 		if _, err := applyRecorded(version, "Import", "importado de um json", func() error {
-			return builders.ApplyMacroDTO(version, read)
+			return builders.ApplyMacroDTO(version, applyTarget(read))
 		}); err != nil {
 			return nil, err
 		}
@@ -655,7 +663,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 			return nil, err
 		}
 		if _, err := applyRecorded(version, "Import", "importado de um json", func() error {
-			return builders.ApplyLockitDTO(version, read)
+			return builders.ApplyLockitDTO(version, applyTarget(read))
 		}); err != nil {
 			return nil, err
 		}
@@ -678,9 +686,8 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 		if err != nil {
 			return nil, err
 		}
-		stripHelpRowNames(read)
 		if _, err := applyRecorded(version, "Import", "importado de um json", func() error {
-			return builders.ApplyHelpDTO(version, read, read.SortedKeys())
+			return builders.ApplyHelpDTO(version, applyTarget(read), read.SortedKeys())
 		}); err != nil {
 			return nil, err
 		}
@@ -696,7 +703,7 @@ func (s *MetadataService) ImportEntry(kind string, version common.GameVersion, i
 			return nil, err
 		}
 		if _, err := applyRecorded(version, "Import", "importado de um json", func() error {
-			return builders.ApplyTableDTO(kind, version, read)
+			return builders.ApplyTableDTO(kind, version, applyTarget(read))
 		}); err != nil {
 			return nil, err
 		}
@@ -827,7 +834,16 @@ func (s *MetadataService) ApplyTextCollection(kind string, version common.GameVe
 // applyObjectsCollection aplica um lote de entradas de objects e persiste
 // cada binário em mods/. Agrupa por arquivo para reconstruir cada binário
 // uma única vez. Fluxo único: chunkmap (SchemaAppliers).
+//
+// O payload do Save é o DTO de DISPLAY: cópias não traduzidas chegam como
+// ref "$hash". O applier grava o texto da row direto no binário, então a ref
+// tem de ser expandida (e a órfã descartada) ANTES — senão o binário recebe
+// o hash como texto e a view passa a exibir o hash cru no lugar da tradução.
 func applyObjectsCollection(version common.GameVersion, c dto.Collection) error {
+	c = builders.ResolveApplyRefs(c)
+	if len(c) == 0 {
+		return nil
+	}
 	byKey := make(map[string][]dto.FileEntry, len(c))
 	order := make([]string, 0, len(c))
 	for _, id := range c.SortedKeys() {
@@ -876,7 +892,15 @@ func applyMacroCollection(version common.GameVersion, full, c dto.Collection) er
 
 // applyObjectsEntry carrega o arquivo do layout via schema chunkmap,
 // aplica a entrada e grava em mods/. Fluxo único: chunkmap.
+//
+// Mesma regra do lote: o applier grava o texto da row direto, então a ref
+// "$hash" do DTO de display é expandida (e a órfã descartada) antes.
 func (s *MetadataService) applyObjectsEntry(version common.GameVersion, id string, entry dto.FileEntry) error {
+	resolved := builders.ResolveApplyRefs(dto.Collection{id: entry})
+	if len(resolved) == 0 {
+		return nil // nada a aplicar (só refs órfãs)
+	}
+	entry = resolved[id]
 	key, ok := objectKeyForID(version, id)
 	if !ok {
 		return fmt.Errorf("unknown object id: %s", id)

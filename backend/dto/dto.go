@@ -39,6 +39,13 @@ import (
 // (mods-first = último save). O campo nunca entra em apply/export — o
 // payload de apply leva só index/name/hash/text.
 //
+// Source e Target são a projeção de EXPORT para ferramentas CAT: `source`
+// é o texto do idioma fonte (us) vindo de data/ (ou do .vbf) — referência
+// read-only; `target` é o texto do MESMO segmento em mods/ (a tradução, que
+// vive no slot us). O `target` é o ÚNICO texto que o import aplica no
+// binário. Nenhum dos dois existe fora do export/import de artefato: display
+// e apply continuam usando só Text/Hash.
+//
 // A tabela é a UNIÃO das rows dos dois lados; os dois flags dizem em qual
 // lado a row falta e é ele que o frontend pinta em vermelho:
 //
@@ -57,12 +64,18 @@ type TextRow struct {
 	// de exibição — o model_id não vira row nem campo editável; a identidade
 	// da row é Index+Name e o import resolve a posição pelos model_ids do
 	// registro. Nada além de text/hash é editável.
-	Character string `json:"character,omitempty"`
-	Kind      string `json:"kind,omitempty"`
-	Name      string `json:"name,omitempty"`
-	Hash     map[string]string `json:"hash,omitempty"`
-	Text     map[string]string `json:"text"`
-	Original map[string]string `json:"original,omitempty"`
+	Character string            `json:"character,omitempty"`
+	Kind      string            `json:"kind,omitempty"`
+	Name      string            `json:"name,omitempty"`
+	Hash      map[string]string `json:"hash,omitempty"`
+	Text      map[string]string `json:"text"`
+	Original  map[string]string `json:"original,omitempty"`
+	// Source é o texto do idioma fonte (us) vindo de data/ ou do .vbf —
+	// referência read-only para ferramentas CAT.
+	Source string `json:"source,omitempty"`
+	// Target é o texto do mesmo segmento em mods/ (a tradução) — o texto
+	// que o import aplica no slot us do binário.
+	Target string `json:"target,omitempty"`
 	// MissingInOriginal/MissingInTranslated marcam a row órfã de um dos
 	// lados da comparação (união da tabela).
 	MissingInOriginal   bool `json:"missingInOriginal,omitempty"`

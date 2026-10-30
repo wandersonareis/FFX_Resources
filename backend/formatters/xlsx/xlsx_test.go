@@ -318,7 +318,7 @@ func manualWorkbook(t *testing.T, row []string) []byte {
 func TestUnmarshalRejeitaHashSemPrefixo(t *testing.T) {
 	row := []string{
 		"ffx/event/obj_ps3/az/azit0000/azit0000.bin",
-		"azit0000", "", "0", "us", "aaaa0000aaaa0000", "Texto", "false",
+		"azit0000", "", "0", "us", "aaaa0000aaaa0000", "Texto", "", "", "false",
 	}
 	if _, err := NewXLSXFormatter().Unmarshal(manualWorkbook(t, row)); err == nil ||
 		!strings.Contains(err.Error(), "prefixo $") {
@@ -326,12 +326,12 @@ func TestUnmarshalRejeitaHashSemPrefixo(t *testing.T) {
 	}
 }
 
-// Célula de hash vazia é tolerada: artefato feito à mão — o import
-// recalcula o hash pelo texto (usHash).
+// Célula de hash vazia é tolerada: artefato feito à mão — o import recalcula
+// o hash pelo texto.
 func TestUnmarshalToleraHashVazio(t *testing.T) {
 	row := []string{
 		"ffx/event/obj_ps3/az/azit0000/azit0000.bin",
-		"azit0000", "", "0", "us", "", "Texto feito à mão", "false",
+		"azit0000", "", "0", "us", "", "Texto feito à mão", "Texto feito à mão", "Texto feito à mão", "false",
 	}
 	got, err := NewXLSXFormatter().Unmarshal(manualWorkbook(t, row))
 	if err != nil {
@@ -346,5 +346,11 @@ func TestUnmarshalToleraHashVazio(t *testing.T) {
 	}
 	if got := entry.Rows[0].Hash["us"]; got != "" {
 		t.Errorf("hash deveria voltar vazio para o serviço recalcular, veio %q", got)
+	}
+	if got := entry.Rows[0].Source; got != "Texto feito à mão" {
+		t.Errorf("source %q != %q", got, "Texto feito à mão")
+	}
+	if got := entry.Rows[0].Target; got != "Texto feito à mão" {
+		t.Errorf("target %q != %q", got, "Texto feito à mão")
 	}
 }

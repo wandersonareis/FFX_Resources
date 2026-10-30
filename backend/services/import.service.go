@@ -1,17 +1,24 @@
 package services
 
-// Importação em lote (.json/.strings): parse → detecção de kind/versão →
-// store → casamento por HASH → merge do 'us' → capacidade uint16.
+// Importação em lote (.json/.strings/.csv/.xlsx) do artefato de CAT:
+// parse → detecção de kind/versão → store → casamento por COORDENADA →
+// merge do 'us' → capacidade uint16.
 //
-// O hash é a identidade do texto e nunca é reescrito pela ferramenta. O
-// artefato traz o hash do texto vigente quando foi exportado (o tradutor
-// mexe só no valor), então o casamento serve para as duas coisas ao mesmo
-// tempo: é a CHAVE (a ordem das rows e a linha faltando não afetam nada) e
-// é o sinal de staleness (a store mudou desde o export ⇒ hash não casa).
+// O artefato traz source/target: `source` é a referência (us de data/) e
+// `target` é o texto a aplicar no slot `us` de mods/ — o ÚNICO texto que o
+// import lê. `text`/`hash` continuam a referência do segmento; o hash de
+// `us` valida staleness contra data/ (mudou desde o export ⇒ row rejeitada,
+// não se sobrescreve tradução de outro segmento).
+//
+// Casamento: (Index, Name) — data/ e mods/ são o MESMO binário em estados
+// diferentes, então a posição é estável e independe do hash do texto
+// traduzido. Sem data/ disponível, o casamento por coordenada segue sozinho
+// (a checagem de tags também é pulada).
 //
 // Divisão de erros:
 //   - arquivo (ilegível, extensão, key ausente/inválida, kind ou versão
-//     divergentes, kinds misturados) → error (toast no frontend);
+//     divergentes, kinds misturados, formato antigo sem source/target) →
+//     error (toast no frontend);
 //   - entrada inexistente na versão, erro de medição e capacidade uint16
 //     → summary.Warnings: a ENTRADA é excluída do import (a granularidade
 //     é o arquivo — um erro em qualquer row exclui a entrada inteira) e o
@@ -20,7 +27,7 @@ package services
 //     compartilhado por todas as entradas) → summary.Errors (modal
 //     desabilita Importar).
 //
-// NÃO bloqueiam: hash não encontrado e tag de controle divergente. A row é
+// NÃO bloqueiam: origem não encontrada e tag de controle divergente. A row é
 // pulada e o resto importa; o texto completo sai no log (LogWarning) e o
 // resumo carrega o espelho curto em Skipped — o modal de detalhes mostra
 // ao revisor o que ficou de fora (botão pulsante) sem poluir a confirmação.
@@ -71,16 +78,38 @@ type importPlan struct {
 // ---- helpers de rows ---------------------------------------------------------
 
 // binaryRowKey é a coordenada da row NO BINÁRIO: (Index, Name) — a mesma
-// chave "index\x00name" do strings parser. NÃO é identidade de import: o
-// casamento é pelo hash; esta chave só desempata dentro de um grupo de hash
-// (dedup) e localiza a row original em data/ para validar tags.
+// chave "index\x00name" do strings parser. É a identidade do casamento de
+// import: data/ e mods/ são o mesmo binário em estados diferentes, então a
+// posição é estável e não depende do hash do texto traduzido.
 func binaryRowKey(r dto.TextRow) string {
 	return fmt.Sprintf("%d\x00%s", r.Index, r.Name)
 }
 
-// usText devolve o texto 'us' da row.
+// usText devolve o texto 'us' da row da STORE (estado atual do binário).
 func usText(r dto.TextRow) string {
 	return r.Text[common.DefaultLocalization]
+}
+
+// importText devolve o texto que o artefato pede para aplicar: o campo
+// `target` (projeção de export). Vazio = a row não pede alteração nenhuma
+// (o segmento ainda não tem tradução em mods/).
+func importText(r dto.TextRow) string {
+	return r.Target
+}
+
+// artifactHasTarget informa se o artefato traz a projeção source/target (o
+// formato atual). Artefato antigo (só text) não é importável: o texto do
+// jogo vive no binário, e a conversão é reimportar com a versão anterior do
+// app e exportar de novo.
+func artifactHasTarget(c dto.Collection) bool {
+	for _, entry := range c {
+		for _, r := range entry.Rows {
+			if r.Target != "" || r.Source != "" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // isBlankText diz se um texto não é traduzível: vazio, só espaço, o "-" que
@@ -127,21 +156,22 @@ func stripTextTags(t string) string {
 	return string(out)
 }
 
-// usHash devolve o hash 'us' da row, calculando-o quando a row não trouxer
-// (artefato feito à mão). É leitura pura: o hash da store nunca é reescrito.
-func usHash(r dto.TextRow) string {
+// sourceHash devolve o hash da REFERÊNCIA da row (o `us` de data/ no momento
+// do export). Artefato feito à mão sem hash cai no hash do campo source.
+func sourceHash(r dto.TextRow) string {
 	if h := r.Hash[common.DefaultLocalization]; h != "" {
 		return h
 	}
-	return hash.Sum64Hex(usText(r))
+	return hash.Sum64Hex(r.Source)
 }
 
-// countCandidates conta as rows do artefato com 'us' utilizável — o
-// denominador de "N inserido de N". Rows em branco não são candidatas.
+// countCandidates conta as rows do artefato com target utilizável — o
+// denominador de "N inserido de N". Row sem target não pede alteração
+// (segmento ainda não traduzido em mods/) e não é candidata.
 func countCandidates(rows []dto.TextRow) int {
 	n := 0
 	for _, r := range rows {
-		if !isBlankText(usText(r)) {
+		if !isBlankText(importText(r)) {
 			n++
 		}
 	}
@@ -177,20 +207,20 @@ func importLanguages(c dto.Collection) []string {
 	return out
 }
 
-// ---- casamento por hash ------------------------------------------------------
+// ---- casamento por coordenada ------------------------------------------------
 
-// As três mensagens do import. Todas vão para o console colorido e para o
-// arquivo JSON de log (common/system.go). hash não encontrado e tag
-// divergente NUNCA entram em summary.Warnings/Errors: a row é bloqueada, a
-// importação segue, e quem corrige é o revisor no artefato.
+// As mensagens do import. Todas vão para o console colorido e para o arquivo
+// JSON de log (common/system.go). Origem não encontrada e tag divergente
+// NUNCA entram em summary.Warnings/Errors: a row é bloqueada, a importação
+// segue, e quem corrige é o revisor no artefato.
 const (
-	logImportUnmatched = "import %s: hash não encontrado — hash %q texto %q"
-	logImportTagLost   = "import %s: tag de controle divergente — hash %q texto %q %v"
+	logImportUnmatched = "import %s: origem não encontrada — hash %q target %q"
+	logImportTagLost   = "import %s: tag de controle divergente — hash %q target %q %v"
 	logImportInserted  = "import %s: %d/%d linha(s) inserida(s)"
 
 	// Reasons do ImportRowIssue: rótulos curtos exibidos no modal de
 	// detalhes — o mesmo diagnóstico dos LogWarning, sem o texto longo.
-	reasonUnmatched = "hash não encontrado"
+	reasonUnmatched = "origem não encontrada"
 	reasonTagLost   = "tag de controle divergente"
 )
 
@@ -206,28 +236,8 @@ func truncateRowIssue(s string) string {
 	return string(runes[:max]) + "…"
 }
 
-// importRowAlreadyApplied diz se a row não-casada já está satisfeita no
-// binário: aplicar o texto do artefato sobre a row atual seria um no-op. O
-// teste é o MESMO do merge — keepStorePadding(currente, artefato) == currente
-// — porque o import grava exatamente keepStorePadding(row vigente, texto do
-// artefato). O hash não casa porque ele aponta o INGLÊS do export e o binário
-// já carrega a tradução da row (re-import do mesmo artefato sobre si mesmo
-// cai aqui). Não é revisável (nada ficou de fora), então não entra em
-// Skipped: o botão de detalhes só pulsa quando há algo para fazer.
-func importRowAlreadyApplied(se dto.FileEntry, r dto.TextRow) bool {
-	if r.Index < 0 || r.Index >= len(se.Rows) {
-		return false
-	}
-	cur := se.Rows[r.Index]
-	if cur.Name != r.Name {
-		return false
-	}
-	t := usText(r)
-	return t != "" && keepStorePadding(usText(cur), t) == usText(cur)
-}
-
 // rowPair é o casamento entre uma row do artefato e a row da store. A
-// posição vem SEMPRE da store; o texto novo vem do artefato.
+// posição vem SEMPRE da store; o texto novo vem do target do artefato.
 type rowPair struct {
 	store    dto.TextRow
 	imported dto.TextRow
@@ -240,100 +250,98 @@ type tagViolation struct {
 	issues []converter.TagIssue
 }
 
-// hashMatch casa as rows do artefato com as da store pelo hash 'us'.
+// matchRows casa as rows do artefato com as da store pela COORDENADA
+// (Index, Name): data/ e mods/ são o MESMO binário em estados diferentes,
+// então a posição é estável e independe do hash do texto traduzido (que é o
+// hash da tradução, não da origem).
 //
-// O hash é a CHAVE; (Index, Name) desempata DENTRO do grupo de hash — dedup
-// faz N rows da store compartilharem o mesmo hash e aí só a coordenada diz
-// qual célula é qual. A ordem das rows e a linha faltando não afetam nada:
-// row do artefato sem par simplesmente não participa, e não é erro.
+// A entrada de origem (data/) entra como validação de staleness: o segmento
+// na coordenada precisa ter o mesmo hash da referência gravada no artefato.
+// Origem ausente = checagem pulada (degradação); origem divergente ou
+// coordenada sem célula na store = unmatched.
 //
-//  1. row do artefato com 'us' em branco → pulada (nunca é candidata e nunca
-//     loga: é o "-" e o vazio que o tradutor nem vê);
-//  2. grupo := storeByHash[usHash(artefato)]; grupo vazio → unmatched (a
-//     store mudou desde o export, ou o texto não existe mais);
-//  3. grupo de 1 → par direto, o Index do artefato é ignorado aqui;
-//  4. grupo de N → desempata por binaryRowKey; sem coordenada ou célula já
-//     reivindicada → unmatched.
-func hashMatch(importedEntry, storeEntry dto.FileEntry) (pairs []rowPair, unmatched []dto.TextRow) {
-	storeByHash := make(map[string][]int, len(storeEntry.Rows))
-	for i, r := range storeEntry.Rows {
-		if isBlankText(usText(r)) {
-			continue
+//  1. row do artefato sem target → pulada (nada a importar);
+//  2. coordenada duplicada no artefato → unmatched na segunda (não sobrescreve);
+//  3. origem presente: hash(us de data/) != sourceHash → unmatched;
+//  4. célula alvo = row da store na MESMA coordenada; ausente → unmatched.
+func matchRows(importedEntry, storeEntry dto.FileEntry, orig *dto.FileEntry) (pairs []rowPair, unmatched []dto.TextRow) {
+	storeByKey := make(map[string]dto.TextRow, len(storeEntry.Rows))
+	for _, r := range storeEntry.Rows {
+		storeByKey[binaryRowKey(r)] = r
+	}
+	var origByKey map[string]dto.TextRow
+	if orig != nil {
+		origByKey = make(map[string]dto.TextRow, len(orig.Rows))
+		for _, r := range orig.Rows {
+			origByKey[binaryRowKey(r)] = r
 		}
-		storeByHash[usHash(r)] = append(storeByHash[usHash(r)], i)
 	}
 
-	claimed := make(map[int]bool, len(importedEntry.Rows))
+	claimed := make(map[string]bool, len(importedEntry.Rows))
 	for _, r := range importedEntry.Rows {
-		if isBlankText(usText(r)) {
-			continue
+		if isBlankText(importText(r)) {
+			continue // nada a importar: segmento ainda não traduzido
 		}
-		group := storeByHash[usHash(r)]
-		if len(group) == 0 {
+		key := binaryRowKey(r)
+		if claimed[key] {
 			unmatched = append(unmatched, r)
 			continue
 		}
-
-		si := -1
-		if len(group) == 1 {
-			si = group[0]
-		} else {
-			rk := binaryRowKey(r)
-			for _, i := range group {
-				if !claimed[i] && binaryRowKey(storeEntry.Rows[i]) == rk {
-					si = i
-					break
-				}
+		if origByKey != nil && (r.Source != "" || r.Hash[common.DefaultLocalization] != "") {
+			o, ok := origByKey[key]
+			if !ok || hash.Sum64Hex(usText(o)) != sourceHash(r) {
+				unmatched = append(unmatched, r)
+				continue
 			}
 		}
-		if si < 0 || claimed[si] {
+		storeRow, ok := storeByKey[key]
+		if !ok {
 			unmatched = append(unmatched, r)
 			continue
 		}
-		claimed[si] = true
+		claimed[key] = true
 		// O padding de tela da store vence (keepStorePadding): o par já nasce
-		// com o texto 'us' reconciliado, então a validação de tags, a contagem
-		// de alterados (diff só de padding não conta) e o merge usam o mesmo
-		// valor final sem nenhuma passada extra.
-		pairs = append(pairs, rowPair{store: storeEntry.Rows[si], imported: reconcileImportPadding(storeEntry.Rows[si], r)})
+		// com o target reconciliado no 'us', então a validação de tags, a
+		// contagem de alterados (diff só de padding não conta) e o merge usam
+		// o mesmo valor final sem nenhuma passada extra.
+		pairs = append(pairs, rowPair{store: storeRow, imported: reconcileImportPadding(storeRow, r)})
 	}
 	return pairs, unmatched
 }
 
 // importMatch é o resultado do casamento de uma entrada.
 type importMatch struct {
-	candidates int            // rows do artefato com 'us' utilizável
+	candidates int            // rows do artefato com target utilizável
 	inserted   int            // casaram E passaram na validação de tags
 	changed    int            // destas, com texto diferente da store
 	pairs      []rowPair      // a gravar
-	unmatched  []dto.TextRow  // sem grupo na store
+	unmatched  []dto.TextRow  // sem origem/coordenada na store
 	tagLost    []tagViolation // tags de controle divergentes
 }
 
-// matchImportEntry casa por hash e, quando origFor for fornecido, filtra as
-// rows cuja tradução diverge das tags de controle do original. Com origFor
-// nil a validação de tags é pulada.
+// matchImportEntry casa por coordenada e, quando orig for fornecido, valida o
+// hash da referência e as tags de controle do original. Sem orig, as duas
+// checagens são puladas.
 //
 // A filtragem acontece AQUI (e não no merge) para que a row rejeitada nem
 // chegue em mergeImportUs: é por isso que ela não aparece em merged[id] e a
 // função de uso nunca a vê.
-//
-// origFor é uma função justamente para só ser chamada quando há par a
-// validar — sem par, não há o que comparar nem custo a pagar.
-func matchImportEntry(imp, se dto.FileEntry, origFor func() map[string]string) importMatch {
+func matchImportEntry(imp, se dto.FileEntry, orig *dto.FileEntry) importMatch {
 	m := importMatch{candidates: countCandidates(imp.Rows)}
-	pairs, unmatched := hashMatch(imp, se)
+	pairs, unmatched := matchRows(imp, se, orig)
 	m.unmatched = unmatched
 	if len(pairs) == 0 {
 		return m
 	}
 
-	var origByText map[string]string
-	if origFor != nil {
-		origByText = origFor()
-	}
+	origByText := originalRowTexts(orig)
 	for _, p := range pairs {
-		if origByText != nil {
+		// Row cujo target é igual ao texto vigente da store é NO-OP: nada é
+		// gravado, então não há tag para validar. Sem isto, uma divergência
+		// de tag PRÉ-EXISTENTE na tradução (ex.: MCR de speaker que o
+		// original EN não tem) vira aviso em todo re-import sem edição.
+		changed := usText(p.imported) != usText(p.store)
+		if changed && origByText != nil {
 			if want, ok := origByText[binaryRowKey(p.store)]; ok {
 				if issues := converter.ControlTagDiff(want, usText(p.imported)); len(issues) > 0 {
 					m.tagLost = append(m.tagLost, tagViolation{row: p.imported, issues: issues})
@@ -342,7 +350,7 @@ func matchImportEntry(imp, se dto.FileEntry, origFor func() map[string]string) i
 			}
 		}
 		m.pairs = append(m.pairs, p)
-		if usText(p.imported) != usText(p.store) {
+		if changed {
 			m.changed++
 		}
 	}
@@ -357,16 +365,12 @@ func matchImportEntry(imp, se dto.FileEntry, origFor func() map[string]string) i
 // travar a importação por data/ incompleto seria pior do que seguir sem
 // checagem. Rows originais em branco ficam de fora pelo mesmo motivo — não
 // tem tag a preservar em "-".
-func (s *MetadataService) originalRowTexts(kind, id string, version common.GameVersion) map[string]string {
-	entry, ok, err := s.originalFor(kind, id, version)
-	if err != nil || !ok {
-		if err != nil {
-			common.LogVerbose("import %s: sem original para validar tags: %v", id, err)
-		}
+func originalRowTexts(orig *dto.FileEntry) map[string]string {
+	if orig == nil {
 		return nil
 	}
-	out := make(map[string]string, len(entry.Rows))
-	for _, r := range entry.Rows {
+	out := make(map[string]string, len(orig.Rows))
+	for _, r := range orig.Rows {
 		if t := usText(r); !isBlankText(t) {
 			out[binaryRowKey(r)] = t
 		}
@@ -374,10 +378,10 @@ func (s *MetadataService) originalRowTexts(kind, id string, version common.GameV
 	return out
 }
 
-// filterExportRows remove do ARTEFATO as rows sem 'us' utilizável (vazio,
-// só espaço ou "-"). O projeto usa 'us' como padrão: se o 'us' não existe,
-// os outros idiomas não interessam — e há rows com texto em pt mas sem 'us',
-// que saem mesmo assim, como se espera.
+// filterExportRows remove do ARTEFATO as rows sem referência nem tradução:
+// fica a row cujo 'us' de data/ é utilizável OU cujo target (mods/) tem
+// texto — linha em branco no original mas traduzida não pode sumir do
+// artefato (é justamente o que o import precisa devolver ao binário).
 //
 // Só para EXPORT. A store (carga, merge, save, apply, VBF) continua
 // completa, porque é ela que guarda a posição da row no binário. Recalcula
@@ -387,7 +391,7 @@ func filterExportRows(c dto.Collection) dto.Collection {
 	for id, entry := range c {
 		rows := make([]dto.TextRow, 0, len(entry.Rows))
 		for _, r := range entry.Rows {
-			if isBlankText(usText(r)) {
+			if isBlankText(usText(r)) && isBlankText(importText(r)) {
 				continue
 			}
 			rows = append(rows, r)
@@ -446,17 +450,6 @@ func mergeImportUs(store dto.Collection, matched map[string][]rowPair) dto.Colle
 		out[id] = dto.FileEntry{Metadata: se.Metadata, Rows: rows}
 	}
 	return out
-}
-
-// stripHelpRowNames remove o row.Name legado ("text_%04d") das entradas
-// help. A rows nova não tem name; artefatos exportados antes da remoção
-// ainda casam com a store (rowKey = index\x00name) depois da limpeza.
-func stripHelpRowNames(c dto.Collection) {
-	for _, entry := range c {
-		for i := range entry.Rows {
-			entry.Rows[i].Name = ""
-		}
-	}
 }
 
 // ---- detecção ----------------------------------------------------------------
@@ -876,12 +869,8 @@ func (s *MetadataService) prepareImport(path string, version common.GameVersion)
 	if err != nil {
 		return nil, err
 	}
-	if kind == KindHelp {
-		// Compat com artefatos antigos: rows de help antes carregavam
-		// name (text_%04d); o formato novo diferencia linhas pelo
-		// arquivo + index, e a store já está sem name — sem limpar aqui,
-		// o rowKey (index\x00name) não casaria e o import seria bloqueado.
-		stripHelpRowNames(imported)
+	if !artifactHasTarget(imported) {
+		return nil, fmt.Errorf("artefato no formato antigo (sem source/target): re-exporte no formato atual")
 	}
 	if err := ensureVersionReady(version); err != nil {
 		return nil, err
@@ -933,44 +922,35 @@ func (s *MetadataService) prepareImport(path string, version common.GameVersion)
 		}
 		info.StoreIndexCount = rowIndexCount(se.Rows)
 
-		// Referência de tags = data/ (ou o .vbf ativo). Só é consultada se
-		// houver par; nil dentro de matchImportEntry pula a checagem.
-		m := matchImportEntry(imp, se, func() map[string]string {
-			return s.originalRowTexts(kind, id, version)
-		})
+		// Referência de origem/tags = data/ (ou o .vbf ativo). Nil dentro de
+		// matchImportEntry pula as duas checagens (data/ incompleto).
+		m := matchImportEntry(imp, se, s.originalEntryFor(kind, id, version))
 		info.ChangedTexts = m.changed
 		totalChanged += m.changed
 
-		// hash não encontrado e tag divergente: LogWarning mantém o texto
+		// Origem não encontrada e tag divergente: LogWarning mantém o texto
 		// COMPLETO no log; Skipped espelha a row no resumo do modal (texto
 		// truncado) para o revisor ver o que ficou fora sem abrir o log.
-		// Row JÁ APLICADA (re-import: o binário já carrega o texto que ela
-		// pede) é no-op — não entra em Skipped para o pulse não gritar por
-		// nada quando o arquivo é importado de novo sobre si mesmo.
 		skippedRows := 0
 		for _, r := range m.unmatched {
-			if importRowAlreadyApplied(se, r) {
-				common.LogVerbose("import %s: row já aplicada — hash %q", id, usHash(r))
-				continue
-			}
-			common.LogWarning(logImportUnmatched, id, usHash(r), usText(r))
+			common.LogWarning(logImportUnmatched, id, sourceHash(r), importText(r))
 			skippedRows++
 			summary.Skipped = append(summary.Skipped, dto.ImportRowIssue{
 				ID:     id,
 				Index:  r.Index,
-				Hash:   usHash(r),
-				Text:   truncateRowIssue(usText(r)),
+				Hash:   sourceHash(r),
+				Text:   truncateRowIssue(importText(r)),
 				Reason: reasonUnmatched,
 			})
 		}
 		for _, v := range m.tagLost {
-			common.LogWarning(logImportTagLost, id, usHash(v.row), usText(v.row), v.issues)
+			common.LogWarning(logImportTagLost, id, sourceHash(v.row), importText(v.row), v.issues)
 			skippedRows++
 			summary.Skipped = append(summary.Skipped, dto.ImportRowIssue{
 				ID:     id,
 				Index:  v.row.Index,
-				Hash:   usHash(v.row),
-				Text:   truncateRowIssue(usText(v.row)),
+				Hash:   sourceHash(v.row),
+				Text:   truncateRowIssue(importText(v.row)),
 				Reason: reasonTagLost + fmt.Sprint(v.issues),
 			})
 		}
@@ -1101,8 +1081,8 @@ func (s *MetadataService) ImportFile(path string, version common.GameVersion) (i
 
 // detectImportFormat extrai o formato do artefato pela extensão.
 func detectImportFormat(path string) string {
-	ext := strings.ToLower(filepath.Ext(path))
-	if ext == ".strings" {
+	switch ext := strings.ToLower(filepath.Ext(path)); ext {
+	case ".strings":
 		return "strings"
 	}
 	return "json" // .json, .csv, .xlsx → json (formato base)

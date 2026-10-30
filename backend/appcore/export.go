@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"ffxresources/backend/builders"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/formatters"
@@ -108,18 +109,32 @@ func exportOne(req ExportRequest, input string) FileOutcome {
 		return outcome
 	}
 
-	data, err := os.ReadFile(input)
+	// Origem = data/ (ou o próprio binário apontado, quando ele está fora da
+	// árvore): é o texto de `text`/`source`. O `target` vem de mods/.
+	origPath, origData, err := readExportOrigin(input)
 	if err != nil {
 		outcome.Reason = fmt.Sprintf("lendo binário: %v", err)
 		return outcome
 	}
 
-	lang := detectFileLanguage(input)
-	c, err := decodeAvulso(d, version, input, data, lang)
+	lang := detectFileLanguage(origPath)
+	c, err := decodeAvulso(d, version, origPath, origData, lang)
 	if err != nil {
 		outcome.Status = StatusMismatch
 		outcome.Reason = err.Error()
 		return outcome
+	}
+
+	// Target = mods/, independente do toggle EnableMods.
+	c = builders.ProjectSourceTarget(c, decodeExportTargets(d, version, input, lang))
+
+	// Source é sempre o idioma fonte (us) de data/: com o binário apontado
+	// em outro idioma, lê o par `us` da mesma entrada (a projeção acima
+	// deixaria Source vazio — o arquivo apontado não carrega o `us`).
+	if lang != common.DefaultLocalization {
+		if usC := decodeSourceLanguagePair(d, version, origPath, lang); usC != nil {
+			applySourceTexts(c, usC)
+		}
 	}
 
 	raw, err := marshalArtifact(req.Format, req.Langs, c)
@@ -151,6 +166,103 @@ func exportOne(req ExportRequest, input string) FileOutcome {
 		outcome.Status = StatusWritten
 	}
 	return outcome
+}
+
+// exportPair resolve os pares data/ e mods/ do binário apontado. O caminho
+// relativo é o de GameFilesRoot (aceitando o prefixo mods/ quando o usuário
+// aponta o próprio arquivo traduzido). Fora de GameFilesRoot não há par.
+func exportPair(input string) (dataPath, modsPath string, ok bool) {
+	root := filepath.Clean(common.GameFilesRoot)
+	abs := filepath.Clean(input)
+	rel, err := filepath.Rel(root, abs)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", "", false
+	}
+	rel = filepath.FromSlash(strings.TrimPrefix(filepath.ToSlash(rel), "mods/"))
+	return filepath.Join(root, rel), filepath.Join(root, common.ModsFolder, rel), true
+}
+
+// readExportOrigin resolve e lê o binário de ORIGEM (data/) do arquivo
+// apontado. O menu aceita binário em qualquer pasta: quando o caminho está
+// sob GameFilesRoot, o par é achado pelo caminho relativo; fora da árvore —
+// ou sem o par em data/ — o próprio arquivo apontado é a origem.
+func readExportOrigin(input string) (path string, data []byte, err error) {
+	if dataPath, _, ok := exportPair(input); ok {
+		if b, rerr := os.ReadFile(dataPath); rerr == nil {
+			return dataPath, b, nil
+		}
+	}
+	b, err := os.ReadFile(input)
+	return input, b, err
+}
+
+// decodeExportTargets decodifica o par de mods/ do binário (o texto alvo do
+// export). Devolve nil quando não há par/não decodifica — target vazio.
+func decodeExportTargets(d Detection, version common.GameVersion, input, lang string) dto.Collection {
+	_, modsPath, ok := exportPair(input)
+	if !ok {
+		return nil
+	}
+	b, err := os.ReadFile(modsPath)
+	if err != nil {
+		return nil
+	}
+	c, err := decodeAvulso(d, version, modsPath, b, lang)
+	if err != nil {
+		return nil
+	}
+	return c
+}
+
+// decodeSourceLanguagePair decodifica o par do idioma FONTE (us) da mesma
+// entrada, para preencher Source quando o binário apontado é de outro idioma.
+func decodeSourceLanguagePair(d Detection, version common.GameVersion, origPath, lang string) dto.Collection {
+	usPath := localizationPairPath(origPath, lang, common.DefaultLocalization)
+	if usPath == "" || strings.EqualFold(filepath.Clean(usPath), filepath.Clean(origPath)) {
+		return nil
+	}
+	b, err := os.ReadFile(usPath)
+	if err != nil {
+		return nil
+	}
+	c, err := decodeAvulso(d, version, usPath, b, common.DefaultLocalization)
+	if err != nil {
+		return nil
+	}
+	return c
+}
+
+// applySourceTexts preenche row.Source com o texto do par `us` da mesma
+// coordenada (Index, Name).
+func applySourceTexts(c, us dto.Collection) {
+	for id, entry := range c {
+		usEntry, ok := us[id]
+		if !ok {
+			continue
+		}
+		byKey := make(map[string]string, len(usEntry.Rows))
+		for _, r := range usEntry.Rows {
+			byKey[dto.RowKey(r)] = r.Text[common.DefaultLocalization]
+		}
+		for i, r := range entry.Rows {
+			if src := byKey[dto.RowKey(r)]; src != "" {
+				entry.Rows[i].Source = src
+			}
+		}
+		c[id] = entry
+	}
+}
+
+// localizationPairPath troca o segmento new_<lang>pc do caminho pelo idioma
+// pedido. "" quando o caminho não é de uma localização conhecida.
+func localizationPairPath(path, from, to string) string {
+	slash := filepath.ToSlash(path)
+	needle := "/new_" + from + "pc/"
+	idx := strings.Index(strings.ToLower(slash), strings.ToLower(needle))
+	if idx < 0 {
+		return ""
+	}
+	return filepath.FromSlash(slash[:idx] + "/new_" + to + "pc/" + slash[idx+len(needle):])
 }
 
 // marshalArtifact serializa a collection no formato pedido, com o MESMO

@@ -40,7 +40,7 @@ interface ImportSummaryDialogProps {
  * erros. Entradas com problema são ignoradas (aviso) e o import segue com as
  * demais; só um bloqueador global desabilita o botão Importar.
  *
- * Rows puladas (hash não encontrado / tag divergente) não bloqueiam nada e
+ * Rows puladas (origem não encontrada / tag divergente) não bloqueiam nada e
  * ficam no modal de DETALHES — o botão que o abre pulsa quando há algo para
  * ver; num import limpo ele fica quieto.
  */

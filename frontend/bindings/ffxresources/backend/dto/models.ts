@@ -1220,6 +1220,13 @@ export class RefLink {
  * (mods-first = último save). O campo nunca entra em apply/export — o
  * payload de apply leva só index/name/hash/text.
  * 
+ * Source e Target são a projeção de EXPORT para ferramentas CAT: `source`
+ * é o texto do idioma fonte (us) vindo de data/ (ou do .vbf) — referência
+ * read-only; `target` é o texto do MESMO segmento em mods/ (a tradução, que
+ * vive no slot us). O `target` é o ÚNICO texto que o import aplica no
+ * binário. Nenhum dos dois existe fora do export/import de artefato: display
+ * e apply continuam usando só Text/Hash.
+ * 
  * A tabela é a UNIÃO das rows dos dois lados; os dois flags dizem em qual
  * lado a row falta e é ele que o frontend pinta em vermelho:
  * 
@@ -1248,6 +1255,18 @@ export class TextRow {
     "hash"?: { [_ in string]?: string };
     "text": { [_ in string]?: string };
     "original"?: { [_ in string]?: string };
+
+    /**
+     * Source é o texto do idioma fonte (us) vindo de data/ ou do .vbf —
+     * referência read-only para ferramentas CAT.
+     */
+    "source"?: string;
+
+    /**
+     * Target é o texto do mesmo segmento em mods/ (a tradução) — o texto
+     * que o import aplica no slot us do binário.
+     */
+    "target"?: string;
 
     /**
      * MissingInOriginal/MissingInTranslated marcam a row órfã de um dos

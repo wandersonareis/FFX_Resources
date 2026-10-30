@@ -32,6 +32,7 @@ import (
 
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
+	"ffxresources/backend/formatters"
 	"ffxresources/backend/formatters/hash"
 )
 
@@ -83,7 +84,11 @@ func marshalLangsOpt(c dto.Collection, langs []string, dedup bool) ([]byte, erro
 	seen := make(map[string]string) // hashHex bare -> texto (só default lang)
 	for _, k := range c.SortedKeys() {
 		entry := c[k]
-		out.WriteString("/*key=" + entry.Metadata.Key + " row_count=" + strconv.Itoa(len(entry.Rows)) + "*/\n")
+		out.WriteString("/*key=")
+		out.WriteString(entry.Metadata.Key)
+		out.WriteString(" row_count=")
+		out.WriteString(strconv.Itoa(len(entry.Rows)))
+		out.WriteString("*/\n")
 		rows := make([]dto.TextRow, len(entry.Rows))
 		copy(rows, entry.Rows)
 		dto.SortRows(rows)
@@ -91,7 +96,7 @@ func marshalLangsOpt(c dto.Collection, langs []string, dedup bool) ([]byte, erro
 		for _, row := range rows {
 			for _, lang := range rowLangs(row, filter) {
 				text := row.Text[lang]
-				if text == "" {
+				if text == "" && !formatters.HasSourceTarget(row, lang) {
 					continue
 				}
 				h := row.Hash[lang]
@@ -110,9 +115,33 @@ func marshalLangsOpt(c dto.Collection, langs []string, dedup bool) ([]byte, erro
 				}
 				out.WriteString(id)
 				if row.Name != "" {
-					out.WriteString(":" + row.Name)
+					out.WriteString(":")
+					out.WriteString(row.Name)
 				}
-				out.WriteString(":" + strconv.Itoa(row.Index) + ":" + lang + keyValueSep + hash.Prefix(h) + " = " + value + "\n")
+				// id:name:index:lang║$hash = <valor>[║source = <esc>][║target = <esc>]
+				// source/target só existem na linha do idioma default (us): é
+				// ali que vive a tradução; o escapeValue garante que o
+				// separador ║ não aparece literal no texto.
+				source, target := formatters.SourceTarget(row, lang)
+				out.WriteString(":")
+				out.WriteString(strconv.Itoa(row.Index))
+				out.WriteString(":")
+				out.WriteString(lang)
+				out.WriteString(keyValueSep)
+				out.WriteString(hash.Prefix(h))
+				out.WriteString(" = ")
+				out.WriteString(value)
+				if source != "" {
+					out.WriteString(keyValueSep)
+					out.WriteString("source = ")
+					out.WriteString(escapeValue(source))
+				}
+				if target != "" {
+					out.WriteString(keyValueSep)
+					out.WriteString("target = ")
+					out.WriteString(escapeValue(target))
+				}
+				out.WriteString("\n")
 			}
 		}
 	}
@@ -144,6 +173,8 @@ func langSet(langs []string) map[string]bool {
 }
 
 // rowLangs devolve os idiomas da row com texto, ordenados e filtrados.
+// A linha de `us` entra também quando só há source/target: o target é o que
+// o import aplica, mesmo sem texto no original.
 func rowLangs(row dto.TextRow, filter map[string]bool) []string {
 	langs := make([]string, 0, len(row.Text))
 	for lang, text := range row.Text {
@@ -154,6 +185,18 @@ func rowLangs(row dto.TextRow, filter map[string]bool) []string {
 			continue
 		}
 		langs = append(langs, lang)
+	}
+	if formatters.HasSourceTarget(row, common.DefaultLocalization) && (filter == nil || filter[common.DefaultLocalization]) {
+		hasUS := false
+		for _, l := range langs {
+			if l == common.DefaultLocalization {
+				hasUS = true
+				break
+			}
+		}
+		if !hasUS {
+			langs = append(langs, common.DefaultLocalization)
+		}
 	}
 	sort.Strings(langs)
 	return langs

@@ -421,3 +421,59 @@ func TestStringsFormatPUARoundTrip(t *testing.T) {
 		t.Fatalf("round-trip byte-exato pós-formato:\n got % X\nwant % X", reencodedFmt, want)
 	}
 }
+
+// A projeção source/target do export sai na linha do idioma default e volta
+// no parse — inclusive quando o TEXTO contém a sequência do marcador (o ║
+// literal é escapado) e quando só há target (original em branco).
+func TestSourceTargetProjectionRoundTrip(t *testing.T) {
+	text := "A║source = B\nC"
+	target := "Tradução║target = x\ny"
+	collection := dto.Collection{
+		"test0000": {
+			Metadata: dto.NewEventMetadata("test0000", common.GameVersionFFX).WithRowCount(2),
+			Rows: []dto.TextRow{
+				{
+					Index:  0,
+					Hash:   hash.Texts(map[string]string{"us": text}),
+					Text:   map[string]string{"us": text},
+					Source: text,
+					Target: target,
+				},
+				{
+					// Original em branco, mas com tradução: a linha de us
+					// precisa sair mesmo sem texto (o import depende dela).
+					Index:  1,
+					Hash:   hash.Texts(map[string]string{"us": ""}),
+					Text:   map[string]string{"us": ""},
+					Source: "",
+					Target: "só tradução",
+				},
+			},
+		},
+	}
+	data, err := fmtstrings.Marshal(collection)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	parsed, err := fmtstrings.Unmarshal(data)
+	if err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	entry, ok := parsed["test0000"]
+	if !ok || len(entry.Rows) != 2 {
+		t.Fatalf("rows=%d, queria 2:\n%s", len(entry.Rows), data)
+	}
+	first := entry.Rows[0]
+	if got := first.Text["us"]; got != text {
+		t.Fatalf("texto mudou: got %q want %q", got, text)
+	}
+	if first.Source != text {
+		t.Fatalf("source=%q, queria %q", first.Source, text)
+	}
+	if first.Target != target {
+		t.Fatalf("target=%q, queria %q", first.Target, target)
+	}
+	if got := entry.Rows[1].Target; got != "só tradução" {
+		t.Fatalf("target da row sem texto=%q", got)
+	}
+}

@@ -23,6 +23,19 @@ Quais idiomas viram linha é decidido pelo filtro de idiomas do export
 header, salvo no `localStorage` `ffx.export-langs`) = o default `us`
 sempre + os extras marcados — mesma tabela, menos idiomas.
 
+### source/target (projeção para CAT)
+
+O export projeta o par de tradução exigido por ferramentas CAT:
+
+- `text` e `source` vêm SEMPRE de `data/` (ou do `.vbf`): `text` é o texto do
+  idioma da linha e `source` é a referência do idioma fonte (`us`).
+- `target` vem de `mods/` — é a tradução (o PT-BR vive no slot `us`) e é o
+  **único texto que o import aplica** de volta no binário.
+- As duas colunas só vêm preenchidas nas linhas do idioma `us` (é ali que a
+  tradução vive); nas outras linhas ficam vazias.
+- O toggle **Preferir binários traduzidos (mods)** NÃO muda o export: `text`/
+  `source` são sempre da origem e `target` sempre de `mods/`.
+
 | Coluna | Planilha | Conteúdo |
 |---|---|---|
 | `key` | A | metadata.key COMPLETA (versão/padrão/arquivo) — a identidade da entrada no app: é dela que saem o kind, a versão e o casamento por basename, então um artefato com várias entradas (`events_all`, `objects_all`) volta inteiro no import |
@@ -30,9 +43,11 @@ sempre + os extras marcados — mesma tabela, menos idiomas.
 | `name` | C | nome da row dentro do arquivo (ex.: `name_simplified`); vazio quando o formato não nomeia rows |
 | `index` | D | posição da row no binário (reconstrução posicional) |
 | `lang` | E | idioma do texto da linha (`us`, `jp`, ...) |
-| `hash` | F | hash do texto no formato de artefato: `$` + `hash.Sum64Hex` (16 hex) — a identidade do texto no dedup. O `$` é o marcador do pacote `hash` (`RefPrefix`); no XLSX também garante que a célula fique tipada como texto (hash todo-numérico não vira número) |
-| `text` | G | **o texto editável** — a coluna a mexer na tradução |
-| `divergent` | H | `true` quando a row tem texto próprio, divergindo da tabela compartilhada |
+| `hash` | F | hash do texto de referência no formato de artefato: `$` + `hash.Sum64Hex` (16 hex) — a identidade do segmento no dedup e a checagem de staleness contra `data/`. O `$` é o marcador do pacote `hash` (`RefPrefix`); no XLSX também garante que a célula fique tipada como texto (hash todo-numérico não vira número) |
+| `text` | G | o texto do idioma da linha, vindo de `data/`/`.vbf` (referência) |
+| `source` | H | referência `us` de `data/`/`.vbf` (read-only) — só nas linhas `us` |
+| `target` | I | tradução de `mods/` — **o texto editável** e o único que o import aplica — só nas linhas `us` |
+| `divergent` | J | `true` quando a row tem texto próprio, divergindo da tabela compartilhada |
 
 ## Dedup `$hash`
 
@@ -55,7 +70,7 @@ com TODO texto literal, sem referências.
 - RFC 4180 (`encoding/csv`): vírgula separadora, aspas onde precisa, quebra
   LF (planilhas leem LF e CRLF).
 - O import é tolerante (`LazyQuotes`, espaços à esquerda) mas exige o header
-  EXATO: as 8 colunas da tabela acima, com esses nomes, nessa ordem.
+  EXATO: as 10 colunas da tabela acima, com esses nomes, nessa ordem.
 
 ## XLSX
 
@@ -66,15 +81,15 @@ Produzido com `github.com/xuri/excelize/v2`:
 - **Larguras** — todas as colunas começam em 10 caracteres e crescem pelo
   maior texto observado (runes — o jogo tem CJK e PUA), teto 80. A coluna
   `text` tem `WrapText`: a altura da linha cresce sozinha ao abrir.
-- **AutoFilter** em `A1:H{fim}` + congelamento da primeira linha.
+- **AutoFilter** em `A1:J{fim}` + congelamento da primeira linha.
 
 ### Proteção das colunas de metadata
 
 A planilha sai PROTEGIDA, sem senha: as colunas de metadata (`A`–`F`,
-`key`…`hash`) e o header (linha 1) são células travadas — só `text` (`G`) e
-`divergent` (`H`) aceitam edição. Ainda permitidos: clicar/copiar células
-travadas, usar o filtro, ordenar. Bloqueados: inserir/deletar linhas e
-formatação.
+`key`…`hash`) e o header (linha 1) são células travadas — só `text` (`G`),
+`source` (`H`), `target` (`I`) e `divergent` (`J`) aceitam edição. Ainda
+permitidos: clicar/copiar células travadas, usar o filtro, ordenar.
+Bloqueados: inserir/deletar linhas e formatação.
 
 É proteção contra EDIÇÃO ACIDENTAL, não segurança — quem insistir ainda
 edita: desproteger é um clique (Revisão → Desproteger Planilha, sem senha) e
@@ -115,11 +130,18 @@ mesmo escopo.
   o arquivo no formato atual); exige hash com prefixo `$` — célula não-vazia
   sem o `$` é artefato do formato antigo e aborta com o mesmo erro de
   re-export (célula vazia é tolerada: artefato feito à mão, o import
-  recalcula pelo texto); resolve as refs `$hash`; o XLSX aceita
-  colunas extras desde que as 8 primeiras existam.
+  recalcula pela referência); resolve as refs `$hash`; o XLSX aceita
+  colunas extras desde que as 10 primeiras existam.
+- **`target` é o texto importado**: a row é gravada no slot `us` do binário
+  com o valor do target (linha com target vazio não pede alteração). `text`
+  e `source` são referência (data/) e são ignorados pelo import.
+- **Sem compatibilidade com o formato antigo** (8 colunas, só `text`): o
+  arquivo é rejeitado com "re-exporte no formato atual". Os textos vivem no
+  binário — quem tem artefatos antigos pode importá-los com uma versão
+  anterior do app e reexportar na nova.
 - O import SEMPRE mostra prévia antes de aplicar; problema de entrada é
   aviso (a entrada é ignorada, o resto importa) e só bloqueador global
   desabilita o botão Importar, e nada é salvo no binário sem o "Salvar"
   explícito.
-- Round-trip: export → import sem edição devolve a MESMA coleção (mesmos
-  textos e metadados).
+- Round-trip: export → import de um artefato com os mesmos targets não
+  altera o binário (`changed = 0`).

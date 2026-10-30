@@ -119,6 +119,7 @@ func tagCounts(s string) map[string]int {
 		}
 		cmd := string(runes[i+1 : end])
 		if !IsTextTag(cmd) {
+			cmd = normalizeControlTag(cmd)
 			if out == nil {
 				out = make(map[string]int, 4)
 			}
@@ -127,4 +128,17 @@ func tagCounts(s string) map[string]int {
 		i = end
 	}
 	return out
+}
+
+// normalizeControlTag remove o payload de DISPLAY das tags de macro:
+// `MCR:s06:l31:"Belgemine"` → `MCR:s06:l31`. O trecho entre aspas só existe
+// quando o dicionário está carregado (writeMacro), não é gravado no binário e,
+// portanto, não pode entrar na igualdade de tags de controle: o MESMO byte
+// decodifica com e sem payload em sessões diferentes (export sem macros importa
+// com macros) e o texto do dicionário difere por idioma.
+func normalizeControlTag(cmd string) string {
+	if m := reMCR.FindStringSubmatchIndex(cmd); m != nil {
+		return strings.TrimSuffix(cmd[:m[1]], ":")
+	}
+	return cmd
 }

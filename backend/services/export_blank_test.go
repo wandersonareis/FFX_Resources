@@ -2,13 +2,45 @@ package services
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"ffxresources/backend/common"
+	ffxencoding "ffxresources/backend/core/encoding"
 	"ffxresources/backend/fileFormats/event"
 	"ffxresources/backend/formatters"
 	jsonfmt "ffxresources/backend/formatters/json"
 )
+
+// seedEventFileOnDisk grava o binário do evento em data/: o export lê a
+// origem SEMPRE da árvore original (nunca da store mods-first).
+func seedEventFileOnDisk(t *testing.T, version common.GameVersion, id string, texts []string) {
+	t.Helper()
+	charset := ffxencoding.GetCharsetForLanguage(common.DefaultLocalization)
+	objs := make([]*event.LocalizedFieldStringObject, 0, len(texts))
+	for _, text := range texts {
+		fs := event.NewEmptyFieldString(charset, version)
+		fs.SetRegularString(text)
+		objs = append(objs, event.NewLocalizedFieldStringObjectWithContent(common.DefaultLocalization, fs))
+	}
+	data, err := event.EncodeLocalizedStrings(objs, common.DefaultLocalization, version)
+	if err != nil {
+		t.Fatalf("codificar evento %s: %v", id, err)
+	}
+	rel, err := event.EventRelPath(id)
+	if err != nil {
+		t.Fatalf("caminho do evento %s: %v", id, err)
+	}
+	dst := filepath.Join(common.GameFilesRoot,
+		common.GetLocalizationRootForVersion(version, common.DefaultLocalization),
+		filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		t.Fatalf("criar diretório de %s: %v", id, err)
+	}
+	if err := os.WriteFile(dst, data, 0o644); err != nil {
+		t.Fatalf("gravar evento %s: %v", id, err)
+	}
+}
 
 // TestExportEntryFiltersBlankRows: o export de ENTRADA ÚNICA (menu de
 // contexto → ExportEntry) obedece ao mesmo contrato do export em lote —
@@ -29,6 +61,12 @@ func TestExportEntryFiltersBlankRows(t *testing.T) {
 		"-",              // texto próprio do jogo: sai
 		"  ",             // só espaço: sai
 		"",               // vazio: sai
+	})
+	seedEventFileOnDisk(t, common.GameVersionFFX2, "zev001", []string{
+		"Primeira linha",
+		"-",
+		"  ",
+		"",
 	})
 
 	paths, err := NewMetadataService(nil).ExportEntry(KindEvents, common.GameVersionFFX2, "zev001", nil)
@@ -80,6 +118,7 @@ func TestExportEntryDropsFullyBlankEntry(t *testing.T) {
 	t.Cleanup(clearDedupViewCache)
 
 	seedEventsSynthetic(common.GameVersionFFX2, "zev001", []string{"-", "  "})
+	seedEventFileOnDisk(t, common.GameVersionFFX2, "zev001", []string{"-", "  "})
 
 	_, err := NewMetadataService(nil).ExportEntry(KindEvents, common.GameVersionFFX2, "zev001", nil)
 	if err == nil {

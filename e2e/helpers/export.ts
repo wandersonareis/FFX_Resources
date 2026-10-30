@@ -160,7 +160,9 @@ export async function setScope(page: Page, keep: ScopeKind[]): Promise<void> {
 
 /** Marca o formato no seletor do header (JSON | Strings | CSV | XLSX). */
 export async function setExportFormat(page: Page, label: string): Promise<void> {
-  const button = page.getByRole('button', { name: /^(JSON|Strings|CSV|XLSX \(Excel\))$/ });
+  const button = page.getByRole('button', {
+    name: /^(JSON|Strings|CSV|XLSX \(Excel\))$/,
+  });
   await button.click();
   await page.getByRole('menuitemradio', { name: label }).click();
   await expect(button).toHaveText(label);

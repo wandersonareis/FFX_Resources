@@ -33,8 +33,8 @@ func importArtifactGravaBinarioFixture(t *testing.T) (*MetadataService, string) 
 	if err != nil {
 		t.Fatalf("collection: %v", err)
 	}
-	entry := raw["zev001"]
-	entry.Rows[0].Text[common.DefaultLocalization] = "Primeira frase traduzida"
+	entry := catArtifact(raw)["zev001"]
+	entry.Rows[0].Target = "Primeira frase traduzida"
 
 	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{"zev001": entry})
 	if err != nil {

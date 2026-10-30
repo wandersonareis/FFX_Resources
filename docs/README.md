@@ -41,7 +41,8 @@ o mesmo texto, inclusive CJK) — é documentada em
   `backend/core/converter` (`StringToBytes` / `BytesToString`).
 - O texto flui pela app como DTO (`backend/dto`): os pacotes de formato
   leem/escrevem binário; os builders (`backend/builders`) montam/aplicam o
-  DTO; os formatters (`backend/formatters`) serializam JSON/.strings/CSV/XLSX.
+  DTO; os formatters (`backend/formatters`) serializam
+  JSON/.strings/CSV/XLSX.
 - Edits são sempre salvos em `mods/<localização>/...`, nunca em `data/`.
 
 ## Outros guias

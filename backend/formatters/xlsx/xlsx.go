@@ -44,6 +44,7 @@ func (XLSXFormatter) Extension() string {
 // artefato com VÁRIAS entradas (events_all, objects_all) volta inteiro no
 // import. id é o metadata.ID (ex.: chunk_07 do dicionário, que não vive
 // no nome do arquivo).
+// source = idioma fonte (us) de data/vbf, target = idioma alvo (pt-BR) de mods.
 var xlsxHeader = []string{
 	"key",
 	"id",
@@ -52,10 +53,12 @@ var xlsxHeader = []string{
 	"lang",
 	"hash",
 	"text",
+	"source",
+	"target",
 	"divergent",
 }
 
-// Índices das colunas calculadas no xlsxHeader (key=0 … divergent=7).
+// Índices das colunas calculadas no xlsxHeader (key=0 … divergent=9).
 const (
 	colKey       = 0
 	colID        = 1
@@ -64,7 +67,9 @@ const (
 	colLang      = 4
 	colHash      = 5
 	colText      = 6
-	colDivergent = 7
+	colSource    = 7
+	colTarget    = 8
+	colDivergent = 9
 )
 
 // Mensagem da validação das colunas de metadata (A–F): aparece quando
@@ -168,10 +173,9 @@ func (XLSXFormatter) MarshalLangs(c dto.Collection, langs []string) ([]byte, err
 	// Estilo de queca de linha da coluna text: UM estilo, aplicado em
 	// range no final. Com WrapText e SEM altura de linha explícita, o
 	// Excel cresce a altura da linha sozinho ao abrir (regra: nunca
-	// SetRowHeight, senão o excedente fica escondido). É também uma das
-	// DUAS colunas editáveis (text + divergent): Protection destrava a
-	// célula para quando a planilha é protegida (ver
-	// protectMetadataColumns).
+	// SetRowHeight, senão o excedente fica escondido). É uma das
+	// colunas editáveis: Protection destrava a célula para quando a
+	// planilha é protegida (ver protectMetadataColumns).
 	textStyle, err := f.NewStyle(&excelize.Style{
 		Alignment:  &excelize.Alignment{WrapText: true, Vertical: "top"},
 		Protection: &excelize.Protection{Locked: false},
@@ -180,8 +184,27 @@ func (XLSXFormatter) MarshalLangs(c dto.Collection, langs []string) ([]byte, err
 		return nil, err
 	}
 
-	// divergent (H) é a outra coluna editável: destravada, sem WrapText
-	// ("true"/"false" não quebra linha).
+	// Source column (H) style: editable with blue background to highlight
+	// the source language (us/English from data/vbf).
+	sourceStyle, err := f.NewStyle(&excelize.Style{
+		Alignment:  &excelize.Alignment{WrapText: true, Vertical: "top"},
+		Protection: &excelize.Protection{Locked: false},
+		Fill:       excelize.Fill{Type: "pattern", Color: []string{"#0ea5e9"}, Pattern: 1},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Target column (I) style: editable, no special background.
+	targetStyle, err := f.NewStyle(&excelize.Style{
+		Alignment:  &excelize.Alignment{WrapText: true, Vertical: "top"},
+		Protection: &excelize.Protection{Locked: false},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Divergent column (J) style: editable, no WrapText ("true"/"false" não quebra linha).
 	divergentStyle, err := f.NewStyle(&excelize.Style{
 		Protection: &excelize.Protection{Locked: false},
 	})
@@ -203,7 +226,7 @@ func (XLSXFormatter) MarshalLangs(c dto.Collection, langs []string) ([]byte, err
 		for _, row := range rows {
 			for _, lang := range rowLangs(row, filter) {
 				text := row.Text[lang]
-				if text == "" {
+				if text == "" && !formatters.HasSourceTarget(row, lang) {
 					continue
 				}
 				h := row.Hash[lang]
@@ -227,6 +250,8 @@ func (XLSXFormatter) MarshalLangs(c dto.Collection, langs []string) ([]byte, err
 					divergent = "true"
 				}
 
+				source, target := formatters.SourceTarget(row, lang)
+
 				f.SetCellValue(sheet, fmt.Sprintf("A%d", rowIdx), key)
 				f.SetCellValue(sheet, fmt.Sprintf("B%d", rowIdx), id)
 				f.SetCellValue(sheet, fmt.Sprintf("C%d", rowIdx), row.Name)
@@ -234,7 +259,9 @@ func (XLSXFormatter) MarshalLangs(c dto.Collection, langs []string) ([]byte, err
 				f.SetCellValue(sheet, fmt.Sprintf("E%d", rowIdx), lang)
 				f.SetCellValue(sheet, fmt.Sprintf("F%d", rowIdx), ph)
 				f.SetCellValue(sheet, fmt.Sprintf("G%d", rowIdx), value)
-				f.SetCellValue(sheet, fmt.Sprintf("H%d", rowIdx), divergent)
+				f.SetCellValue(sheet, fmt.Sprintf("H%d", rowIdx), source)
+				f.SetCellValue(sheet, fmt.Sprintf("I%d", rowIdx), target)
+				f.SetCellValue(sheet, fmt.Sprintf("J%d", rowIdx), divergent)
 
 				// Alimenta as larguras: TODAS as colunas observam o
 				// conteúdo (runes) — hash pega o "$"+hex de 17, divergent o
@@ -246,6 +273,8 @@ func (XLSXFormatter) MarshalLangs(c dto.Collection, langs []string) ([]byte, err
 				widths.observe(colLang, lang)
 				widths.observe(colHash, ph)
 				widths.observe(colText, value)
+				widths.observe(colSource, source)
+				widths.observe(colTarget, target)
 				widths.observe(colDivergent, divergent)
 
 				rowIdx++
@@ -259,11 +288,16 @@ func (XLSXFormatter) MarshalLangs(c dto.Collection, langs []string) ([]byte, err
 		f.SetColWidth(sheet, col, col, float64(w))
 	}
 
-	// Queca de linha da coluna text (G) e destravamento da divergent
-	// (H): UM estilo, UM range cada (não um por linha).
+	// Queca de linha da coluna text (G) e destravamento da source, target, divergent
+	// (H, I, J): UM estilo, UM range cada (não um por linha).
 	if rowIdx > 2 {
 		f.SetCellStyle(sheet, "G2", fmt.Sprintf("G%d", rowIdx-1), textStyle)
-		f.SetCellStyle(sheet, "H2", fmt.Sprintf("H%d", rowIdx-1), divergentStyle)
+		// Source column (H) with blue background
+		f.SetCellStyle(sheet, "H2", fmt.Sprintf("H%d", rowIdx-1), sourceStyle)
+		// Target column (I) editable, no special background
+		f.SetCellStyle(sheet, "I2", fmt.Sprintf("I%d", rowIdx-1), targetStyle)
+		// Divergent column (J) editable, no WrapText
+		f.SetCellStyle(sheet, "J2", fmt.Sprintf("J%d", rowIdx-1), divergentStyle)
 	}
 
 	// Auto-filter
@@ -278,7 +312,7 @@ func (XLSXFormatter) MarshalLangs(c dto.Collection, langs []string) ([]byte, err
 		})
 	}
 
-	// Proteção: metadata (A–F) e header travados, só text e divergent
+	// Proteção: metadata (A–F) e header travados, só text, source, target e divergent
 	// editáveis — sem senha, é contra edição acidental.
 	if err := protectMetadataColumns(f, sheet); err != nil {
 		return nil, err
@@ -328,6 +362,20 @@ func rowLangs(row dto.TextRow, filter map[string]bool) []string {
 		}
 		langs = append(langs, lang)
 	}
+	// A linha de `us` entra também quando só há source/target: o target é o
+	// que o import aplica, mesmo sem texto no original.
+	if formatters.HasSourceTarget(row, common.DefaultLocalization) && (filter == nil || filter[common.DefaultLocalization]) {
+		hasUS := false
+		for _, l := range langs {
+			if l == common.DefaultLocalization {
+				hasUS = true
+				break
+			}
+		}
+		if !hasUS {
+			langs = append(langs, common.DefaultLocalization)
+		}
+	}
 	sort.Strings(langs)
 	return langs
 }
@@ -336,8 +384,8 @@ func rowLangs(row dto.TextRow, filter map[string]bool) []string {
 // incluso) contra edição ERRADA — o alvo é o acidente, não a segurança:
 // a planilha é protegida SEM senha (desproteger é um clique em Revisão,
 // e colar bypassa a validação), então quem insistir ainda edita. Célula
-// travada é o PADRÃO do xlsx; só text (G) e divergent (H) saem dos
-// marshallers com estilo Protection{Locked: false}. O aviso
+// travada é o PADRÃO do xlsx; só text (G), source (H), target (I) e divergent (J)
+// saem dos marshallers com estilo Protection{Locked: false}. O aviso
 // customizado vive numa DataValidation "custom" sempre-inválida
 // (Formula1 FALSE) sobre A:F: com a planilha desprotegida, digitar em
 // metadata mostra "Edição não permitida" e rejeita — protegida, quem
@@ -383,9 +431,15 @@ func (XLSXFormatter) Unmarshal(data []byte) (dto.Collection, error) {
 		return dto.Collection{}, nil
 	}
 
-	// Valida header
+	// Valida header: as colunas do formato (nome E ordem). O XLSX aceita
+	// colunas extras depois das conhecidas.
 	if len(rows[0]) < len(xlsxHeader) {
 		return nil, fmt.Errorf("invalid XLSX header: expected at least %d columns, got %d", len(xlsxHeader), len(rows[0]))
+	}
+	for i, want := range xlsxHeader {
+		if got := strings.TrimSpace(rows[0][i]); got != want {
+			return nil, fmt.Errorf("invalid XLSX header column %d: expected %q, got %q", i, want, got)
+		}
 	}
 
 	c := make(dto.Collection)
@@ -396,10 +450,10 @@ func (XLSXFormatter) Unmarshal(data []byte) (dto.Collection, error) {
 		if len(rec) < len(xlsxHeader) {
 			continue
 		}
-		lang := rec[4]
-		hashHex, _ := hash.Strip(rec[5])
-		text := rec[6]
-		divergent := rec[7] == "true"
+		lang := rec[colLang]
+		hashHex, _ := hash.Strip(rec[colHash])
+		text := rec[colText]
+		divergent := rec[colDivergent] == "true"
 
 		if lang == common.DefaultLocalization && !divergent && text != "" && !hash.IsRef(text) {
 			if _, exists := table[hashHex]; !exists {
@@ -419,21 +473,25 @@ func (XLSXFormatter) Unmarshal(data []byte) (dto.Collection, error) {
 			// exige uma key por linha (nada de reconstruir por id).
 			return nil, fmt.Errorf("linha sem metadata.key (re-exporte o arquivo no formato atual)")
 		}
-		id := rec[1]
-		name := rec[2]
-		indexStr := rec[3]
-		lang := rec[4]
+		id := rec[colID]
+		name := rec[colName]
+		indexStr := rec[colIndex]
+		lang := rec[colLang]
 		// Polícia estrita do formato: todo hash de artefato tem prefixo $
 		// (a mesma régua do .strings). Célula vazia é tolerada — artefato
 		// feito à mão, o import recalcula pelo texto.
-		hashHex, hasPrefix := hash.Strip(rec[5])
+		hashHex, hasPrefix := hash.Strip(rec[colHash])
 		if !hasPrefix && hashHex != "" {
-			return nil, fmt.Errorf("hash %q sem prefixo $ (re-exporte o arquivo no formato atual)", rec[5])
+			return nil, fmt.Errorf("hash %q sem prefixo $ (re-exporte o arquivo no formato atual)", rec[colHash])
 		}
-		text := rec[6]
-		divergent := rec[7] == "true"
+		text := rec[colText]
+		source := rec[colSource]
+		target := rec[colTarget]
+		divergent := rec[colDivergent] == "true"
 
-		if text == "" {
+		// Row sem texto no original ainda entra quando carrega o par
+		// source/target: o target é o que o import aplica.
+		if text == "" && source == "" && target == "" {
 			continue
 		}
 
@@ -484,6 +542,10 @@ func (XLSXFormatter) Unmarshal(data []byte) (dto.Collection, error) {
 			Divergent: divergent,
 			Character: "",
 			Kind:      "",
+			// A projeção source/target só existe na linha do idioma default
+			// (é lá que a tradução vive); o import lê apenas o target.
+			Source: source,
+			Target: target,
 		}
 
 		// Remove row existente se houver
@@ -562,10 +624,23 @@ func marshalNoDedupLangs(c dto.Collection, langs []string) ([]byte, error) {
 	// colunas editáveis também: text (WrapText + destravada) e divergent
 	// (só destravada).
 	widths := newXlsxWidths()
+	// Text column style: WrapText + unlocked
 	textStyle, _ := f.NewStyle(&excelize.Style{
 		Alignment:  &excelize.Alignment{WrapText: true, Vertical: "top"},
 		Protection: &excelize.Protection{Locked: false},
 	})
+	// Source column style: editable with blue background
+	sourceStyle, _ := f.NewStyle(&excelize.Style{
+		Alignment:  &excelize.Alignment{WrapText: true, Vertical: "top"},
+		Protection: &excelize.Protection{Locked: false},
+		Fill:       excelize.Fill{Type: "pattern", Color: []string{"#0ea5e9"}, Pattern: 1},
+	})
+	// Target column style: editable, no special background
+	targetStyle, _ := f.NewStyle(&excelize.Style{
+		Alignment:  &excelize.Alignment{WrapText: true, Vertical: "top"},
+		Protection: &excelize.Protection{Locked: false},
+	})
+	// Divergent column style: unlocked, no WrapText
 	divergentStyle, _ := f.NewStyle(&excelize.Style{
 		Protection: &excelize.Protection{Locked: false},
 	})
@@ -580,7 +655,7 @@ func marshalNoDedupLangs(c dto.Collection, langs []string) ([]byte, error) {
 		for _, row := range rows {
 			for _, lang := range rowLangs(row, filter) {
 				text := row.Text[lang]
-				if text == "" {
+				if text == "" && !formatters.HasSourceTarget(row, lang) {
 					continue
 				}
 				h := row.Hash[lang]
@@ -588,6 +663,7 @@ func marshalNoDedupLangs(c dto.Collection, langs []string) ([]byte, error) {
 					h = hash.Sum64Hex(text)
 				}
 				ph := hash.Prefix(h) // hash no formato de artefato: "$"+hex
+				source, target := formatters.SourceTarget(row, lang)
 				divergent := "false"
 				if row.Divergent {
 					divergent = "true"
@@ -599,7 +675,10 @@ func marshalNoDedupLangs(c dto.Collection, langs []string) ([]byte, error) {
 				f.SetCellValue(sheet, fmt.Sprintf("E%d", rowIdx), lang)
 				f.SetCellValue(sheet, fmt.Sprintf("F%d", rowIdx), ph)
 				f.SetCellValue(sheet, fmt.Sprintf("G%d", rowIdx), text)
-				f.SetCellValue(sheet, fmt.Sprintf("H%d", rowIdx), divergent)
+				f.SetCellValue(sheet, fmt.Sprintf("H%d", rowIdx), source)
+				f.SetCellValue(sheet, fmt.Sprintf("I%d", rowIdx), target)
+				f.SetCellValue(sheet, fmt.Sprintf("J%d", rowIdx), divergent)
+
 				// Mesma régua do MarshalLangs: todas observam o conteúdo.
 				widths.observe(colKey, key)
 				widths.observe(colID, id)
@@ -608,6 +687,8 @@ func marshalNoDedupLangs(c dto.Collection, langs []string) ([]byte, error) {
 				widths.observe(colLang, lang)
 				widths.observe(colHash, ph)
 				widths.observe(colText, text)
+				widths.observe(colSource, source)
+				widths.observe(colTarget, target)
 				widths.observe(colDivergent, divergent)
 				rowIdx++
 			}
@@ -620,7 +701,12 @@ func marshalNoDedupLangs(c dto.Collection, langs []string) ([]byte, error) {
 	}
 	if rowIdx > 2 {
 		f.SetCellStyle(sheet, "G2", fmt.Sprintf("G%d", rowIdx-1), textStyle)
-		f.SetCellStyle(sheet, "H2", fmt.Sprintf("H%d", rowIdx-1), divergentStyle)
+		// Source column (H) with blue background
+		f.SetCellStyle(sheet, "H2", fmt.Sprintf("H%d", rowIdx-1), sourceStyle)
+		// Target column (I) editable, no special background
+		f.SetCellStyle(sheet, "I2", fmt.Sprintf("I%d", rowIdx-1), targetStyle)
+		// Divergent column (J) editable, no WrapText
+		f.SetCellStyle(sheet, "J2", fmt.Sprintf("J%d", rowIdx-1), divergentStyle)
 	}
 
 	if rowIdx > 2 {

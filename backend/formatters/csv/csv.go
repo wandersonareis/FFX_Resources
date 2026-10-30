@@ -43,6 +43,11 @@ func (CSVFormatter) Extension() string {
 // artefato com VÁRIAS entradas (events_all, objects_all) volta inteiro no
 // import. id é o metadata.ID (ex.: chunk_07 do dicionário, que não vive
 // no nome do arquivo).
+//
+// source/target são a projeção de export para CAT (ver dto.TextRow): source
+// é a referência `us` de data//.vbf e target é a tradução de mods/ — o
+// ÚNICO texto que o import aplica. As duas colunas só vêm preenchidas nas
+// linhas do idioma `us`.
 var csvHeader = []string{
 	"key",
 	"id",
@@ -51,8 +56,24 @@ var csvHeader = []string{
 	"lang",
 	"hash",
 	"text",
+	"source",
+	"target",
 	"divergent",
 }
+
+// Índices das colunas (csvHeader).
+const (
+	colKey       = 0
+	colID        = 1
+	colName      = 2
+	colIndex     = 3
+	colLang      = 4
+	colHash      = 5
+	colText      = 6
+	colSource    = 7
+	colTarget    = 8
+	colDivergent = 9
+)
 
 // Marshal organiza a Collection pronta no formato CSV (todos os idiomas).
 // Recebe apenas DTO pronto; não toca no domínio nem muta a entrada.
@@ -89,7 +110,7 @@ func (CSVFormatter) MarshalLangs(c dto.Collection, langs []string) ([]byte, erro
 		for _, row := range rows {
 			for _, lang := range rowLangs(row, filter) {
 				text := row.Text[lang]
-				if text == "" {
+				if text == "" && !formatters.HasSourceTarget(row, lang) {
 					continue
 				}
 				h := row.Hash[lang]
@@ -112,6 +133,7 @@ func (CSVFormatter) MarshalLangs(c dto.Collection, langs []string) ([]byte, erro
 					divergent = "true"
 				}
 
+				source, target := formatters.SourceTarget(row, lang)
 				record := []string{
 					key,
 					id,
@@ -120,6 +142,8 @@ func (CSVFormatter) MarshalLangs(c dto.Collection, langs []string) ([]byte, erro
 					lang,
 					hash.Prefix(h),
 					value,
+					source,
+					target,
 					divergent,
 				}
 				if err := writer.Write(record); err != nil {
@@ -151,6 +175,8 @@ func langSet(langs []string) map[string]bool {
 }
 
 // rowLangs devolve os idiomas da row com texto, ordenados e filtrados.
+// A linha de `us` entra também quando só há source/target (row sem texto no
+// original mas com tradução em mods) — o target precisa chegar ao import.
 func rowLangs(row dto.TextRow, filter map[string]bool) []string {
 	langs := make([]string, 0, len(row.Text))
 	for lang, text := range row.Text {
@@ -161,6 +187,20 @@ func rowLangs(row dto.TextRow, filter map[string]bool) []string {
 			continue
 		}
 		langs = append(langs, lang)
+	}
+	if formatters.HasSourceTarget(row, common.DefaultLocalization) {
+		if filter == nil || filter[common.DefaultLocalization] {
+			hasUS := false
+			for _, l := range langs {
+				if l == common.DefaultLocalization {
+					hasUS = true
+					break
+				}
+			}
+			if !hasUS {
+				langs = append(langs, common.DefaultLocalization)
+			}
+		}
 	}
 	sort.Strings(langs)
 	return langs
@@ -183,11 +223,11 @@ func (CSVFormatter) Unmarshal(data []byte) (dto.Collection, error) {
 	}
 
 	// Valida header
-	if len(records[0]) != len(csvHeader) {
-		return nil, fmt.Errorf("invalid CSV header: expected %d columns, got %d", len(csvHeader), len(records[0]))
+	if len(records[0]) < len(csvHeader) {
+		return nil, fmt.Errorf("invalid CSV header: expected at least %d columns, got %d", len(csvHeader), len(records[0]))
 	}
 	for i, col := range records[0] {
-		if col != csvHeader[i] {
+		if i < len(csvHeader) && col != csvHeader[i] {
 			return nil, fmt.Errorf("invalid CSV header column %d: expected %q, got %q", i, csvHeader[i], col)
 		}
 	}
@@ -197,15 +237,15 @@ func (CSVFormatter) Unmarshal(data []byte) (dto.Collection, error) {
 
 	// Primeira passada: coleta definições canônicas
 	for _, rec := range records[1:] {
-		if len(rec) != len(csvHeader) {
+		if len(rec) < len(csvHeader) {
 			continue // pula linha malformada
 		}
-		lang := rec[4]
-		hashHex, _ := hash.Strip(rec[5])
-		text := rec[6]
-		divergent := rec[7] == "true"
+		lang := rec[colLang]
+		hashHex, _ := hash.Strip(rec[colHash])
+		text := rec[colText]
+		divergent := rec[colDivergent] == "true"
 
-		// Só registra canônica no default lang e não-divergent
+		// Só registra canônica no idioma default e não-divergent
 		if lang == common.DefaultLocalization && !divergent && text != "" && !hash.IsRef(text) {
 			if canonical, exists := table[hashHex]; !exists {
 				table[hashHex] = text
@@ -217,30 +257,34 @@ func (CSVFormatter) Unmarshal(data []byte) (dto.Collection, error) {
 
 	// Segunda passada: constrói a Collection
 	for _, rec := range records[1:] {
-		if len(rec) != len(csvHeader) {
+		if len(rec) < len(csvHeader) {
 			continue
 		}
-		key := strings.TrimSpace(rec[0])
+		key := strings.TrimSpace(rec[colKey])
 		if key == "" {
 			// Sem a key completa não há kind/versão/casamento — o formato
 			// exige uma key por linha (nada de reconstruir por id).
 			return nil, fmt.Errorf("linha sem metadata.key (re-exporte o arquivo no formato atual)")
 		}
-		id := rec[1]
-		name := rec[2]
-		indexStr := rec[3]
-		lang := rec[4]
+		id := rec[colID]
+		name := rec[colName]
+		indexStr := rec[colIndex]
+		lang := rec[colLang]
 		// Polícia estrita do formato: todo hash de artefato tem prefixo $
 		// (a mesma régua do .strings). Célula vazia é tolerada — artefato
 		// feito à mão, o import recalcula pelo texto.
-		hashHex, hasPrefix := hash.Strip(rec[5])
+		hashHex, hasPrefix := hash.Strip(rec[colHash])
 		if !hasPrefix && hashHex != "" {
-			return nil, fmt.Errorf("hash %q sem prefixo $ (re-exporte o arquivo no formato atual)", rec[5])
+			return nil, fmt.Errorf("hash %q sem prefixo $ (re-exporte o arquivo no formato atual)", rec[colHash])
 		}
-		text := rec[6]
-		divergent := rec[7] == "true"
+		text := rec[colText]
+		source := rec[colSource]
+		target := rec[colTarget]
+		divergent := rec[colDivergent] == "true"
 
-		if text == "" {
+		// Row sem texto no original ainda entra quando carrega o par
+		// source/target: o target é o que o import aplica.
+		if text == "" && source == "" && target == "" {
 			continue
 		}
 
@@ -301,13 +345,17 @@ func (CSVFormatter) Unmarshal(data []byte) (dto.Collection, error) {
 		textMap[lang] = text
 
 		row := dto.TextRow{
-			Index:      index,
-			Name:       name,
-			Hash:       hashMap,
-			Text:       textMap,
-			Divergent:  divergent,
-			Character:  "",
-			Kind:       "",
+			Index:     index,
+			Name:      name,
+			Hash:      hashMap,
+			Text:      textMap,
+			Divergent: divergent,
+			Character: "",
+			Kind:      "",
+			// A projeção source/target só existe na linha do idioma default
+			// (é lá que a tradução vive); o import lê apenas o target.
+			Source: source,
+			Target: target,
 		}
 
 		// Remove row existente se houver
@@ -391,7 +439,7 @@ func marshalNoDedupLangs(c dto.Collection, langs []string) ([]byte, error) {
 		for _, row := range rows {
 			for _, lang := range rowLangs(row, filter) {
 				text := row.Text[lang]
-				if text == "" {
+				if text == "" && !formatters.HasSourceTarget(row, lang) {
 					continue
 				}
 				h := row.Hash[lang]
@@ -402,7 +450,8 @@ func marshalNoDedupLangs(c dto.Collection, langs []string) ([]byte, error) {
 				if row.Divergent {
 					divergent = "true"
 				}
-				record := []string{key, id, row.Name, fmt.Sprintf("%d", row.Index), lang, hash.Prefix(h), text, divergent}
+				source, target := formatters.SourceTarget(row, lang)
+				record := []string{key, id, row.Name, fmt.Sprintf("%d", row.Index), lang, hash.Prefix(h), text, source, target, divergent}
 				if err := writer.Write(record); err != nil {
 					return nil, err
 				}
@@ -410,7 +459,10 @@ func marshalNoDedupLangs(c dto.Collection, langs []string) ([]byte, error) {
 		}
 	}
 	writer.Flush()
-	return buf.Bytes(), writer.Error()
+	if err := writer.Error(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // entryColumns devolve a coluna key (metadata.key completa) e a coluna id

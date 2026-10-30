@@ -133,7 +133,7 @@ export async function findAnotherTextLeaf(
  * que carrega o conteúdo de uma entrada de texto clicada na árvore.
  * O corpo do POST do runtime carrega "methodID":<id> (ver @wailsio/runtime).
  */
-const GET_TEXT_ENTRY_METHOD_ID = 826447931;
+export const GET_TEXT_ENTRY_METHOD_ID = 826447931;
 
 /**
  * Clica uma folha de texto e espera a carga dela RESPONDER — não basta a

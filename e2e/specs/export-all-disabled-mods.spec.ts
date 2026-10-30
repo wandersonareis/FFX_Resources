@@ -132,7 +132,8 @@ test.describe('Exportar todo o texto com mods desativados', () => {
 
       // ---- 6. prova de que leu os ORIGINAIS (mods desligado) ----
       // O menu principal original em `us` é inglês; a tradução em mods/ usa
-      // "Rede de Esferas". A linha exportada tem de ser a inglesa.
+      // "Rede de Esferas". O export CAT traz `text`/`source` do binário de
+      // data/ e `target` do par em mods/ — o toggle não muda essa régua.
       const mainmenu = fs.readFileSync(
         path.join(modsDir, 'edits', 'mainmenu_all_localizations_ffx.strings'),
         'utf8'
@@ -141,8 +142,16 @@ test.describe('Exportar todo o texto com mods desativados', () => {
         .split(/\r?\n/)
         .find((line) => line.startsWith('menumain:0:us'));
       expect(usLine, 'linha menumain:0:us exportada').toBeTruthy();
-      expect(usLine).toContain('Sphere Grid');
-      expect(usLine).not.toContain('Rede de Esferas');
+      // O VALOR da linha (antes da projeção) é o texto de data/.
+      const value = usLine!.split('║source = ')[0];
+      expect(value).toContain('Sphere Grid');
+      expect(value).not.toContain('Rede de Esferas');
+      // source = referência EN (data/); target = tradução de mods/.
+      const source = usLine!.split('║source = ')[1]?.split('║target = ')[0] ?? '';
+      const target = usLine!.split('║target = ')[1] ?? '';
+      expect(source, 'source da linha (data/)').toContain('Sphere Grid');
+      expect(source, 'source não é a tradução').not.toContain('Rede de Esferas');
+      expect(target, 'target da linha (mods/)').toContain('Rede de Esferas');
 
       // ---- 7. restaura o toggle original ----
       if (originalEnableMods) {

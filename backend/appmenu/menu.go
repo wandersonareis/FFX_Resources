@@ -25,24 +25,23 @@ func Build(a *application.App, c *Controller) *application.Menu {
 		SetAccelerator("Ctrl+Q").
 		OnClick(func(*application.Context) { a.Quit() })
 
-		
-		// ---- Imagem --------------------------------------------------------
-		imageMenu := menu.AddSubmenu("Imagem")
+	// ---- Imagem --------------------------------------------------------
+	imageMenu := menu.AddSubmenu("Imagem")
 	imageMenu.Add("Extrair .dds").
-	OnClick(func(*application.Context) { c.onExtractDDS() })
+		OnClick(func(*application.Context) { c.onExtractDDS() })
 	imageMenu.Add("Extrair .png").
-	OnClick(func(*application.Context) { c.onExtractPNG() })
+		OnClick(func(*application.Context) { c.onExtractPNG() })
 	imageMenu.AddSeparator()
 	imageMenu.Add("Importar .dds").
-	OnClick(func(*application.Context) { c.onImportImage() })
-	
+		OnClick(func(*application.Context) { c.onImportImage() })
+
 	// ---- Dedupe ---------------------------------------------------------
 	dedupeMenu := menu.AddSubmenu("Dedupe")
 	dedupeMenu.Add("Substituir repetidos por hash").
-	OnClick(func(*application.Context) { c.onDedupe() })
+		OnClick(func(*application.Context) { c.onDedupe() })
 	dedupeMenu.Add("Resolver hashes").
-	OnClick(func(*application.Context) { c.onDupe() })
-	
+		OnClick(func(*application.Context) { c.onDupe() })
+
 	// ---- Exportar (export por kind da árvore de data) ---------------------
 	textMenu := menu.AddSubmenu("Exportar")
 	for _, k := range textKinds {

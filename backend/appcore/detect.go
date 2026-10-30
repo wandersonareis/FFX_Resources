@@ -40,16 +40,16 @@ import (
 type Format uint8
 
 const (
-	FormatUnknown Format = iota
-	FormatChunkmapV1  // binário de objects, header V1 (FFX, 20 bytes)
-	FormatChunkmapV2  // binário de objects, header V2 (FFX-2/LastMission, 32 bytes)
-	FormatMacroDic    // dicionário de macros (macrodic.dcp)
-	FormatEvent        // events (padrão de ponteiros)
-	FormatEventTable   // tabelas events (battletext/cloud/tutorial/menumain)
-	FormatLockit       // loc kit (registros CRLF)
-	FormatHelp         // painel de ajuda (.sps2)
-	FormatPhyre        // textura (.dds.phyre)
-	FormatArtifactJSON // artefato de texto exportado (.json)
+	FormatUnknown      Format = iota
+	FormatChunkmapV1          // binário de objects, header V1 (FFX, 20 bytes)
+	FormatChunkmapV2          // binário de objects, header V2 (FFX-2/LastMission, 32 bytes)
+	FormatMacroDic            // dicionário de macros (macrodic.dcp)
+	FormatEvent               // events (padrão de ponteiros)
+	FormatEventTable          // tabelas events (battletext/cloud/tutorial/menumain)
+	FormatLockit              // loc kit (registros CRLF)
+	FormatHelp                // painel de ajuda (.sps2)
+	FormatPhyre               // textura (.dds.phyre)
+	FormatArtifactJSON        // artefato de texto exportado (.json)
 	FormatArtifactStrings
 	FormatArtifactCSV
 	FormatArtifactXLSX

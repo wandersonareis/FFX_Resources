@@ -50,15 +50,15 @@ func keepStorePadding(storeText, importedText string) string {
 	return sp + ib
 }
 
-// reconcileImportPadding aplica keepStorePadding na row importada casada,
-// devolvendo-a com o texto 'us' já reconciliado. O map Text é copiado quando
-// o texto muda: a row do artefato pode estar compartilhada com o parse.
+// reconcileImportPadding aplica keepStorePadding na row importada casada e
+// devolve a row com o TARGET no texto 'us' — é esse valor que o merge grava
+// no binário. Sem target, a row volta intacta (nada a importar).
 func reconcileImportPadding(storeRow, importedRow dto.TextRow) dto.TextRow {
-	t := usText(importedRow)
-	rt := keepStorePadding(usText(storeRow), t)
-	if rt == t {
+	t := importText(importedRow)
+	if t == "" {
 		return importedRow
 	}
+	rt := keepStorePadding(usText(storeRow), t)
 	text := make(map[string]string, len(importedRow.Text)+1)
 	for k, v := range importedRow.Text {
 		text[k] = v

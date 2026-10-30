@@ -213,6 +213,21 @@ func (s *MetadataService) originalFor(kind, id string, version common.GameVersio
 	return entry, exists, err
 }
 
+// originalEntryFor é originalFor na forma que o import usa: ponteiro (nil =
+// sem referência em data/) — sem original, o casamento por coordenada e a
+// validação de tags seguem desligados.
+func (s *MetadataService) originalEntryFor(kind, id string, version common.GameVersion) *dto.FileEntry {
+	entry, ok, err := s.originalFor(kind, id, version)
+	if err != nil {
+		common.LogVerbose("import %s: sem original para validar origem/tags: %v", id, err)
+		return nil
+	}
+	if !ok {
+		return nil
+	}
+	return &entry
+}
+
 // originalMacroEntry lê o macrodic de data/ uma vez por versão (o binário é
 // único: todos os chunks saem do mesmo arquivo) e recorta a entrada pedida.
 func (s *MetadataService) originalMacroEntry(id string, version common.GameVersion) (dto.FileEntry, bool, error) {

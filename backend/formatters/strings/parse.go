@@ -13,13 +13,15 @@ import (
 
 // parsedLine é uma linha de conteúdo decomposta.
 type parsedLine struct {
-	id    string
-	name  string
-	index int
-	lang  string
-	hash  string // hex bare
-	ref   bool
-	value string // literal (com escapes desfeitos) ou "" quando ref
+	id     string
+	name   string
+	index  int
+	lang   string
+	hash   string // hex bare
+	ref    bool
+	value  string // literal (com escapes desfeitos) ou "" quando ref
+	source string // referência us de data/ (linha do idioma default)
+	target string // tradução de mods/ — o texto que o import aplica
 }
 
 // Unmarshal parseia o formato Strings de volta para a Collection (DTO),
@@ -84,6 +86,13 @@ func Unmarshal(data []byte) (dto.Collection, error) {
 			row.Text = make(map[string]string)
 		}
 		row.Hash[pl.lang] = pl.hash
+		// A projeção source/target existe só na linha do idioma default e
+		// vale inclusive para refs (o valor pode ser "$hash" e a tradução
+		// continuar explícita no target).
+		if pl.lang == common.DefaultLocalization {
+			row.Source = pl.source
+			row.Target = pl.target
+		}
 		if pl.ref {
 			refs = append(refs, pendingRef{entryID: pl.id, rkey: rkey, lang: pl.lang, hash: pl.hash})
 			continue
@@ -159,6 +168,10 @@ func parseHeader(line string) (key string, rowCount int, ok bool) {
 // (campos futuros crescem pela esquerda) com id [:name]. A versão NÃO é
 // campo da linha: vive só no header /*key=*/ — no primeiro campo da
 // chave é erro de formato, nunca absorvida como prefixo.
+//
+// O valor pode trazer a projeção do export: `<valor>║source = <esc>` e
+// `<valor>║target = <esc>` (o escapeValue garante que ║ literal não existe
+// no texto), inclusive em linha de ref "$hash".
 func parseLine(line string, lineno int) (parsedLine, error) {
 	fail := func(format string, args ...any) (parsedLine, error) {
 		return parsedLine{}, fmt.Errorf("strings line %d: %s", lineno, fmt.Sprintf(format, args...))
@@ -183,7 +196,8 @@ func parseLine(line string, lineno int) (parsedLine, error) {
 	if _, err := hex.DecodeString(bare); err != nil {
 		return fail("hash is not hex: %q", bare)
 	}
-	value := stdstrings.TrimPrefix(rest[eq+1:], " ")
+	raw := stdstrings.TrimPrefix(rest[eq+1:], " ")
+	value, source, target := splitProjection(raw)
 	fields := stdstrings.Split(keyPart, ":")
 	if len(fields) < 3 {
 		return fail("key needs at least id:index:lang, got %q", keyPart)
@@ -221,11 +235,58 @@ func parseLine(line string, lineno int) (parsedLine, error) {
 	if stdstrings.TrimSpace(id) == "" {
 		return fail("empty id in %q", keyPart)
 	}
-	pl := parsedLine{id: id, name: name, index: index, lang: lang, hash: bare}
+	pl := parsedLine{id: id, name: name, index: index, lang: lang, hash: bare, source: source, target: target}
 	if rv, isRef := hash.Strip(value); isRef && rv == bare {
 		pl.ref = true
 		return pl, nil
 	}
 	pl.value = unescapeValue(value)
 	return pl, nil
+}
+
+// splitProjection separa o valor literal da projeção source/target gravada
+// pelo export (`║source = …` e `║target = …`). Os textos vêm escapados.
+func splitProjection(raw string) (value, source, target string) {
+	srcMark := keyValueSep + "source = "
+	trgMark := keyValueSep + "target = "
+	if idx := indexUnescaped(raw, srcMark); idx >= 0 {
+		value = raw[:idx]
+		rest := raw[idx+len(srcMark):]
+		if tIdx := indexUnescaped(rest, trgMark); tIdx >= 0 {
+			source = unescapeValue(rest[:tIdx])
+			target = unescapeValue(rest[tIdx+len(trgMark):])
+		} else {
+			source = unescapeValue(rest)
+		}
+		return value, source, target
+	}
+	if idx := indexUnescaped(raw, trgMark); idx >= 0 {
+		value = raw[:idx]
+		target = unescapeValue(raw[idx+len(trgMark):])
+		return value, "", target
+	}
+	return raw, "", ""
+}
+
+// indexUnescaped devolve o índice da primeira ocorrência de marker que NÃO
+// está escapada: escapeValue grava `\║` para um ║ literal, então o marcador
+// só vale quando o ║ tem um número PAR de backslashes imediatamente antes.
+func indexUnescaped(s, marker string) int {
+	from := 0
+	for from <= len(s) {
+		idx := stdstrings.Index(s[from:], marker)
+		if idx < 0 {
+			return -1
+		}
+		idx += from
+		backslashes := 0
+		for j := idx - 1; j >= 0 && s[j] == '\\'; j-- {
+			backslashes++
+		}
+		if backslashes%2 == 0 {
+			return idx
+		}
+		from = idx + len(marker)
+	}
+	return -1
 }

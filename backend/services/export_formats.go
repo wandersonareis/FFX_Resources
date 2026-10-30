@@ -13,12 +13,12 @@ import (
 	"ffxresources/backend/dto"
 	"ffxresources/backend/fileFormats/event"
 	"ffxresources/backend/formatters"
-	"ffxresources/backend/uilog"
 	_ "ffxresources/backend/formatters/csv"
 	jsonfmt "ffxresources/backend/formatters/json"
 	_ "ffxresources/backend/formatters/strings"
 	_ "ffxresources/backend/formatters/xlsx"
 	"ffxresources/backend/progress"
+	"ffxresources/backend/uilog"
 )
 
 // ExportPlanItem é UMA ação do lote: um kind e os ids dele (vazio = tudo
@@ -196,7 +196,7 @@ func (s *MetadataService) exportKind(r progress.Reporter, kind, format string, v
 	r.Begin("", 0) // total indeterminado: os builders fazem SetTotal
 	defer r.End()
 
-	c, err := s.GetCollection(kind, version, helpExportIDs(kind, extract), r)
+	c, err := s.exportCollection(kind, version, helpExportIDs(kind, extract), r)
 	if err != nil {
 		return nil, err
 	}

@@ -86,8 +86,8 @@ func TestUnmarshalRoundTripBulk(t *testing.T) {
 // Linha sem key é rejeitada com instrução clara (formato antigo não tem
 // compat: nada de adapter).
 func TestUnmarshalRejeitaLinhaSemKey(t *testing.T) {
-	raw := "key,id,name,index,lang,hash,text,divergent\n" +
-		",azit0000,,0,us,aaaa0000aaaa0000,Texto sem key,false\n"
+	raw := "key,id,name,index,lang,hash,text,source,target,divergent\n" +
+		",azit0000,,0,us,aaaa0000aaaa0000,Texto sem key,,,false\n"
 	if _, err := NewCSVFormatter().Unmarshal([]byte(raw)); err == nil ||
 		!strings.Contains(err.Error(), "metadata.key") {
 		t.Fatalf("esperava erro citando metadata.key, veio: %v", err)
@@ -97,19 +97,19 @@ func TestUnmarshalRejeitaLinhaSemKey(t *testing.T) {
 // Política estrita do import: hash sem o prefixo $ é artefato do formato
 // antigo — erro claro mandando re-exportar (a mesma régua do .strings).
 func TestUnmarshalRejeitaHashSemPrefixo(t *testing.T) {
-	raw := "key,id,name,index,lang,hash,text,divergent\n" +
-		"ffx/event/obj_ps3/az/azit0000/azit0000.bin,azit0000,,0,us,aaaa0000aaaa0000,Texto,false\n"
+	raw := "key,id,name,index,lang,hash,text,source,target,divergent\n" +
+		"ffx/event/obj_ps3/az/azit0000/azit0000.bin,azit0000,,0,us,aaaa0000aaaa0000,Texto,,,false\n"
 	if _, err := NewCSVFormatter().Unmarshal([]byte(raw)); err == nil ||
 		!strings.Contains(err.Error(), "prefixo $") {
 		t.Fatalf("esperava erro citando prefixo $, veio: %v", err)
 	}
 }
 
-// Célula de hash vazia é tolerada: artefato feito à mão — o import
-// recalcula o hash pelo texto (usHash).
+// Célula de hash vazia é tolerada: artefato feito à mão — o import recalcula
+// o hash pelo texto.
 func TestUnmarshalToleraHashVazio(t *testing.T) {
-	raw := "key,id,name,index,lang,hash,text,divergent\n" +
-		"ffx/event/obj_ps3/az/azit0000/azit0000.bin,azit0000,,0,us,,Texto feito à mão,false\n"
+	raw := "key,id,name,index,lang,hash,text,source,target,divergent\n" +
+		"ffx/event/obj_ps3/az/azit0000/azit0000.bin,azit0000,,0,us,,Texto feito à mão,Texto feito à mão,Texto feito à mão,false\n"
 	got, err := NewCSVFormatter().Unmarshal([]byte(raw))
 	if err != nil {
 		t.Fatalf("hash vazio deveria ser tolerado: %v", err)
@@ -123,5 +123,11 @@ func TestUnmarshalToleraHashVazio(t *testing.T) {
 	}
 	if got := entry.Rows[0].Hash["us"]; got != "" {
 		t.Errorf("hash deveria voltar vazio para o serviço recalcular, veio %q", got)
+	}
+	if got := entry.Rows[0].Source; got != "Texto feito à mão" {
+		t.Errorf("source %q != %q", got, "Texto feito à mão")
+	}
+	if got := entry.Rows[0].Target; got != "Texto feito à mão" {
+		t.Errorf("target %q != %q", got, "Texto feito à mão")
 	}
 }

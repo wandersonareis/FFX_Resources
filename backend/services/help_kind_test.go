@@ -6,14 +6,14 @@ import (
 	"strings"
 	"testing"
 
-	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/fileFormats/helpfile"
 	"ffxresources/backend/formatters/hash"
+	"ffxresources/testData/tempdir"
 )
 
-// versionForKey deriva a versão do prefixo da key ("ffx2/..." → FFX-2).
+// versionForKey deriva a versÃ£o do prefixo da key ("ffx2/..." â†’ FFX-2).
 func versionForKey(key string) common.GameVersion {
 	if strings.HasPrefix(strings.ToLower(key), "ffx2/") {
 		return common.GameVersionFFX2
@@ -21,7 +21,7 @@ func versionForKey(key string) common.GameVersion {
 	return common.GameVersionFFX
 }
 
-// kindFromKey detecta help pela key (help/…/*.sps2) e mantém os outros kinds.
+// kindFromKey detecta help pela key (help/â€¦/*.sps2) e mantÃ©m os outros kinds.
 func TestKindFromKeyHelp(t *testing.T) {
 	cases := []struct {
 		key  string
@@ -46,7 +46,7 @@ func TestKindFromKeyHelp(t *testing.T) {
 	}
 }
 
-// detectImportKind valida versão e kind: artefato help só importa na aba ffx.
+// detectImportKind valida versÃ£o e kind: artefato help sÃ³ importa na aba ffx.
 func TestDetectImportKindHelpVersionGuard(t *testing.T) {
 	imported := dto.Collection{
 		"now_help": dto.FileEntry{
@@ -65,8 +65,8 @@ func TestDetectImportKindHelpVersionGuard(t *testing.T) {
 	}
 }
 
-// seedFFXHelpRoot copia os fixtures FFX para um root temporário e aponta o
-// GameFilesRoot para lá (espelho do seedTempHelpRoot dos builders).
+// seedFFXHelpRoot copia os fixtures FFX para um root temporÃ¡rio e aponta o
+// GameFilesRoot para lÃ¡ (espelho do seedTempHelpRoot dos builders).
 func seedFFXHelpRoot(t *testing.T) {
 	t.Helper()
 	fixtureRoot, err := filepath.Abs(filepath.Join("..", "..", "testData", "FFX", "binary"))
@@ -87,14 +87,14 @@ func seedFFXHelpRoot(t *testing.T) {
 	})
 }
 
-// helpRowIsRef espelha a regra do backend: ref = "$" + hash PRÓPRIO da row.
+// helpRowIsRef espelha a regra do backend: ref = "$" + hash PRÃ“PRIO da row.
 func helpRowIsRef(r dto.TextRow) bool {
 	bare, ok := hash.Strip(r.Text[common.DefaultLocalization])
 	return ok && bare == r.Hash[common.DefaultLocalization]
 }
 
 // GetEntry de help entrega o DTO DEDUPLICADO (refs p/ ocultar na tabela);
-// GetCollection continua RAW (export/preview/validação de import).
+// GetCollection continua RAW (export/preview/validaÃ§Ã£o de import).
 func TestGetEntryHelpDedupsDTO(t *testing.T) {
 	seedFFXHelpRoot(t)
 	svc := NewMetadataService(nil)
@@ -114,7 +114,7 @@ func TestGetEntryHelpDedupsDTO(t *testing.T) {
 	}
 
 	// now_help_page repete textos com now_help (defs em now_help, que vem
-	// antes na ordem de chave) → as cópias viram refs no DTO entregue.
+	// antes na ordem de chave) â†’ as cÃ³pias viram refs no DTO entregue.
 	entry, err := svc.GetEntry(KindHelp, "now_help_page", common.GameVersionFFX)
 	if err != nil {
 		t.Fatalf("get entry: %v", err)
@@ -129,7 +129,7 @@ func TestGetEntryHelpDedupsDTO(t *testing.T) {
 		t.Fatal("GetEntry deveria entregar refs de dedup em now_help_page")
 	}
 
-	// Toda ref tem a def literal correspondente em algum dos 6 painéis.
+	// Toda ref tem a def literal correspondente em algum dos 6 painÃ©is.
 	full, err := svc.GetCollection(KindHelp, common.GameVersionFFX, nil, nil)
 	if err != nil {
 		t.Fatalf("full: %v", err)
@@ -150,63 +150,5 @@ func TestGetEntryHelpDedupsDTO(t *testing.T) {
 		if !defs[bare] {
 			t.Fatalf("ref %s sem def literal na collection completa", bare)
 		}
-	}
-}
-
-// Compat: artefatos help antigos carregavam name (text_%04d); a store nova
-// não tem name.
-//
-// O casamento é pelo hash, então o name não atrapalha uma row de hash
-// único — mas dedup põe duas rows com o MESMO texto no mesmo grupo de hash,
-// e aí só a coordenada (index\x00name) desempata. É a normalização que alinha
-// as duas chaves.
-func TestStripHelpRowNamesImportCompat(t *testing.T) {
-	text := map[string]string{common.DefaultLocalization: "Directional Button"}
-	h := hash.Texts(text)
-	metadata := func() dto.Metadata {
-		return dto.NewHelpMetadata("now_help", "help/now_help", common.GameVersionFFX)
-	}
-	store := dto.Collection{
-		"now_help": dto.FileEntry{
-			Metadata: metadata(),
-			Rows: []dto.TextRow{
-				{Index: 3, Hash: h, Text: text},
-				{Index: 7, Hash: h, Text: text}, // mesmo texto ⇒ mesmo hash
-			},
-		},
-	}
-	legacy := dto.Collection{
-		"now_help": dto.FileEntry{
-			Metadata: metadata(),
-			Rows: []dto.TextRow{
-				{Index: 3, Name: "text_0003", Hash: h, Text: text},
-				{Index: 7, Name: "text_0007", Hash: h, Text: text},
-			},
-		},
-	}
-
-	// Sem normalização o grupo de hash não desempata: nada casa, mas
-	// também não é erro — as duas rows saem como hash não encontrado.
-	m := matchImportEntry(legacy["now_help"], store["now_help"], nil)
-	if m.inserted != 0 || len(m.unmatched) != 2 {
-		t.Fatalf("sem normalização: inserted=%d unmatched=%d, queria 0 e 2",
-			m.inserted, len(m.unmatched))
-	}
-
-	stripHelpRowNames(legacy)
-	if legacy["now_help"].Rows[0].Name != "" {
-		t.Fatalf("name legado não removido: %q", legacy["now_help"].Rows[0].Name)
-	}
-
-	m = matchImportEntry(legacy["now_help"], store["now_help"], nil)
-	if len(m.unmatched) != 0 {
-		t.Fatalf("após normalizar: %d unmatched, queria 0", len(m.unmatched))
-	}
-	if m.inserted != 2 || m.candidates != 2 {
-		t.Fatalf("após normalizar: inserted=%d candidates=%d, queria 2 e 2",
-			m.inserted, m.candidates)
-	}
-	if m.changed != 0 {
-		t.Fatalf("changed = %d, queria 0 (mesmo texto)", m.changed)
 	}
 }

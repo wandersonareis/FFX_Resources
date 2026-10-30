@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"ffxresources/testData/tempdir"
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
 	"ffxresources/backend/fileFormats/event"
 	jsonfmt "ffxresources/backend/formatters/json"
 	strfmt "ffxresources/backend/formatters/strings"
+	"ffxresources/testData/tempdir"
 )
 
 // Testes fim-a-fim do prepareImport com events sintéticos (sem fixtures de
@@ -79,17 +79,19 @@ func TestImportE2ESwappedOrder(t *testing.T) {
 		"Terceira frase do evento",
 	})
 	raw := collectionRawForTest(t)
-	entry := raw["zev001"]
+	art := catArtifact(raw)
+	entry := art["zev001"]
 	if len(entry.Rows) != 3 {
 		t.Fatalf("pré-condição: 3 rows, tem %d", len(entry.Rows))
 	}
 
-	// Edita as 3 (hash fica = texto do export) e embaralha a ordem.
+	// Edita o target das 3 (source/hash ficam = referência do export) e
+	// embaralha a ordem.
 	edited := make([]dto.TextRow, len(entry.Rows))
 	copy(edited, entry.Rows)
-	edited[0].Text[common.DefaultLocalization] = "Terceira traduzida"
-	edited[1].Text[common.DefaultLocalization] = "Primeira traduzida"
-	edited[2].Text[common.DefaultLocalization] = "Segunda traduzida"
+	edited[0].Target = "Terceira traduzida"
+	edited[1].Target = "Primeira traduzida"
+	edited[2].Target = "Segunda traduzida"
 	entry.Rows = []dto.TextRow{edited[2], edited[0], edited[1]}
 
 	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{"zev001": entry})
@@ -141,9 +143,9 @@ func TestImportE2EPartial(t *testing.T) {
 	}
 }
 
-// TestImportE2EStaleHash: a store mudou desde o export — hash não casa e a
-// row sai só no log; o resumo NÃO tem erro (o revisor corrige o artefato).
-func TestImportE2EStaleHash(t *testing.T) {
+// TestImportE2EMissingRowSkipsWithoutError: coordenada que não existe mais
+// no binário (artefato velho) sai como Skipped — log, não erro do resumo.
+func TestImportE2EMissingRowSkipsWithoutError(t *testing.T) {
 	seedEventsTempRoot(t)
 	clearEventsForTest(t)
 	seedEventsSynthetic(common.GameVersionFFX2, "zev001", []string{
@@ -151,40 +153,30 @@ func TestImportE2EStaleHash(t *testing.T) {
 		"Segunda frase do evento",
 	})
 	raw := collectionRawForTest(t)
-	entry := raw["zev001"]
+	art := catArtifact(raw)
+	entry := art["zev001"]
 
-	// A store muda DEPOIS do export: texto da row 1 vira outra coisa.
-	entry.Rows[0].Text[common.DefaultLocalization] = "Tradução anterior"
-	entry.Rows[1].Text[common.DefaultLocalization] = "Segunda traduzida"
-	// O artefato é exportado com ESTE estado...
+	entry.Rows = []dto.TextRow{
+		hEditRow(0, "", "Primeira frase do evento", "Primeira traduzida"),
+		hEditRow(99, "", "Frase que não existe mais", "Tradução órfã"),
+	}
 	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{"zev001": entry})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
 
-	// ...e a store evolui: a frase "Tradução anterior" não existe mais.
-	// A mutação é no FieldString do STORE (o DTO do GetCollection é cópia).
-	ev := event.GetEvent(common.GameVersionFFX2, "zev001")
-	if ev == nil {
-		t.Fatal("pré-condição: zev001 no store")
-	}
-	ev.Strings[0].GetLocalizedContent(common.DefaultLocalization).SetRegularString("Tradução refeita")
-
-	// O artefato (hash do texto antigo) não casa mais com a store nova:
-	// 1 de 2 vai, e o resto é log.
-	impPath := filepath.Join(tempdir.TempDir(t), "stale.json")
-	if err := os.WriteFile(impPath, out, 0o644); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-	summary, err := NewMetadataService(nil).PreviewImport(impPath, common.GameVersionFFX2)
-	if err != nil {
-		t.Fatalf("preview: %v", err)
-	}
+	summary := importE2EPrepare(t, out, "missing.json")
 	if len(summary.Errors) != 0 {
-		t.Fatalf("hash não encontrado não pode ser erro do resumo: %v", summary.Errors)
+		t.Fatalf("row sem coordenada não pode ser erro do resumo: %v", summary.Errors)
 	}
 	if summary.ChangedTexts != 1 {
-		t.Fatalf("changed=%d, queria 1 (só a row que ainda casa)", summary.ChangedTexts)
+		t.Fatalf("changed=%d, queria 1 (só a row que existe)", summary.ChangedTexts)
+	}
+	if len(summary.Skipped) != 1 || summary.Skipped[0].Index != 99 {
+		t.Fatalf("skipped=%+v, queria a row 99", summary.Skipped)
+	}
+	if summary.Skipped[0].Reason != reasonUnmatched {
+		t.Fatalf("reason=%q, queria %q", summary.Skipped[0].Reason, reasonUnmatched)
 	}
 }
 
@@ -200,7 +192,7 @@ func TestImportE2EUnknownEntry(t *testing.T) {
 	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{
 		"zz_inexistente": dto.FileEntry{
 			Metadata: dto.Metadata{Key: "ffx-2/event/zz/zzinexistente.bin", ID: "zz_inexistente"},
-			Rows:     []dto.TextRow{hRow(0, "", "Texto solto")},
+			Rows:     []dto.TextRow{hEditRow(0, "", "Texto solto", "Texto solto")},
 		},
 	})
 	if err != nil {
@@ -234,14 +226,14 @@ func TestImportE2EUnknownEntryDoesNotBlockBatch(t *testing.T) {
 	seedEventsSynthetic(common.GameVersionFFX2, "zev001", []string{"Frase boa do evento"})
 
 	raw := collectionRawForTest(t)
-	good := raw["zev001"]
-	good.Rows[0].Text[common.DefaultLocalization] = "Frase traduzida"
+	good := catArtifact(raw)["zev001"]
+	good.Rows[0].Target = "Frase traduzida"
 
 	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{
 		"zev001": good,
 		"zz_inexistente": dto.FileEntry{
 			Metadata: dto.Metadata{Key: "ffx-2/event/zz/zzinexistente.bin", ID: "zz_inexistente"},
-			Rows:     []dto.TextRow{hRow(0, "", "Texto solto")},
+			Rows:     []dto.TextRow{hEditRow(0, "", "Texto solto", "Texto solto")},
 		},
 	})
 	if err != nil {
@@ -287,10 +279,10 @@ func TestImportE2EOverLimitEntrySkipped(t *testing.T) {
 	seedEventsSynthetic(common.GameVersionFFX2, "zevbig", []string{"Frase curta"})
 
 	raw := collectionRawForTest(t)
-	good := raw["zev001"]
-	good.Rows[0].Text[common.DefaultLocalization] = "Frase traduzida"
-	big := raw["zevbig"]
-	big.Rows[0].Text[common.DefaultLocalization] = strings.Repeat("A", 70000)
+	good := catArtifact(raw)["zev001"]
+	good.Rows[0].Target = "Frase traduzida"
+	big := catArtifact(raw)["zevbig"]
+	big.Rows[0].Target = strings.Repeat("A", 70000)
 
 	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{"zev001": good, "zevbig": big})
 	if err != nil {
@@ -372,8 +364,8 @@ func TestImportE2EStringsFormatRoundtrip(t *testing.T) {
 	}
 }
 
-// TestImportE2ESkippedRowsInSummary: a row de hash stale que antes era só
-// log agora aparece no resumo (Skipped) com id/índice/hash/reason e o
+// TestImportE2ESkippedRowsInSummary: a row sem coordenada no binário
+// (artefato velho) aparece no resumo (Skipped) com id/índice/hash/reason e o
 // contador por entrada (SkippedRows) — o botão de detalhes do modal pulsa
 // a partir disso. Não vira erro nem warning: a importação segue.
 func TestImportE2ESkippedRowsInSummary(t *testing.T) {
@@ -384,20 +376,16 @@ func TestImportE2ESkippedRowsInSummary(t *testing.T) {
 		"Segunda frase do evento",
 	})
 	raw := collectionRawForTest(t)
-	entry := raw["zev001"]
-	entry.Rows[0].Text[common.DefaultLocalization] = "Tradução anterior"
-	entry.Rows[1].Text[common.DefaultLocalization] = "Segunda traduzida"
+	art := catArtifact(raw)
+	entry := art["zev001"]
+	entry.Rows = []dto.TextRow{
+		hEditRow(0, "", "Primeira frase do evento", "Primeira traduzida"),
+		hEditRow(99, "", "Frase que não existe mais", "Tradução órfã"),
+	}
 	out, err := jsonfmt.JSONFormatter{}.Marshal(dto.Collection{"zev001": entry})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-
-	// A store evolui: o hash da row 0 do artefato não existe mais.
-	ev := event.GetEvent(common.GameVersionFFX2, "zev001")
-	if ev == nil {
-		t.Fatal("pré-condição: zev001 no store")
-	}
-	ev.Strings[0].GetLocalizedContent(common.DefaultLocalization).SetRegularString("Tradução refeita")
 
 	impPath := filepath.Join(tempdir.TempDir(t), "skipped.json")
 	if err := os.WriteFile(impPath, out, 0o644); err != nil {
@@ -412,17 +400,17 @@ func TestImportE2ESkippedRowsInSummary(t *testing.T) {
 		t.Fatalf("rows puladas não são erro nem aviso: %v / %v", summary.Errors, summary.Warnings)
 	}
 	if len(summary.Skipped) != 1 {
-		t.Fatalf("skipped=%+v, queria 1 row (a de hash stale)", summary.Skipped)
+		t.Fatalf("skipped=%+v, queria 1 row (a sem coordenada)", summary.Skipped)
 	}
 	issue := summary.Skipped[0]
-	if issue.ID != "zev001" || issue.Index != 0 {
-		t.Fatalf("issue id=%q index=%d, queria zev001/0", issue.ID, issue.Index)
+	if issue.ID != "zev001" || issue.Index != 99 {
+		t.Fatalf("issue id=%q index=%d, queria zev001/99", issue.ID, issue.Index)
 	}
 	if issue.Reason != reasonUnmatched {
 		t.Fatalf("reason=%q, queria %q", issue.Reason, reasonUnmatched)
 	}
-	if issue.Text != "Tradução anterior" {
-		t.Fatalf("text=%q, queria o texto da row do artefato", issue.Text)
+	if issue.Text != "Tradução órfã" {
+		t.Fatalf("text=%q, queria o target da row do artefato", issue.Text)
 	}
 	if issue.Hash == "" {
 		t.Fatal("hash vazio no issue — o revisor precisa dele para localizar a row")
@@ -431,7 +419,7 @@ func TestImportE2ESkippedRowsInSummary(t *testing.T) {
 		t.Fatalf("entries=%+v, queria zev001 com SkippedRows=1", summary.Entries)
 	}
 	if summary.ChangedTexts != 1 {
-		t.Fatalf("changed=%d, queria 1 (só a row que casa)", summary.ChangedTexts)
+		t.Fatalf("changed=%d, queria 1 (só a row que existe)", summary.ChangedTexts)
 	}
 }
 
