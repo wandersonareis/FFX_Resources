@@ -24,39 +24,260 @@ export const KNOWN_COLORS: Record<string, ColorDefinition> = {
 export const COLOR_RESET_TAG = 'WHITE';
 
 /**
- * Normaliza um valor de cor (hex ou nome) para o nome canônico da tag.
+ * Nome da paleta a partir do byte canônico de cor (o decode emite `%02X` para
+ * bytes fora do mapa: `{CLR:88}` = BLUE). Serve para reconhecer esses bytes
+ * sem transformar em chip genérico.
+ */
+const COLOR_NAME_BY_BYTE: Record<string, string> = {
+  '41': 'WHITE',
+  '43': 'YELLOW',
+  '52': 'GREY',
+  '88': 'BLUE',
+  '94': 'RED',
+  '97': 'PINK',
+  A1: 'OL_PURPLE',
+  B1: 'OL_CYAN',
+};
+
+interface RgbColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+/** Nomes CSS básicos -> hex (o CSSOM pode devolver nome em vez de rgb()). */
+const CSS_NAMED_COLORS: Record<string, string> = {
+  black: '#000000',
+  silver: '#c0c0c0',
+  gray: '#808080',
+  grey: '#808080',
+  white: '#ffffff',
+  maroon: '#800000',
+  red: '#ff0000',
+  purple: '#800080',
+  fuchsia: '#ff00ff',
+  magenta: '#ff00ff',
+  green: '#008000',
+  lime: '#00ff00',
+  olive: '#808000',
+  yellow: '#ffff00',
+  navy: '#000080',
+  blue: '#0000ff',
+  teal: '#008080',
+  aqua: '#00ffff',
+  cyan: '#00ffff',
+  orange: '#ffa500',
+  pink: '#ffc0cb',
+  brown: '#a52a2a',
+  gold: '#ffd700',
+  indigo: '#4b0082',
+  violet: '#ee82ee',
+  beige: '#f5f5dc',
+  coral: '#ff7f50',
+  crimson: '#dc143c',
+  darkblue: '#00008b',
+  darkgray: '#a9a9a9',
+  darkgreen: '#006400',
+  darkred: '#8b0000',
+  lightblue: '#add8e6',
+  lightgray: '#d3d3d3',
+  lightgreen: '#90ee90',
+  limegreen: '#32cd32',
+  royalblue: '#4169e1',
+  skyblue: '#87ceeb',
+  slategray: '#708090',
+  tomato: '#ff6347',
+  turquoise: '#40e0d0',
+};
+
+function clampByte(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function hexToRgb(hex: string): RgbColor | null {
+  let digits = hex.trim().replace(/^#/, '');
+  if (digits.length === 3 || digits.length === 4) {
+    digits = digits
+      .slice(0, 3)
+      .split('')
+      .map((digit) => digit + digit)
+      .join('');
+  } else if (digits.length === 6 || digits.length === 8) {
+    digits = digits.slice(0, 6);
+  } else {
+    return null;
+  }
+  if (!/^[0-9a-f]{6}$/i.test(digits)) return null;
+  return {
+    r: parseInt(digits.slice(0, 2), 16),
+    g: parseInt(digits.slice(2, 4), 16),
+    b: parseInt(digits.slice(4, 6), 16),
+  };
+}
+
+function rgbToHex(color: RgbColor): string {
+  return `#${[color.r, color.g, color.b]
+    .map((channel) => clampByte(channel).toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
+/** Componente rgb(): número puro ou percentual. */
+function parseRgbComponent(part: string): number | null {
+  const value = parseFloat(part);
+  if (!Number.isFinite(value)) return null;
+  return part.trim().endsWith('%') ? (value / 100) * 255 : value;
+}
+
+function hslToRgb(hue: number, saturation: number, lightness: number): RgbColor {
+  const h = ((hue % 360) + 360) % 360;
+  const s = Math.max(0, Math.min(1, saturation));
+  const l = Math.max(0, Math.min(1, lightness));
+  const chroma = (1 - Math.abs(2 * l - 1)) * s;
+  const hp = h / 60;
+  const x = chroma * (1 - Math.abs((hp % 2) - 1));
+  let rgb: [number, number, number];
+  if (hp < 1) rgb = [chroma, x, 0];
+  else if (hp < 2) rgb = [x, chroma, 0];
+  else if (hp < 3) rgb = [0, chroma, x];
+  else if (hp < 4) rgb = [0, x, chroma];
+  else if (hp < 5) rgb = [x, 0, chroma];
+  else rgb = [chroma, 0, x];
+  const m = l - chroma / 2;
+  return {
+    r: (rgb[0] + m) * 255,
+    g: (rgb[1] + m) * 255,
+    b: (rgb[2] + m) * 255,
+  };
+}
+
+/**
+ * Converte um valor CSS de cor (`#rgb`, `#rrggbb`, `rgb()/rgba()`,
+ * `hsl()/hsla()` ou nome) em RGB. Devolve null quando não é cor.
+ *
+ * O Tiptap guarda em `textStyle.color` exatamente o que veio no `style` do
+ * HTML — inclusive `rgb(...)` de conteúdo externo (colar/soltar HTML). Sem
+ * normalizar, a serialização emitiria `{CLR:RGB(...)}` e a releitura viraria
+ * chip (ver getColorTagName).
+ */
+export function parseCssColor(colorValue?: string | null): RgbColor | null {
+  if (!colorValue) return null;
+  const value = colorValue.trim().toLowerCase();
+  if (!value) return null;
+
+  if (value.startsWith('#')) return hexToRgb(value);
+
+  const named = CSS_NAMED_COLORS[value];
+  if (named) return hexToRgb(named);
+
+  const rgbMatch = /^rgba?\(([^)]*)\)$/.exec(value);
+  if (rgbMatch) {
+    const parts = rgbMatch[1].split(/[,/\s]+/).filter(Boolean);
+    if (parts.length < 3) return null;
+    const r = parseRgbComponent(parts[0]);
+    const g = parseRgbComponent(parts[1]);
+    const b = parseRgbComponent(parts[2]);
+    if (r === null || g === null || b === null) return null;
+    return { r, g, b };
+  }
+
+  const hslMatch = /^hsla?\(([^)]*)\)$/.exec(value);
+  if (hslMatch) {
+    const parts = hslMatch[1].split(/[,/\s]+/).filter(Boolean);
+    if (parts.length < 3) return null;
+    const h = parseFloat(parts[0]);
+    const s = parseFloat(parts[1]);
+    const l = parseFloat(parts[2]);
+    if (![h, s, l].every(Number.isFinite)) return null;
+    return hslToRgb(h, s / 100, l / 100);
+  }
+
+  return null;
+}
+
+/** Cor da paleta mais próxima (o jogo só tem 8 cores). */
+function nearestColorName(color: RgbColor): string {
+  let best = COLOR_RESET_TAG;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const definition of Object.values(KNOWN_COLORS)) {
+    const candidate = hexToRgb(definition.hex);
+    if (!candidate) continue;
+    const distance =
+      (color.r - candidate.r) ** 2 +
+      (color.g - candidate.g) ** 2 +
+      (color.b - candidate.b) ** 2;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = definition.name;
+    }
+  }
+  return best;
+}
+
+/**
+ * Normaliza um valor de cor (hex/rgb/hsl/nome) para o nome canônico da tag.
  * Usado na serialização: mark textStyle.color -> {CLR:NOME}.
+ *
+ * Nunca devolve valor fora da paleta: uma cor arbitrária (ex.: `rgb(...)` de
+ * HTML colado) é aproximada para a cor do jogo mais próxima. Assim nenhuma
+ * marca vira `{CLR:RGB(...)}`/`{CLR:#...}` — que o backend não sabe codificar
+ * (ColorToByte devolve 0) e que o parser transformaria em chip na releitura.
  */
 export function getColorTagName(colorValue?: string | null): string | null {
   if (!colorValue) return null;
-  const val = colorValue.trim().toLowerCase();
-  for (const [key, def] of Object.entries(KNOWN_COLORS)) {
+  const value = colorValue.trim();
+  if (!value) return null;
+  const lower = value.toLowerCase();
+  for (const definition of Object.values(KNOWN_COLORS)) {
     if (
-      key.toLowerCase() === val ||
-      def.hex.toLowerCase() === val ||
-      def.name.toLowerCase() === val
+      definition.name.toLowerCase() === lower ||
+      definition.hex.toLowerCase() === lower
     ) {
-      return def.name;
+      return definition.name;
     }
   }
-  if (val.startsWith('#')) return val.toUpperCase();
-  return val.toUpperCase();
+  const rgb = parseCssColor(value);
+  if (!rgb) return null;
+  const hex = rgbToHex(rgb);
+  for (const definition of Object.values(KNOWN_COLORS)) {
+    if (definition.hex.toLowerCase() === hex) return definition.name;
+  }
+  return nearestColorName(rgb);
 }
 
 /**
  * Resolve o nome da tag de cor para CSS. WHITE = reset.
  * Retorna null se não for tag de cor.
+ *
+ * Aceita o que o decoder do backend emite (`{CLR:88}`, `{CLR:41}`) e o que
+ * versões anteriores do editor gravaram por engano (`{CLR:#RRGGBB}` e
+ * `{CLR:RGB(...)}`): o rascunho antigo volta a ser cor em vez de chip.
  */
 export function getResolvedColorFromTag(
   tagName: string
 ): { hex: string | null; isReset: boolean } | null {
   const normalized = tagName.trim().toUpperCase();
-  if (normalized === 'WHITE') return { hex: null, isReset: true };
+  if (!normalized) return null;
+  if (normalized === COLOR_RESET_TAG) return { hex: null, isReset: true };
   if (KNOWN_COLORS[normalized]) {
     return { hex: KNOWN_COLORS[normalized].hex, isReset: false };
   }
-  if (/^#[0-9A-F]{3}([0-9A-F]{3})?$/.test(normalized)) {
+  const byteName = COLOR_NAME_BY_BYTE[normalized];
+  if (byteName) {
+    if (byteName === COLOR_RESET_TAG) return { hex: null, isReset: true };
+    return { hex: KNOWN_COLORS[byteName].hex, isReset: false };
+  }
+  if (/^#[0-9A-F]{3}$/.test(normalized) || /^#[0-9A-F]{6}$/.test(normalized)) {
+    if (normalized === '#FFF' || normalized === '#FFFFFF') {
+      return { hex: null, isReset: true };
+    }
     return { hex: normalized, isReset: false };
+  }
+  const rgb = parseCssColor(normalized);
+  if (rgb) {
+    const hex = rgbToHex(rgb);
+    return hex === '#ffffff'
+      ? { hex: null, isReset: true }
+      : { hex, isReset: false };
   }
   return null;
 }

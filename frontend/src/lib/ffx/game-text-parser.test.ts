@@ -233,4 +233,66 @@ describe('serializeJSONToGameText', () => {
     };
     expect(gameTextParser.serializeJSONToGameText(json)).toBe('Hi {CMD:01:02}');
   });
+
+  function paragraphWithColor(color: string) {
+    return {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'Hi',
+              marks: [{ type: 'textStyle', attrs: { color } }],
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  it('rgb() de marca vira o NOME da paleta, nunca {CLR:RGB(...)}', () => {
+    expect(
+      gameTextParser.serializeJSONToGameText(paragraphWithColor('rgb(37, 99, 235)'))
+    ).toBe('{CLR:BLUE}Hi{CLR:WHITE}');
+    expect(
+      gameTextParser.serializeJSONToGameText(
+        paragraphWithColor('rgba(220, 38, 38, 0.5)')
+      )
+    ).toBe('{CLR:RED}Hi{CLR:WHITE}');
+  });
+
+  it('hex fora da paleta cai na cor do jogo mais proxima', () => {
+    const value = gameTextParser.serializeJSONToGameText(
+      paragraphWithColor('#1d4ed8')
+    );
+    expect(value).toBe('{CLR:BLUE}Hi{CLR:WHITE}');
+  });
+
+  it('valor que nao e cor nao emite tag de cor', () => {
+    expect(
+      gameTextParser.serializeJSONToGameText(paragraphWithColor('inherit'))
+    ).toBe('Hi');
+  });
+});
+
+describe('parseGameTextToHTML: cor corrompida de rascunho antigo', () => {
+  it('{CLR:RGB(...)} volta a ser marca de cor (nao vira chip)', () => {
+    const html = gameTextParser.parseGameTextToHTML(
+      '{CLR:RGB(37, 99, 235)}Oi'
+    );
+    expect(html).toBe('<p><span style="color: #2563eb">Oi</span></p>');
+    expect(html).not.toContain('data-game-tag');
+  });
+
+  it('byte canonico do decoder ({CLR:88}) tambem vira cor', () => {
+    const html = gameTextParser.parseGameTextToHTML('{CLR:88}Oi');
+    expect(html).toBe('<p><span style="color: #2563eb">Oi</span></p>');
+  });
+
+  it('byte desconhecido continua chip (byte preservado no round-trip)', () => {
+    const html = gameTextParser.parseGameTextToHTML('{CLR:58}Oi');
+    expect(html).toContain('data-game-tag="{CLR:58}"');
+  });
 });

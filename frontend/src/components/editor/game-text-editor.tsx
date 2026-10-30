@@ -20,6 +20,8 @@ import {
 import type { GameVersionId } from '@/lib/ffx/game-version';
 import { GameTagExtension } from './game-tag.extension';
 import { LockedTagsExtension } from './locked-tags.extension';
+import { CleanMarksExtension } from './clean-marks.extension';
+import { createDoubleClickSelectionExtension } from './double-click-selection.extension';
 import { createPasteHandlerExtension } from './paste-handler.extension';
 import { createTagAutocompleteExtension } from './tag-autocomplete.extension';
 import { createTypedTagExtension } from './typed-tag.extension';
@@ -119,6 +121,15 @@ export function GameTextEditor({
   const popupContainerRef = useRef<HTMLDivElement | null>(null);
   const suppressUpdate = useRef(false);
   const onValueChangeRef = useRef(onValueChange);
+  /**
+   * Último texto que o PRÓPRIO editor emitiu por onValueChange. O efeito de
+   * sincronização só reconstrói o conteúdo quando o `value` veio de fora —
+   * comparar HTML literalmente (getHTML × parser) fazia setContent a cada
+   * edição em casos de marca vazia/cor, derrubando cursor e seleção.
+   */
+  const lastEmittedValue = useRef(value);
+  /** `value` atual sem depender do closure da criação do editor. */
+  const valueRef = useRef(value);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [, setTick] = useState(0);
   // undefined = catálogo ainda carregando (o editor só nasce com ele pronto:
@@ -130,6 +141,10 @@ export function GameTextEditor({
   useEffect(() => {
     onValueChangeRef.current = onValueChange;
   }, [onValueChange]);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   useEffect(() => {
     let alive = true;
@@ -163,6 +178,8 @@ export function GameTextEditor({
         Color,
         GameTagExtension,
         LockedTagsExtension,
+        CleanMarksExtension,
+        createDoubleClickSelectionExtension(),
         createTypedTagExtension(validate),
         createTagAutocompleteExtension(catalog, () => popupContainerRef.current),
         createPasteHandlerExtension(gameTextParser, validate),
@@ -174,17 +191,20 @@ export function GameTextEditor({
       onUpdate: ({ editor: updated }) => {
         suppressUpdate.current = true;
         try {
-          const { padding } = splitLeadingPadding(value);
-          onValueChangeRef.current(
+          // Padding do valor ATUAL (o editor vive além da linha aberta).
+          const { padding } = splitLeadingPadding(valueRef.current);
+          const next =
             padding +
-              gameTextParser.serializeJSONToGameText(updated.getJSON())
-          );
+            gameTextParser.serializeJSONToGameText(updated.getJSON());
+          lastEmittedValue.current = next;
+          onValueChangeRef.current(next);
         } finally {
           queueMicrotask(() => (suppressUpdate.current = false));
         }
       },
       onTransaction: () => setTick((t) => t + 1),
     });
+    lastEmittedValue.current = value;
     setEditor(ed);
     return () => {
       ed.destroy();
@@ -196,13 +216,15 @@ export function GameTextEditor({
 
   useEffect(() => {
     if (!editor || suppressUpdate.current || catalog === undefined) return;
+    // Mesma string que o editor acabou de emitir = eco do onValueChange; não
+    // reconstrói o documento (preserva cursor/seleção).
+    if (value === lastEmittedValue.current) return;
     const html = gameTextParser.parseGameTextToHTML(
       splitLeadingPadding(value).body,
       getChipValidator(catalog)
     );
-    if (editor.getHTML() !== html) {
-      editor.commands.setContent(html, { emitUpdate: false });
-    }
+    editor.commands.setContent(html, { emitUpdate: false });
+    lastEmittedValue.current = value;
   }, [editor, value, catalog]);
 
   const insertControlTag = (template: TemplateItem | IconTemplate) => {

@@ -45,10 +45,16 @@ No diálogo de tradução (Enter na linha):
   na arte do jogo, a partir da sprite `public/pad_icon.png`).
 - **Direcionais** — setas/D-pad/gates.
 - **Cores** (`{CLR:...}`) — paleta das cores conhecidas do jogo +
-  reset para branco.
+  reset para branco. Qualquer valor de cor de fora da paleta (ex.: `rgb(...)`
+  vindo de HTML colado) é aproximado para a cor do jogo mais próxima na
+  serialização — nunca vira `{CLR:RGB(...)}`.
 - **Desfazer/Refazer**.
 - **Padding de tela** — espaços/quebras intencionais no início do texto são
   preservados automaticamente e exibidos como aviso (não são conteúdo).
+
+O duplo clique seleciona a palavra **sem** o espaço final: a seleção nativa do
+Chromium (palavra + espaço) é aparada para aplicar cor/itálico não alterar o
+espaço seguinte.
 
 ## Autocomplete de tags
 
@@ -68,6 +74,11 @@ reconheceria.
 Colar texto externo é higienizado: tags que sobreviveriam mal ao
 round-trip são convertidas ou marcadas inválidas — o gate de tags
 protegidas do salvamento é a rede final.
+
+A colagem é **inline**: uma linha colada entra no parágrafo do cursor, sem
+criar quebra de linha antes/depois. Quebras reais no meio do texto colado
+continuam virando parágrafos, e `\n` nas pontas do clipboard (comum ao copiar
+uma linha inteira) é descartado.
 
 ## Como o texto chega ao binário
 
