@@ -47,10 +47,13 @@ export function LogPanel({ className }: { className?: string }) {
   useWailsEvent('UILog', (data) => uiLog.append(data as Entry));
   useWailsEvent('UILogCleared', () => uiLog.cleared());
 
+  // `entries` é o GATILHO do auto-scroll: entrada nova = rolagem para o
+  // fim (enquanto `stick`). Sem ele o log parava de acompanhar as operações.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: entries é o gatilho do auto-scroll
   useEffect(() => {
     const el = listRef.current;
     if (el && stick) el.scrollTop = el.scrollHeight;
-  }, [stick]);
+  }, [entries, stick]);
 
   const onScroll = () => {
     const el = listRef.current;

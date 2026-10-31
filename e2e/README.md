@@ -67,6 +67,9 @@ diálogo de Configurações, confere o erro e devolve o valor original.
   exibindo o texto salvo → export pelo menu de contexto da árvore
   (artefatos em mods/edits com modal de progresso) → import do lote
   translated (bin regravado em mods/);
+- `editor-focus.spec` — **o foco do editor**: digitar várias letras e colar
+  NÃO podem tirar o foco do campo de edição (o editor nasce uma vez e nunca
+  é recriado quando o rascunho muda); fecha com Cancelar (nada é salvo);
 - `export-scopes.spec` — **os três tipos de export**: o popover Exportar
   ("todos os tipos" e "Exportar seleção" = os **tipos marcados no
   escopo**, cada um por inteiro — a marcação da árvore não entra) e o menu

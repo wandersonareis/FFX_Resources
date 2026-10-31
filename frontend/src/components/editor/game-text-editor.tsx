@@ -160,6 +160,13 @@ export function GameTextEditor({ value, onValueChange, version }: GameTextEditor
     };
   }, [version]);
 
+  // O editor nasce com o catálogo da versão e NUNCA é recriado depois:
+  // `value` fica FORA das deps de propósito. Recriar o editor a cada tecla
+  // (o `value` muda a cada tecla/colagem) destrói o contenteditable e o foco
+  // do usuário vai para o body — o bug de "digito uma letra e o foco perde".
+  // As mudanças externas de `value` são aplicadas pelo efeito de sincronia
+  // abaixo (setContent), que preserva o cursor.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: o editor não pode ser recriado a cada tecla
   useEffect(() => {
     const element = hostRef.current;
     if (catalog === undefined || !element) return;
@@ -209,9 +216,7 @@ export function GameTextEditor({ value, onValueChange, version }: GameTextEditor
       ed.destroy();
       setEditor(null);
     };
-    // O editor nasce com o catálogo da versão e nunca é recriado depois.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog, value]);
+  }, [catalog]);
 
   useEffect(() => {
     if (!editor || suppressUpdate.current || catalog === undefined) return;

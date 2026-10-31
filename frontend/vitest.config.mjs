@@ -7,9 +7,13 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   plugins: [react()],
   resolve: {
+    // A ordem importa: o alias é prefixo e o PRIMEIRO que casa vence — com
+    // '@' antes, '@/bindings/...' viraria 'src/bindings/...' (inexistente) e
+    // qualquer import de runtime dos bindings (o catálogo de tags do editor,
+    // por exemplo) quebrava o teste.
     alias: {
-      '@': path.resolve('./src'),
       '@/bindings': path.resolve('./bindings'),
+      '@': path.resolve('./src'),
     },
   },
   test: {
@@ -18,8 +22,8 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     alias: {
-      '@': path.resolve('./src'),
       '@/bindings': path.resolve('./bindings'),
+      '@': path.resolve('./src'),
     },
     deps: {
       inline: ['@/lib/ffx/**'],

@@ -89,9 +89,12 @@ export function StatusBar() {
   }, [warnings.length]);
 
   // Reinicia a rotação quando a lista muda (novo aviso: o visível muda).
+  // `warnings` é o GATILHO: sem ele a rotação não reiniciava quando a lista
+  // de avisos mudava.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: warnings é o gatilho da rotação
   useEffect(() => {
     setWarnIndex(0);
-  }, []);
+  }, [warnings]);
 
   // Fecho o painel quando o aviso exibido saiu da lista (dismiss externo).
   useEffect(() => {

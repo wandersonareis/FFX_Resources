@@ -72,9 +72,13 @@ export function SearchDialog({ view }: { view: EntryView }) {
     return () => clearTimeout(timeout);
   }, [draft, search.query, search.status, version]);
 
+  // `items` é o GATILHO: a seleção volta ao primeiro item quando o
+  // resultado da busca muda (sem ele o índice ficava apontando para um
+  // item que já não existe).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: items é o gatilho do reset da seleção
   useEffect(() => {
     setActiveIndex(0);
-  }, []);
+  }, [items]);
 
   // A seta move a seleção; o item ativo rola para a vista.
   useEffect(() => {

@@ -80,6 +80,22 @@ criar quebra de linha antes/depois. Quebras reais no meio do texto colado
 continuam virando parágrafos, e `\n` nas pontas do clipboard (comum ao copiar
 uma linha inteira) é descartado.
 
+## Foco: o editor nunca é recriado
+
+O editor (Tiptap) é criado **uma vez** e sobrevive às edições: o diálogo
+guarda o rascunho a cada tecla/colagem, então o texto muda o tempo todo. Se o
+editor fosse recriado a cada mudança, o `contenteditable` sairia do DOM e o
+foco iria para o corpo da página — o tradutor teria que clicar de novo a
+cada letra.
+
+Por isso o efeito que cria o editor **não** depende do texto. Valor que vem
+de fora (troca de linha, revisão) é aplicado pelo efeito de sincronia
+(`setContent`), que preserva cursor e seleção.
+
+Guards: `frontend/src/components/editor/game-text-editor.test.tsx` (o editor
+não pode ser recriado quando o valor muda) e
+`e2e/specs/editor-focus.spec.ts` (o foco fica no editor ao digitar e ao colar).
+
 ## Como o texto chega ao binário
 
 1. Edição na célula ou no diálogo → **rascunho** (`edit-draft.ts`), nada
