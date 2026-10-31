@@ -4,6 +4,7 @@
 export {
     EntrySummary,
     ExportPlanItem,
+    PrunedRowView,
     TagCatalog,
     TagCatalogEntry,
     TagSuggestion,

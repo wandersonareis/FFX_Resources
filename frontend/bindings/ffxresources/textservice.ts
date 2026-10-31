@@ -185,6 +185,16 @@ export function PreviewImportTranslated(version: common$0.GameVersion, kinds: st
 }
 
 /**
+ * PreviewSavePrune devolve as linhas que o save do kind excluiria por não
+ * existirem no original (o aviso destrutivo do frontend antes de salvar).
+ */
+export function PreviewSavePrune(kind: string, version: common$0.GameVersion): $CancellablePromise<services$0.PrunedRowView[]> {
+    return $Call.ByID(177585297, kind, version).then(($result: any) => {
+        return $$createType13($result);
+    });
+}
+
+/**
  * RevealEntryFile abre o explorador com o arquivo da entrada selecionado
  * ("Abrir até o arquivo"), resolvido mods-first como o app lê.
  */
@@ -199,7 +209,7 @@ export function RevealEntryFile(kind: string, id: string, version: common$0.Game
  */
 export function SearchTextEntries(version: common$0.GameVersion, query: string): $CancellablePromise<services$0.TextSearchResponse> {
     return $Call.ByID(2804091447, version, query).then(($result: any) => {
-        return $$createType12($result);
+        return $$createType14($result);
     });
 }
 
@@ -238,4 +248,6 @@ const $$createType8 = $Create.Array($$createType7);
 const $$createType9 = services$0.EntrySummary.createFrom;
 const $$createType10 = $Create.Array($$createType9);
 const $$createType11 = dto$0.ImportSummary.createFrom;
-const $$createType12 = services$0.TextSearchResponse.createFrom;
+const $$createType12 = services$0.PrunedRowView.createFrom;
+const $$createType13 = $Create.Array($$createType12);
+const $$createType14 = services$0.TextSearchResponse.createFrom;

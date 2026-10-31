@@ -786,6 +786,18 @@ func (s *MetadataService) ApplyTextCollection(kind string, version common.GameVe
 	// Log start (padrão export: "Kind: salvando")
 	uilog.Info("Save", "%s: salvando", kind)
 
+	// Poda das linhas que só existem em mods (sem par no original). O
+	// dicionário (macro) faz a poda no arquivo inteiro dentro do branch; os
+	// demais kinds podam só o lote que o save reconstrói. Lockit fica de
+	// fora: não é row-table.
+	if kind != KindMacro && kind != KindLockit {
+		pruned, perr := s.prunePayload(kind, version, c)
+		if perr != nil {
+			return perr
+		}
+		c = pruned
+	}
+
 	// Wrap com applyRecorded para capturar gravações e narrar por binário
 	// detailFormat = "salvo" (save não tem formato de artefato como import/export)
 	_, err := applyRecorded(version, "Save", "salvo", func() error {
@@ -807,7 +819,11 @@ func (s *MetadataService) ApplyTextCollection(kind string, version common.GameVe
 			if err != nil {
 				return err
 			}
-			return applyMacroCollection(version, full, c)
+			original, err := builders.BuildMacroDTOFromSource(version, originalSource, nil)
+			if err != nil {
+				return err
+			}
+			return applyMacroCollection(version, full, c, original)
 
 		case KindLockit:
 			return builders.ApplyLockitDTO(version, c)
@@ -876,10 +892,16 @@ func applyObjectsCollection(version common.GameVersion, c dto.Collection) error 
 // payload (view dedupado) resolvem contra as defs do dicionário inteiro —
 // nunca são gravadas literais no rebuild.
 //
+// Antes do rebuild roda a PODA: rows sem par no original (ponteiro
+// simplified errado no binário traduzido, por exemplo) saem do lote. É o
+// caminho que impede o erro de se propagar a cada import/save — o binário
+// não aceita menos linhas que o original, e as linhas originais são
+// intocáveis (builders.PruneNotInOriginal aborta se faltar alguma).
+//
 // A base entra em uma cópia rasa: ela pode ser o dicionário GUARDADO na
 // sessão de .vbf, e um rebuild que falhe no meio não pode deixar sujeira
 // no estado (a próxima carga pegaria um dicionário pela metade).
-func applyMacroCollection(version common.GameVersion, full, c dto.Collection) error {
+func applyMacroCollection(version common.GameVersion, full, c, original dto.Collection) error {
 	base := make(dto.Collection, len(full)+len(c))
 	for id, entry := range full {
 		base[id] = entry
@@ -887,7 +909,40 @@ func applyMacroCollection(version common.GameVersion, full, c dto.Collection) er
 	for id, entry := range c {
 		base[id] = entry
 	}
-	return builders.ApplyMacroDTO(version, builders.ResolveDedupRefs(base))
+	pruned, report, err := builders.PruneNotInOriginal(base, original)
+	if err != nil {
+		return err
+	}
+	for id, rows := range report {
+		logPrunedRows(pruneViews(KindMacro, version, base[id], rows))
+	}
+	return builders.ApplyMacroDTO(version, builders.ResolveDedupRefs(pruned))
+}
+
+// prunePayload poda as rows do lote que não existem no original da entrada
+// (data//container). Vale para os kinds cujo save só reconstrói as entradas
+// sujas; o dicionário (macro) tem a poda própria sobre o arquivo inteiro.
+// Lockit fica de fora: o formato não é row-table e não tem "linha órfã".
+func (s *MetadataService) prunePayload(kind string, version common.GameVersion, c dto.Collection) (dto.Collection, error) {
+	original := make(dto.Collection, len(c))
+	for id := range c {
+		entry, ok, err := s.originalFor(kind, id, version)
+		if err != nil || !ok {
+			continue
+		}
+		original[id] = entry
+	}
+	if len(original) == 0 {
+		return c, nil
+	}
+	pruned, report, err := builders.PruneNotInOriginal(c, original)
+	if err != nil {
+		return nil, err
+	}
+	for id, rows := range report {
+		logPrunedRows(pruneViews(kind, version, c[id], rows))
+	}
+	return pruned, nil
 }
 
 // applyObjectsEntry carrega o arquivo do layout via schema chunkmap,

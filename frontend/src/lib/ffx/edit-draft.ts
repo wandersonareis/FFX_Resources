@@ -1,5 +1,6 @@
 import { useSelector } from '@tanstack/react-store';
 import { createStore } from '@tanstack/store';
+import type * as services from '@/bindings/ffxresources/backend/services/models';
 import * as dto from '../../../bindings/ffxresources/backend/dto/models';
 import type { EntryKind } from './display-names';
 import type { GameVersionId } from './game-version';
@@ -8,6 +9,17 @@ import {
   newUnclosedFragment,
   restoreProtectedTags as restoreTags,
 } from './protected-tags';
+
+/** Localização padrão do editor (mesma de save-all/SOURCE_LANG). */
+const DRAFT_SOURCE_LANG = 'us';
+
+/** Bloco (chunk) de uma entrada do dicionário; null nos formatos sem bloco. */
+function chunkOfEntry(entry: dto.FileEntry): number | null {
+  const match = /chunk_(\d+)/.exec(entry.metadata.id ?? '');
+  if (!match) return null;
+  const n = Number(match[1]);
+  return Number.isFinite(n) ? n : null;
+}
 
 /** Chave de linha no rascunho: mesma que o backend usa (Index + Name). */
 export function rowKey(row: Pick<dto.TextRow, 'index' | 'name'>): string {
@@ -24,6 +36,11 @@ interface DraftState {
   edits: Map<string, Map<string, string>>;
   /** Rows que devem aplicar só nesta cópia, sem replicar ao grupo. */
   divergentRows: Set<string>;
+  /**
+   * Rows ÓRFÃS (só em mods, sem par no original) que o usuário mandou
+   * excluir. O save as deixa fora do binário; a tabela as esconde.
+   */
+  deleted: Set<string>;
   /**
    * Origem do rascunho: "" = data/; caminho do .vbf = tabela aberta no
    * navegador de container. O mesmo id pode existir nas duas fontes —
@@ -111,6 +128,7 @@ class EditDraftStore {
       entry,
       edits: new Map(),
       divergentRows: new Set(),
+      deleted: new Set(),
       source,
     });
     this.touch(key, false);
@@ -127,7 +145,8 @@ class EditDraftStore {
   /** Descarta rascunho sem edição (base fora de uso). */
   dropBase(version: GameVersionId, kind: EntryKind, id: string, source = ''): void {
     const key = draftKey(version, kind, id, source);
-    if (this.states.get(key)?.edits.size === 0) {
+    const state = this.states.get(key);
+    if (state && state.edits.size === 0 && state.deleted.size === 0) {
       this.states.delete(key);
     }
   }
@@ -282,7 +301,7 @@ class EditDraftStore {
           state.divergentRows.delete(rKey);
         }
       }
-      if (state.edits.size === 0) touched = true;
+      if (state.edits.size === 0 && state.deleted.size === 0) touched = true;
     }
 
     if (touched) {
@@ -290,7 +309,7 @@ class EditDraftStore {
       // original deixa de exigir escrita no arquivo).
       this.dirtyFiles.clear();
       for (const [key, state] of this.states) {
-        if (state.edits.size > 0) this.dirtyFiles.add(key);
+        if (state.edits.size > 0 || state.deleted.size > 0) this.dirtyFiles.add(key);
       }
       this.notify();
     }
@@ -315,19 +334,86 @@ class EditDraftStore {
   ): Record<string, dto.FileEntry> {
     const out: Record<string, dto.FileEntry> = {};
     for (const state of this.states.values()) {
-      if (state.edits.size === 0 || state.version !== version) continue;
-      if (state.source !== source) continue;
+      if (state.version !== version) continue;
       if (splitDraftKind(state) !== kind) continue;
+      if (state.source !== source) continue;
+      if (state.edits.size === 0 && state.deleted.size === 0) continue;
       out[splitDraftId(state)] = this.merge(state);
     }
     return out;
+  }
+
+  /**
+   * Linhas que só existem em mods (sem par no original) nas entradas sujas
+   * deste kind/versão. É a prévia do que o save vai EXCLUIR quando o kind
+   * não reconstrói o arquivo inteiro (macro tem prévia própria no backend).
+   * Mesmo formato do log/modal (PrunedRowView).
+   */
+  orphanRows(version: GameVersionId, kind: EntryKind): services.PrunedRowView[] {
+    const out: services.PrunedRowView[] = [];
+    for (const state of this.states.values()) {
+      if (state.version !== version || splitDraftKind(state) !== kind) continue;
+      if (state.edits.size === 0 && state.deleted.size === 0) continue;
+      for (const row of state.entry.rows) {
+        if (row.missingInOriginal !== true) continue;
+        out.push({
+          file: state.entry.metadata.key,
+          block: chunkOfEntry(state.entry),
+          index: row.index,
+          name: row.name ?? '',
+          text: row.text?.[DRAFT_SOURCE_LANG] ?? '',
+          version: state.version,
+          kind: splitDraftKind(state),
+        });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Marca uma linha ÓRFÃ como excluída no rascunho (o save a deixa fora do
+   * binário). Guarda: linha que existe no original é intocável — o binário
+   * não aceita menos linhas que o original (tradução parcial preenche com as
+   * originais).
+   */
+  deleteRow(
+    version: GameVersionId,
+    kind: EntryKind,
+    id: string,
+    row: dto.TextRow,
+    source: string,
+  ): boolean {
+    if (row.missingInOriginal !== true) return false;
+    const key = draftKey(version, kind, id, source);
+    const state = this.states.get(key);
+    if (!state) return false;
+    const rowId = rowKey(row);
+    if (state.deleted.has(rowId)) return false;
+    state.deleted.add(rowId);
+    state.edits.delete(rowId);
+    state.divergentRows.delete(rowId);
+    this.touch(key, true);
+    return true;
+  }
+
+  /** Linha marcada para exclusão no rascunho (a tabela a esconde). */
+  isRowDeleted(
+    version: GameVersionId,
+    kind: EntryKind,
+    id: string,
+    row: dto.TextRow,
+    source: string,
+  ): boolean {
+    const state = this.states.get(draftKey(version, kind, id, source));
+    return state?.deleted.has(rowKey(row)) ?? false;
   }
 
   /** Lotes por kind para os arquivos sujos de DATA/ (por versão). */
   dirtyBatches(): Map<GameVersionId, Map<EntryKind, string[]>> {
     const out = new Map<GameVersionId, Map<EntryKind, string[]>>();
     for (const state of this.states.values()) {
-      if (state.edits.size === 0 || state.source !== '') continue;
+      if (state.edits.size === 0 && state.deleted.size === 0) continue;
+      if (state.source !== '') continue;
       const kind = splitDraftKind(state);
       const byKind = out.get(state.version) ?? new Map<EntryKind, string[]>();
       const list = byKind.get(kind) ?? [];
@@ -345,7 +431,8 @@ class EditDraftStore {
   dirtyVbfBatches(): Map<GameVersionId, Map<string, Map<EntryKind, string[]>>> {
     const out = new Map<GameVersionId, Map<string, Map<EntryKind, string[]>>>();
     for (const state of this.states.values()) {
-      if (state.edits.size === 0 || state.source === '') continue;
+      if (state.edits.size === 0 && state.deleted.size === 0) continue;
+      if (state.source === '') continue;
       const byRoot = out.get(state.version) ?? new Map<string, Map<EntryKind, string[]>>();
       const byKind = byRoot.get(state.source) ?? new Map<EntryKind, string[]>();
       const kind = splitDraftKind(state);
@@ -359,27 +446,31 @@ class EditDraftStore {
   }
 
   private merge(state: DraftState): dto.FileEntry {
-    const rows = state.entry.rows.map((row) => {
-      const edits = state.edits.get(rowKey(row));
-      let text = row.text;
-      if (edits && edits.size > 0) {
-        text = { ...(row.text ?? {}) };
-        for (const [lang, value] of edits) {
-          text[lang] = value;
+    // Linhas marcadas para exclusão (órfãs escolhidas pelo usuário) não vão
+    // para o payload — o rebuild as deixa fora do binário.
+    const rows = state.entry.rows
+      .filter((row) => !state.deleted.has(rowKey(row)))
+      .map((row) => {
+        const edits = state.edits.get(rowKey(row));
+        let text = row.text;
+        if (edits && edits.size > 0) {
+          text = { ...(row.text ?? {}) };
+          for (const [lang, value] of edits) {
+            text[lang] = value;
+          }
         }
-      }
-      // Payload de apply: só o que o binário precisa (index/name/hash/text).
-      // `original` é exclusivo de EXIBIÇÃO (vem de data/) e não pode viajar
-      // no payload — o backend o ignora, mas o contrato é não enviá-lo.
-      return dto.TextRow.createFrom({
-        index: row.index,
-        name: row.name,
-        hash: row.hash,
-        text,
-        divergent:
-          (edits?.size ?? 0) > 0 && state.divergentRows.has(rowKey(row)) ? true : undefined,
+        // Payload de apply: só o que o binário precisa (index/name/hash/text).
+        // `original` é exclusivo de EXIBIÇÃO (vem de data/) e não pode viajar
+        // no payload — o backend o ignora, mas o contrato é não enviá-lo.
+        return dto.TextRow.createFrom({
+          index: row.index,
+          name: row.name,
+          hash: row.hash,
+          text,
+          divergent:
+            (edits?.size ?? 0) > 0 && state.divergentRows.has(rowKey(row)) ? true : undefined,
+        });
       });
-    });
     return dto.FileEntry.createFrom({ metadata: state.entry.metadata, rows });
   }
 

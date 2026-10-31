@@ -96,6 +96,31 @@ Guards: `frontend/src/components/editor/game-text-editor.test.tsx` (o editor
 não pode ser recriado quando o valor muda) e
 `e2e/specs/editor-focus.spec.ts` (o foco fica no editor ao digitar e ao colar).
 
+## Linhas órfãs (só em `mods/`) e a poda no save
+
+A tabela é a UNIÃO de `data/` e `mods/`: uma linha que só existe na tradução
+aparece com a coluna Original vazia (vermelha). O caso clássico é o
+`macrodic.dcp` traduzido com ponteiros `simplified` apontando para dentro do
+standard ("Zanarkand Abes" → "anarkand Abes"): o binário ganha uma linha
+`name_simplified` que o original não tem.
+
+- **Exclusão manual**: a linha órfã tem um botão de lixeira na célula
+  Traduzido; o modal mostra índice, campo e o texto completo e avisa que a
+  gravação é permanente no próximo Salvar.
+- **Poda no save**: ao salvar, TODAS as linhas órfãs que sobraram são
+  excluídas do binário. O frontend mostra a lista completa (com rolagem)
+  antes de continuar; Cancelar aborta o save inteiro.
+- **Guarda**: as linhas do original são intocáveis — o binário não aceita
+  menos linhas que o original (`builders.PruneNotInOriginal` aborta se
+  faltar alguma; o preenchimento da tradução parcial usa as originais).
+- **Log**: até 5 linhas, o log mostra uma linha por exclusão com o texto
+  completo (arquivo · bloco · índice); acima disso, um resumo por arquivo. O
+  arquivo de diagnóstico (`logs/ffx-*.log`, chave `save-poda/…`) guarda
+  sempre a lista completa.
+
+Guards: `builders/prune_test.go`, `builders/prune_dictionary_test.go` (fixture
+real do dicionário) e `e2e/specs/dictionary-prune.spec.ts`.
+
 ## Como o texto chega ao binário
 
 1. Edição na célula ou no diálogo → **rascunho** (`edit-draft.ts`), nada

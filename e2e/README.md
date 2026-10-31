@@ -70,6 +70,11 @@ diálogo de Configurações, confere o erro e devolve o valor original.
 - `editor-focus.spec` — **o foco do editor**: digitar várias letras e colar
   NÃO podem tirar o foco do campo de edição (o editor nasce uma vez e nunca
   é recriado quando o rascunho muda); fecha com Cancelar (nada é salvo);
+- `dictionary-prune.spec` — **a poda do dicionário no save**: o aviso lista
+  (com rolagem) as linhas sem par no original, Cancelar não grava, continuar
+  remove os ponteiros `simplified` órfãos do `mods/` (verificado no binário),
+  registra a poda no log de diagnóstico e o bloco volta ao número de linhas
+  do original na recarga; `data/` fica intacto;
 - `export-scopes.spec` — **os três tipos de export**: o popover Exportar
   ("todos os tipos" e "Exportar seleção" = os **tipos marcados no
   escopo**, cada um por inteiro — a marcação da árvore não entra) e o menu

@@ -693,7 +693,8 @@ func applyVbfCollectionInSession(vbfPath, kind string, version common.GameVersio
 		if !ok {
 			return fmt.Errorf("nenhum chunk de macro aberto na sessão de %s", base)
 		}
-		return applyMacroCollection(version, full, c)
+		// A sessão é o original do container: o payload é podado contra ela.
+		return applyMacroCollection(version, full, c, full)
 
 	default:
 		return fmt.Errorf("unknown kind: %s", kind)

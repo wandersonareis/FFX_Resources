@@ -1,4 +1,5 @@
 import type * as dto from '@/bindings/ffxresources/backend/dto/models';
+import { askDeleteOrphan } from '@/lib/ffx/delete-orphan-store';
 import { rowKey, type useEditDraft } from '@/lib/ffx/edit-draft';
 import type { GameTextMark } from '@/lib/ffx/game-text-parser';
 import { SOURCE_LANG } from '@/lib/ffx/save-all';
@@ -128,6 +129,18 @@ export function buildTranslatedColumn({
           original !== undefined &&
           original !== '' &&
           displayed !== original;
+        // Linha órfã (só em mods): exclusão manual com aviso destrutivo.
+        const onDelete =
+          entry && row.missingInOriginal === true
+            ? () =>
+                askDeleteOrphan({
+                  version,
+                  kind: entry.kind,
+                  id: entry.id,
+                  source: entry.vbf?.root ?? '',
+                  row,
+                })
+            : undefined;
         return (
           <EditableCell
             displayed={displayed}
@@ -136,6 +149,7 @@ export function buildTranslatedColumn({
             marks={matchesByRow.get(rowKey(row))}
             onOpen={readOnly ? undefined : () => actions.openDialog(row)}
             onRevert={() => actions.revertToOriginal(row)}
+            onDelete={onDelete}
           />
         );
       },

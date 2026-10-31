@@ -1,10 +1,11 @@
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Trash2 } from 'lucide-react';
 import { GameTextView } from '@/components/game-text-view';
 import type { GameTextMark } from '@/lib/ffx/game-text-parser';
 
 /**
- * Célula traduzida comum: texto editável (clique abre o editor) e o botão de
- * reverter para o original quando a linha divergiu.
+ * Célula traduzida comum: texto editável (clique abre o editor) e os botões
+ * de reverter para o original (linha divergida) e de EXCLUIR (linha órfã,
+ * sem par no original — abre o aviso destrutivo).
  */
 export function EditableCell({
   displayed,
@@ -13,6 +14,7 @@ export function EditableCell({
   marks,
   onOpen,
   onRevert,
+  onDelete,
 }: {
   displayed: string;
   edited: boolean;
@@ -21,6 +23,8 @@ export function EditableCell({
   marks?: readonly GameTextMark[];
   onOpen: (() => void) | undefined;
   onRevert: () => void;
+  /** Linha órfã: exclusão manual (aviso destrutivo). */
+  onDelete?: () => void;
 }) {
   return (
     <div className="group flex items-center gap-1">
@@ -34,6 +38,20 @@ export function EditableCell({
       >
         <GameTextView text={displayed} marks={marks} newlineChip />
       </div>
+      {onDelete ? (
+        <button
+          type="button"
+          aria-label="Excluir linha órfã"
+          title="Excluir linha órfã (não existe no original) — aviso destrutivo"
+          className="shrink-0 rounded p-1 text-muted-foreground opacity-60 transition-opacity hover:bg-destructive/10 hover:text-destructive hover:opacity-100 focus:opacity-100 group-hover:opacity-100"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete();
+          }}
+        >
+          <Trash2 size={15} aria-hidden />
+        </button>
+      ) : null}
       {canRevert ? (
         <button
           type="button"

@@ -55,6 +55,15 @@ func (s *TextService) ApplyTextCollection(kind string, version common.GameVersio
 	return s.meta.ApplyTextCollection(kind, version, c)
 }
 
+// PreviewSavePrune devolve as linhas que o save do kind excluiria por não
+// existirem no original (o aviso destrutivo do frontend antes de salvar).
+func (s *TextService) PreviewSavePrune(kind string, version common.GameVersion) ([]services.PrunedRowView, error) {
+	if s.meta == nil {
+		return nil, fmt.Errorf("metadata service not initialized")
+	}
+	return s.meta.PreviewSavePrune(kind, version)
+}
+
 // ApplyVbfTextCollection aplica (no escopo da sessão do container) os edits
 // vindos das tabelas abertas no navegador de .vbf: mesmo motor do "Salvar"
 // de data/, com a propagação limitada às cópias abertas no clique. Grava em

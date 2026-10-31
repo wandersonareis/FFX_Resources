@@ -79,6 +79,81 @@ export class ExportPlanItem {
 }
 
 /**
+ * PrunedRowView é uma linha que o save vai excluir por não existir no
+ * original — o mesmo formato vai para o modal do frontend e para o log.
+ */
+export class PrunedRowView {
+    /**
+     * File é a chave canônica da entrada (ex.: ffx2/menu/macrodic.dcp).
+     */
+    "file": string;
+
+    /**
+     * Block é o bloco (chunk) quando o formato tem; nil = só índice.
+     */
+    "block"?: number | null;
+
+    /**
+     * Index é o índice da linha dentro do arquivo/bloco.
+     */
+    "index": number;
+
+    /**
+     * Name é o campo da linha ("name", "name_simplified"…).
+     */
+    "name": string;
+
+    /**
+     * Text é o texto COMPLETO da linha na localização padrão.
+     */
+    "text"?: string;
+
+    /**
+     * Langs são os idiomas cujo texto será removido (vazio = linha inteira).
+     */
+    "langs"?: string[];
+
+    /**
+     * Version/Kind identificam a origem.
+     */
+    "version": string;
+    "kind": string;
+
+    /** Creates a new PrunedRowView instance. */
+    constructor($$source: Partial<PrunedRowView> = {}) {
+        if (!("file" in $$source)) {
+            this["file"] = "";
+        }
+        if (!("index" in $$source)) {
+            this["index"] = 0;
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("version" in $$source)) {
+            this["version"] = "";
+        }
+        if (!("kind" in $$source)) {
+            this["kind"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PrunedRowView instance from a string or object.
+     */
+    static createFrom($$source: any = {}): PrunedRowView {
+        const $$createField5_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("langs" in $$parsedSource) {
+            $$parsedSource["langs"] = $$createField5_0($$parsedSource["langs"]);
+        }
+        return new PrunedRowView($$parsedSource as Partial<PrunedRowView>);
+    }
+}
+
+/**
  * TagCatalog é o catálogo servido ao frontend via binding GetTagCatalog.
  */
 export class TagCatalog {

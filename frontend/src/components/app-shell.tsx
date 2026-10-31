@@ -7,6 +7,8 @@ import { QuitApp } from '@/bindings/ffxresources/app';
 import { SetGameVersion } from '@/bindings/ffxresources/configservice';
 import { AppHeader } from '@/components/app-header';
 import { ConfigDialog } from '@/components/dialogs/config-dialog';
+import { DeleteOrphanDialog } from '@/components/dialogs/delete-orphan-dialog';
+import { PruneOrphansDialog } from '@/components/dialogs/prune-orphans-dialog';
 import { ExportImportControls } from '@/components/export-import-controls';
 import { GameVersionTab } from '@/components/game-version-tab';
 import { LogDrawer } from '@/components/log-drawer';
@@ -112,7 +114,10 @@ export function AppShell() {
   );
 
   useWailsEvent('SaveRequested', () => {
-    void saveAllDrafts(() => saving, setSaving).then(() => QuitApp());
+    // Cancelar o aviso de poda ABORTA o save — não pode fechar o app.
+    void saveAllDrafts(() => saving, setSaving).then((saved) => {
+      if (saved) void QuitApp();
+    });
   });
 
   // Eco do config: cada setter do backend persiste e re-emite o snapshot
@@ -200,6 +205,8 @@ export function AppShell() {
       <StatusBar />
 
       <ConfigDialog open={configOpen} onOpenChange={setConfigDialogOpen} />
+      <PruneOrphansDialog />
+      <DeleteOrphanDialog />
       <LogDrawer />
       <ProgressNotifier />
       <ProgressModal />

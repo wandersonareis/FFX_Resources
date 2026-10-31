@@ -10,41 +10,47 @@ export function EntryTableBody({
   rowRefs,
   focusedRowId,
   onFocusRow,
+  isRowHidden,
 }: {
   table: ReactTable<F, dto.TextRow>;
   rowRefs: RefObject<Map<string, HTMLTableRowElement>>;
   focusedRowId: string | null;
   onFocusRow: (key: string) => void;
+  /** Linha marcada para exclusão no rascunho — some da tabela até o save. */
+  isRowHidden: (row: dto.TextRow) => boolean;
 }) {
   return (
     <TableBody>
-      {table.getRowModel().rows.map((tRow) => {
-        const r = tRow.original;
-        const key = rowKey(r);
-        return (
-          <TableRow
-            key={tRow.id}
-            ref={(el) => {
-              if (el) rowRefs.current.set(key, el);
-              else rowRefs.current.delete(key);
-            }}
-            tabIndex={0}
-            data-row-key={key}
-            onFocus={() => onFocusRow(key)}
-            className={
-              focusedRowId === key
-                ? 'bg-primary/10 outline outline-primary/60'
-                : 'outline-none focus-visible:bg-muted/40'
-            }
-          >
-            {tRow.getAllCells().map((cell) => (
-              <TableCell key={cell.id}>
-                <table.FlexRender cell={cell} />
-              </TableCell>
-            ))}
-          </TableRow>
-        );
-      })}
+      {table
+        .getRowModel()
+        .rows.filter((tRow) => !isRowHidden(tRow.original))
+        .map((tRow) => {
+          const r = tRow.original;
+          const key = rowKey(r);
+          return (
+            <TableRow
+              key={tRow.id}
+              ref={(el) => {
+                if (el) rowRefs.current.set(key, el);
+                else rowRefs.current.delete(key);
+              }}
+              tabIndex={0}
+              data-row-key={key}
+              onFocus={() => onFocusRow(key)}
+              className={
+                focusedRowId === key
+                  ? 'bg-primary/10 outline outline-primary/60'
+                  : 'outline-none focus-visible:bg-muted/40'
+              }
+            >
+              {tRow.getAllCells().map((cell) => (
+                <TableCell key={cell.id}>
+                  <table.FlexRender cell={cell} />
+                </TableCell>
+              ))}
+            </TableRow>
+          );
+        })}
     </TableBody>
   );
 }

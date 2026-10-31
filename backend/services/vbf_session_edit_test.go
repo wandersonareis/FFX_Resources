@@ -346,7 +346,7 @@ func TestVbfSessionMacroSalvaSomenteEmMods(t *testing.T) {
 	const novo = "Frase de macro editada pelo .vbf"
 	payload := editPayload(chunk, entry, novo)
 	rowKey := dto.RowKey(payload[chunk].Rows[0])
-	if err := applyMacroCollection(common.GameVersionFFX, sessFull, payload); err != nil {
+	if err := applyMacroCollection(common.GameVersionFFX, sessFull, payload, sessFull); err != nil {
 		t.Fatalf("apply macro: %v", err)
 	}
 

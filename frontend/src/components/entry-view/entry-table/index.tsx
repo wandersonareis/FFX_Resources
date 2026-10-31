@@ -4,7 +4,7 @@ import { useSelector } from '@tanstack/react-store';
 import { useTable } from '@tanstack/react-table';
 import { memo, useEffect } from 'react';
 import { Table } from '@/components/ui/table';
-import { rowKey } from '@/lib/ffx/edit-draft';
+import { editDraft, rowKey, useEditDraft } from '@/lib/ffx/edit-draft';
 import type { GameTextMark } from '@/lib/ffx/game-text-parser';
 import { DEDUP_VIEW_KINDS } from '@/lib/ffx/hash-ref';
 import type { EntryView } from '../entry-view-store';
@@ -43,6 +43,8 @@ export const EntryTable = memo(function EntryTable({
   const loading = useSelector(store, (s) => s.loading);
   const refLinks = useSelector(store, (s) => s.refLinks);
   const version = view.version;
+  // Re-render quando o rascunho muda (exclusões manuais escondem a linha).
+  useEditDraft();
 
   const { tableRef, rowRefs, focusedRowId, setFocusedRowId } = useEntryTableHotkeys({
     rows,
@@ -128,6 +130,16 @@ export const EntryTable = memo(function EntryTable({
           rowRefs={rowRefs}
           focusedRowId={focusedRowId}
           onFocusRow={setFocusedRowId}
+          isRowHidden={(row) =>
+            selectedEntry != null &&
+            editDraft.isRowDeleted(
+              version,
+              selectedEntry.kind,
+              selectedEntry.id,
+              row,
+              selectedEntry.vbf?.root ?? '',
+            )
+          }
         />
       </Table>
     </div>
