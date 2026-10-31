@@ -50,7 +50,11 @@ No diálogo de tradução (Enter na linha):
   serialização — nunca vira `{CLR:RGB(...)}`.
 - **Desfazer/Refazer**.
 - **Padding de tela** — espaços/quebras intencionais no início do texto são
-  preservados automaticamente e exibidos como aviso (não são conteúdo).
+  preservados automaticamente e exibidos como aviso (não são conteúdo). Passar
+  o mouse sobre o aviso revela uma lixeira que remove o prefixo — só no
+  rascunho, até Salvar. Quebras criadas no início (Enter ou colagem) viram
+  padding; apagar o conteúdo do primeiro bloco **não** cria padding — a
+  quebra que sobra é descartada.
 
 O duplo clique seleciona a palavra **sem** o espaço final: a seleção nativa do
 Chromium (palavra + espaço) é aparada para aplicar cor/itálico não alterar o

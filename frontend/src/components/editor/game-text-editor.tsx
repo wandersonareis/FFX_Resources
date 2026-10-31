@@ -12,6 +12,7 @@ import {
   Palette,
   Redo2,
   RotateCcw,
+  Trash2,
   Undo2,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -32,6 +33,7 @@ import { getChipValidator, loadTagCatalog, type TagCatalog } from '@/lib/ffx/tag
 import { CleanMarksExtension } from './clean-marks.extension';
 import { createDoubleClickSelectionExtension } from './double-click-selection.extension';
 import { GameTagExtension } from './game-tag.extension';
+import { LeadingEmptyBlockExtension } from './leading-empty-block.extension';
 import { LockedTagsExtension } from './locked-tags.extension';
 import { createPasteHandlerExtension } from './paste-handler.extension';
 import { createTagAutocompleteExtension } from './tag-autocomplete.extension';
@@ -190,6 +192,7 @@ export function GameTextEditor({ value, onValueChange, version }: GameTextEditor
         GameTagExtension,
         LockedTagsExtension,
         CleanMarksExtension,
+        LeadingEmptyBlockExtension,
         createDoubleClickSelectionExtension(),
         createTypedTagExtension(validate),
         createTagAutocompleteExtension(catalog, () => popupContainerRef.current),
@@ -252,6 +255,35 @@ export function GameTextEditor({ value, onValueChange, version }: GameTextEditor
   };
 
   const colors = Object.values(KNOWN_COLORS).filter((c) => c.name !== 'WHITE');
+  const { padding } = splitLeadingPadding(value);
+
+  /**
+   * Remove o padding de tela do rascunho. O prefixo fica FORA do documento
+   * (o editor o esconde), então a remoção é um novo `value` sem ele — não há
+   * comando do ProseMirror para isso. Atualizar valueRef/lastEmittedValue
+   * evita que o próximo onUpdate reinjete o padding e que a sincronia
+   * reconstrua o conteúdo (cursor/seleção ficam onde estão).
+   *
+   * Normaliza também o documento: quando o padding nasceu de parágrafos
+   * vazios à frente (colar `{TEXT_NEWLINE}…`), deixá-los no ProseMirror faria
+   * o próximo onUpdate serializar o prefixo de novo — o padding voltaria.
+   */
+  const removePadding = () => {
+    const { body } = splitLeadingPadding(valueRef.current);
+    if (body === valueRef.current) return;
+    if (editor && catalog !== undefined) {
+      const current = gameTextParser.serializeJSONToGameText(editor.getJSON());
+      if (current !== body) {
+        editor.commands.setContent(
+          gameTextParser.parseGameTextToHTML(body, getChipValidator(catalog ?? null)),
+          { emitUpdate: false },
+        );
+      }
+    }
+    valueRef.current = body;
+    lastEmittedValue.current = body;
+    onValueChangeRef.current(body);
+  };
 
   return (
     <div ref={popupContainerRef} className="relative flex min-h-0 flex-1 flex-col gap-2">
@@ -389,15 +421,22 @@ export function GameTextEditor({ value, onValueChange, version }: GameTextEditor
         </Tooltip>
       </div>
 
-      {splitLeadingPadding(value).padding !== '' && (
+      {padding !== '' && (
         <div
-          className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
-          title="Espaços/quebras intencionais do jogo, preservados automaticamente"
+          className="group/padding flex w-fit shrink-0 items-center gap-1 text-xs text-muted-foreground"
+          title="Espaços/quebras intencionais do jogo, preservados automaticamente. Use a lixeira para removê-los."
         >
           <span>␍ padding de tela:</span>
-          <code className="rounded bg-muted px-1">
-            {summarizePadding(splitLeadingPadding(value).padding)}
-          </code>
+          <code className="rounded bg-muted px-1">{summarizePadding(padding)}</code>
+          <button
+            type="button"
+            aria-label="Remover padding de tela"
+            title="Remover o padding de tela (espaços/quebras iniciais) desta tradução"
+            className="pointer-events-none shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:pointer-events-auto focus-visible:opacity-100 group-focus-within/padding:pointer-events-auto group-focus-within/padding:opacity-100 group-hover/padding:pointer-events-auto group-hover/padding:opacity-100"
+            onClick={removePadding}
+          >
+            <Trash2 size={14} aria-hidden />
+          </button>
         </div>
       )}
       <div
