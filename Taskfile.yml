@@ -105,9 +105,7 @@ tasks:
       - task: release:assets
       - cmd: |
           set -e
-          if git status --porcelain | grep -q .; then
-            echo "AVISO: há alterações não commitadas — a release não sai de um commit limpo."
-          fi
+          node -e "const out=require('node:child_process').execSync('git status --porcelain',{encoding:'utf8'}).trim();if(out)console.log('AVISO: há alterações não commitadas — a release não sai de um commit limpo.')"
           NOTES="docs/releases/${VERSION}.md"
           if [ -f "$NOTES" ]; then
             gh release create "v${VERSION}" --title "v${VERSION}" --notes-file "$NOTES" "dist/{{.RELEASE_ASSET}}" "dist/SHA256SUMS"
