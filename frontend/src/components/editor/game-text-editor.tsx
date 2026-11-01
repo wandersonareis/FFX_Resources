@@ -442,12 +442,21 @@ export function GameTextEditor({ value, onValueChange, version }: GameTextEditor
       <div
         ref={hostRef}
         // Host é flex coluna + rolagem interna: o contenteditable (.tiptap)
-        // estica com flex-1 e o ring azul de foco sai com a ALTURA DA CAIXA
-        // (não mais a do texto); texto maior que a caixa rola aqui dentro.
-        // Respiro do texto: host p-3 (12px até a borda da caixa) + p-1 DENTRO
-        // do .tiptap — afasta o texto da borda externa e do ring de foco,
-        // que é desenhado na borda do próprio .tiptap.
-        className="flex min-h-40 flex-1 flex-col overflow-y-auto rounded border border-border p-3 outline-none [&_.tiptap]:flex-1 [&_.tiptap]:p-1 [&_.tiptap_p]:mb-2 [&_.tiptap_p:last-child]:mb-0"
+        // estica com flex-1 e texto maior que a caixa rola aqui dentro.
+        //
+        // O FOCO é UM efeito só: a própria borda da caixa troca para a cor
+        // de foco (focus-within), como um input ganhando foco. O retângulo
+        // não muda de tamanho, posição nem raio. Sem anel/halo extra: o
+        // box-shadow de 3px em DPI fracionário (125%/150%) desenhava uma
+        // segunda linha assimétrica (parecia 1px mais baixa) e lia como
+        // "outra área". Antes o outline nativo do Chromium ficava no
+        // .tiptap, 12px para dentro (host p-3): uma segunda área menor que
+        // surgia no clique, com o texto a só 4px (p-1) dela. Ambos zerados.
+        //
+        // Respiro do texto: host p-3 (12px) + p-1 DENTRO do .tiptap (4px),
+        // mais o 1px da borda = 17px até a borda, igual com e sem foco.
+        data-testid="editor-surface"
+        className="flex min-h-40 flex-1 flex-col overflow-y-auto rounded border border-border p-3 outline-none transition-colors focus-within:border-ring [&_.tiptap]:flex-1 [&_.tiptap]:p-1 [&_.tiptap]:outline-none [&_.tiptap_p]:mb-2 [&_.tiptap_p:last-child]:mb-0"
       />
     </div>
   );

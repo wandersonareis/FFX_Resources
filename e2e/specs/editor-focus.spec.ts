@@ -40,8 +40,43 @@ test.describe('Editor: foco na digitação e na colagem', () => {
     // permissão concedida.
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 
+    // Foco é UM efeito só: a borda da PRÓPRIA caixa ganha a cor de foco,
+    // como um input. Sem anel/halo (o box-shadow de 3px ficava assimétrico
+    // em DPI fracionário e lia como uma segunda área) e sem o outline nativo
+    // do contenteditable (que ficava 12px para dentro e deixava o texto a
+    // 4px dele). Guarda também a geometria: o clique não desloca nada.
+    const surface = editorDialog.getByTestId('editor-surface');
+    await expect(surface, 'caixa do editor').toBeVisible();
+    const borderBefore = await surface.evaluate((el) => getComputedStyle(el).borderTopColor);
+    const surfaceBox = await surface.boundingBox();
+    expect(surfaceBox, 'caixa do editor medível').toBeTruthy();
+
     await editor.click();
     await expect(editor, 'foco no editor ao abrir').toBeFocused();
+
+    await expect
+      .poll(() => surface.evaluate((el) => getComputedStyle(el).borderTopColor), {
+        message: 'borda da caixa ganha a cor de foco',
+      })
+      .not.toBe(borderBefore);
+    expect(
+      await surface.evaluate((el) => getComputedStyle(el).boxShadow),
+      'sem anel/halo extra além da borda'
+    ).toBe('none');
+    expect(
+      await editor.evaluate((el) => getComputedStyle(el).outlineStyle),
+      'o .tiptap não desenha outline próprio (o foco é a borda da caixa)'
+    ).toBe('none');
+
+    // Mesma caixa e mesmo padding com e sem foco: o texto não encosta na
+    // borda. O .tiptap começa depois da borda (1px) + p-3 (12px) do wrapper.
+    expect(await surface.boundingBox(), 'a caixa não muda com o foco').toEqual(surfaceBox);
+    const textBox = await editor.boundingBox();
+    expect(textBox, 'caixa do texto medível').toBeTruthy();
+    if (surfaceBox && textBox) {
+      expect(textBox.x - surfaceBox.x, 'respiro do texto à esquerda').toBeGreaterThanOrEqual(12);
+      expect(textBox.y - surfaceBox.y, 'respiro do texto no topo').toBeGreaterThanOrEqual(12);
+    }
 
     // Várias letras seguidas: com o editor recriado a cada tecla, só a
     // primeira entraria — as outras iriam para o body.
