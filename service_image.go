@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"ffxresources/backend/common"
 	"ffxresources/backend/dto"
@@ -155,6 +156,36 @@ func (s *ImageService) ImageExportPath(kind, id, format string, version common.G
 		return "", fmt.Errorf("metadata service not initialized")
 	}
 	return s.meta.ImageExportPath(kind, id, format, version)
+}
+
+// SaveImageTo grava .dds/.png na pasta escolhida pelo usuário no "Exportar
+// para…", preservando o caminho interno (raiz da versão + id) sob destRoot.
+// Devolve o caminho escrito; destRoot vazio usa mods/images.
+func (s *ImageService) SaveImageTo(kind, id, format, destRoot string, version common.GameVersion) (string, error) {
+	if s.meta == nil {
+		return "", fmt.Errorf("metadata service not initialized")
+	}
+	return s.meta.SaveImageTo(kind, id, format, destRoot, version)
+}
+
+// SelectImageExportDir escolhe a RAIZ onde DDS/PNG exportados de data/ serão
+// gravados — mods/images por padrão. Abaixo dela o caminho interno da textura
+// é somado (por isso o picker abre na raiz, não já no diretório da imagem).
+// Devolve "" quando o usuário cancela.
+func (s *ImageService) SelectImageExportDir() string {
+	return pickImageExportDir()
+}
+
+// pickImageExportDir é o seletor nativo de pasta compartilhado pelos exports
+// de imagem (árvore data/ e .vbf): abre na raiz de mods/images, o destino
+// padrão, para o caminho interno ser somado abaixo da RAIZ escolhida.
+func pickImageExportDir() string {
+	defaultDir := filepath.Join(common.GameFilesRoot, common.ModsFolder, common.ModsImagesDir)
+	// O delete poda ramos vazios até GameFilesRoot: garante a raiz para o
+	// picker não abrir em pasta fallback (ImageWorkDir faz o mesmo nos
+	// pickers de arquivo).
+	_ = common.EnsurePathExists(defaultDir)
+	return pickDirectory("Escolher destino das imagens extraídas", defaultDir)
 }
 
 // SelectImageFile abre o seletor nativo para escolher um .dds a importar,

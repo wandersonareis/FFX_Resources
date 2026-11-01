@@ -134,7 +134,8 @@ export function SelectVbfExtractDir(): $CancellablePromise<string> {
  * SelectVbfImageExtractDir escolhe a RAIZ onde DDS/PNG extraídos do .vbf
  * serão gravados — mods/images por padrão; abaixo dela o caminho interno do
  * container é somado na gravação (por isso o picker abre na raiz e não já
- * com o caminho interno, que duplicaria a raiz).
+ * com o caminho interno, que duplicaria a raiz). O picker é o mesmo do
+ * export de imagens da árvore data/.
  */
 export function SelectVbfImageExtractDir(): $CancellablePromise<string> {
     return $Call.ByID(2533874608);

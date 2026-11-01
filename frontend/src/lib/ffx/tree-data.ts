@@ -17,6 +17,8 @@ import {
   RefreshImageDuplicates,
   ReplicateImage,
   SaveImage,
+  SaveImageTo,
+  SelectImageExportDir,
   SelectImageFile,
   SelectImageSavePath,
 } from '@/bindings/ffxresources/imageservice';
@@ -348,6 +350,24 @@ export function imageExportPath(
   version: GameVersionId,
 ): Promise<string> {
   return ImageExportPath('images', id, format, version as Parameters<typeof ImageExportPath>[3]);
+}
+
+/**
+ * Exporta .dds/.png para a pasta escolhida preservando o caminho interno da
+ * textura (raiz da versão + id) sob destRoot. Devolve o caminho escrito.
+ */
+export function saveImageTo(
+  id: string,
+  format: 'dds' | 'png',
+  destRoot: string,
+  version: GameVersionId,
+): Promise<string> {
+  return SaveImageTo('images', id, format, destRoot, version as Parameters<typeof SaveImageTo>[4]);
+}
+
+/** Seletor nativo de pasta do "Exportar para…" (default mods/images). "" = cancelou. */
+export function selectImageExportDir(): Promise<string> {
+  return SelectImageExportDir();
 }
 
 /** Exporta a entrada em JSON + .strings (mods/edits). */

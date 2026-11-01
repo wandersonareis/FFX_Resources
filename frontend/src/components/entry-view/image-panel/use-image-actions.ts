@@ -14,6 +14,8 @@ import {
   previewImportImages,
   refreshImageDuplicates,
   saveImage,
+  saveImageTo,
+  selectImageExportDir,
   selectImageFile,
 } from '@/lib/ffx/tree-data';
 import {
@@ -168,20 +170,31 @@ export function useImageActions({
   };
 
   const onExtractTo = async (format: 'dds' | 'png' | 'dds+png') => {
-    if (!entry?.vbf) return;
+    if (!entry) return;
     setBusy('extractTo');
     try {
-      const destRoot = await selectVbfImageExtractDir();
+      const destRoot = entry.vbf ? await selectVbfImageExtractDir() : await selectImageExportDir();
       if (!destRoot) return; // usuário cancelou
-      const result = await extractVbfImagesSelection(entry.vbf.root, [entry.vbf.path], destRoot);
-      if (result.failed.length > 0) {
-        toast.warning(`Extraídas ${result.done.length} de ${result.total} imagens.`, {
-          description: result.failed.slice(0, 3).join('; '),
-        });
-      } else if (result.total > 0) {
-        const fmtLabel = format === 'dds+png' ? '.dds e .png' : `.${format}`;
-        toast.success(`Imagem extraída como ${fmtLabel} em ${destRoot}`);
+      const fmtLabel = format === 'dds+png' ? '.dds e .png' : `.${format}`;
+      if (entry.vbf) {
+        // O extract do .vbf grava DDS e PNG juntos; o formato escolhido só
+        // rotula o resumo.
+        const result = await extractVbfImagesSelection(entry.vbf.root, [entry.vbf.path], destRoot);
+        if (result.failed.length > 0) {
+          toast.warning(`Extraídas ${result.done.length} de ${result.total} imagens.`, {
+            description: result.failed.slice(0, 3).join('; '),
+          });
+        } else if (result.total > 0) {
+          toast.success(`Imagem extraída como ${fmtLabel} em ${destRoot}`);
+        }
+        return;
       }
+      const formats = format === 'dds+png' ? (['dds', 'png'] as const) : [format];
+      const dests: string[] = [];
+      for (const fmt of formats) {
+        dests.push(await saveImageTo(entry.id, fmt, destRoot, version));
+      }
+      toast.success(`Imagem exportada como ${fmtLabel}: ${dests.join(', ')}`);
     } catch (error) {
       toast.error(parseError(error));
     } finally {

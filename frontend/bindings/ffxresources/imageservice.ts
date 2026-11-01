@@ -188,6 +188,25 @@ export function SaveImage(kind: string, id: string, format: string, destPath: st
 }
 
 /**
+ * SaveImageTo grava .dds/.png na pasta escolhida pelo usuário no "Exportar
+ * para…", preservando o caminho interno (raiz da versão + id) sob destRoot.
+ * Devolve o caminho escrito; destRoot vazio usa mods/images.
+ */
+export function SaveImageTo(kind: string, id: string, format: string, destRoot: string, version: common$0.GameVersion): $CancellablePromise<string> {
+    return $Call.ByID(3932212003, kind, id, format, destRoot, version);
+}
+
+/**
+ * SelectImageExportDir escolhe a RAIZ onde DDS/PNG exportados de data/ serão
+ * gravados — mods/images por padrão. Abaixo dela o caminho interno da textura
+ * é somado (por isso o picker abre na raiz, não já no diretório da imagem).
+ * Devolve "" quando o usuário cancela.
+ */
+export function SelectImageExportDir(): $CancellablePromise<string> {
+    return $Call.ByID(460440614);
+}
+
+/**
  * SelectImageFile abre o seletor nativo para escolher um .dds a importar,
  * começando no diretório de trabalho da textura (mods/images/<raiz>/<dir do
  * id>) — o lugar onde o .dds extraído dela já mora. Só .dds: é o único

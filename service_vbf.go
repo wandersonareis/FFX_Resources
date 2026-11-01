@@ -133,14 +133,10 @@ func (s *VbfService) SelectVbfExtractDir() string {
 // SelectVbfImageExtractDir escolhe a RAIZ onde DDS/PNG extraídos do .vbf
 // serão gravados — mods/images por padrão; abaixo dela o caminho interno do
 // container é somado na gravação (por isso o picker abre na raiz e não já
-// com o caminho interno, que duplicaria a raiz).
+// com o caminho interno, que duplicaria a raiz). O picker é o mesmo do
+// export de imagens da árvore data/.
 func (s *VbfService) SelectVbfImageExtractDir() string {
-	defaultDir := filepath.Join(common.GameFilesRoot, common.ModsFolder, common.ModsImagesDir)
-	// O delete poda ramos vazios até GameFilesRoot: garante a raiz para o
-	// picker não abrir em pasta fallback (ImageWorkDir faz o mesmo nos
-	// outros dois pickers de arquivo).
-	_ = common.EnsurePathExists(defaultDir)
-	return pickDirectory("Escolher destino das imagens extraídas", defaultDir)
+	return pickImageExportDir()
 }
 
 // ExportVbfSelection decodifica os kinds de TEXTO da seleção e grava os

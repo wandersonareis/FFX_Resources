@@ -727,6 +727,54 @@ func (s *MetadataService) SaveImage(kind, id, format, destPath string, version c
 	return nil
 }
 
+// modsImagesRoot devolve a raiz dos artefatos de imagem em mods/ — a versão
+// (ffx_ps2, ffxhd_ps3, …) e o id entram abaixo dela.
+func modsImagesRoot() string {
+	return filepath.Join(common.GameFilesRoot, common.ModsFolder, common.ModsImagesDir)
+}
+
+// SaveImageTo grava .dds ou .png em destRoot PRESERVANDO o caminho interno da
+// textura (raiz da versão + id) — o mesmo que o "Extrair para…" do .vbf faz.
+// destRoot vazio cai no destino padrão (mods/images), igual ao export direto.
+// Devolve o caminho escrito.
+func (s *MetadataService) SaveImageTo(kind, id, format, destRoot string, version common.GameVersion) (string, error) {
+	if !isImageKind(kind) {
+		return "", fmt.Errorf("kind desconhecido: %s", kind)
+	}
+	if err := ensureVersionReady(version); err != nil {
+		return "", err
+	}
+	if !ddsphyre.ValidID(id) {
+		return "", fmt.Errorf("textura desconhecida: %s", id)
+	}
+	formatLower := strings.ToLower(strings.TrimSpace(format))
+	if formatLower != "dds" && formatLower != "png" {
+		return "", fmt.Errorf("formato %q inválido (esperado dds ou png)", format)
+	}
+	ddsPath, pngPath := ddsphyre.ExportPaths(version, id)
+	src := ddsPath
+	if formatLower == "png" {
+		src = pngPath
+	}
+	if strings.TrimSpace(destRoot) == "" {
+		if err := s.SaveImage(kind, id, formatLower, src, version); err != nil {
+			return "", err
+		}
+		return src, nil
+	}
+	// O relativo ao mods/images é o caminho interno da textura (raiz da
+	// versão + id): o mesmo preservado pela extração para pasta customizada.
+	rel, err := filepath.Rel(modsImagesRoot(), src)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("caminho interno da textura %s fora de mods/images", id)
+	}
+	dest := filepath.Join(destRoot, rel)
+	if err := s.SaveImage(kind, id, formatLower, dest, version); err != nil {
+		return "", err
+	}
+	return dest, nil
+}
+
 // ImageWorkDir devolve o diretório de trabalho da textura em
 // mods/images/<raiz>/<caminho interno> — o mesmo onde ExportPaths grava os
 // .dds/.png extraídos. É por onde os diálogos nativos de ARQUIVO devem
