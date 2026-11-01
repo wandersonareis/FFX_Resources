@@ -190,7 +190,11 @@ diálogo (aberto com **Enter** na linha) mostra:
   **`‹ Anterior` / `Próxima →`** (setas `←`/`→` também funcionam; a
   navegação fica desabilitada quando a linha é ref ou divergente).
 - **Referências** — os textos da linha nos outros idiomas (para consulta);
-  a tradução em inglês (`us`) é o campo editável.
+  a tradução em inglês (`us`) é o campo editável. No hover da área aparece
+  um botão de copiar no canto superior direito: ele leva ao clipboard o
+  texto **puro** de todas as línguas, no formato `Nome (código)` + texto e
+  com as quebras de linha preservadas — sem os chips, cores ou itálico das
+  tags de controle.
 - **Checkbox de divergência** — só aparece em cópias, ver
   [Tradução divergente](#tradução-divergente-em-cópia).
 - **Toolbar** — itálico, botões/direcionais do controle, ícones de gate,

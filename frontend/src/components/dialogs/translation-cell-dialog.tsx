@@ -1,8 +1,8 @@
 'use client';
 
 import { useHotkey } from '@tanstack/react-hotkeys';
-import { ChevronLeft, ChevronRight, ShieldAlert } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronLeft, ChevronRight, Copy, ShieldAlert } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import type * as dto from '@/bindings/ffxresources/backend/dto/models';
 import { GameTextEditor } from '@/components/editor/game-text-editor';
 import { getActiveTagSuggestionPopup } from '@/components/editor/tag-suggestion-popup';
@@ -15,7 +15,9 @@ import {
   DialogFooter,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { copyTextToClipboard } from '@/lib/ffx/clipboard';
 import type { GameVersionId } from '@/lib/ffx/game-version';
+import { formatReferencesForCopy } from '@/lib/ffx/plain-text';
 import {
   missingProtectedTags,
   newUnclosedFragment,
@@ -23,6 +25,7 @@ import {
   restoreProtectedTags,
 } from '@/lib/ffx/protected-tags';
 import { SOURCE_LANG } from '@/lib/ffx/save-all';
+import { loggedToast } from '@/lib/ffx/toast-logged';
 
 export interface TranslationCellDialogProps {
   open: boolean;
@@ -84,6 +87,30 @@ export function TranslationCellDialog({
   const baseText = row?.text?.[SOURCE_LANG] ?? '';
   const changed = text !== baseText;
   const referenceLangs = languages.filter((l) => l.code !== SOURCE_LANG);
+  // Cópia da área inteira de referências: cabeçalho de cada língua (o mesmo
+  // da tela) + texto puro, com as quebras de linha preservadas — chips,
+  // cores e itálico NÃO vão para o clipboard.
+  const referencesForCopy = useMemo(
+    () =>
+      formatReferencesForCopy(
+        languages
+          .filter((lang) => lang.code !== SOURCE_LANG)
+          .map((lang) => ({
+            name: lang.name,
+            code: lang.code,
+            text: row?.original?.[lang.code],
+          })),
+      ),
+    [languages, row],
+  );
+
+  const copyReferences = (): void => {
+    if (!referencesForCopy) return;
+    void copyTextToClipboard(referencesForCopy).then((copied) => {
+      if (copied) loggedToast.success('Referências copiadas como texto.');
+      else loggedToast.error('Não foi possível copiar as referências.');
+    });
+  };
 
   const perform = (action: PendingAction, value: string): void => {
     // value === base não gera rascunho (nada mudou em relação ao salvo).
@@ -231,23 +258,43 @@ export function TranslationCellDialog({
               (sem flex-1, teto menor e min-h-0 = encolhe primeiro quando
               falta espaço — a caixa de edição tem piso próprio e nunca é
               espremida para fora do wrapper). */}
-          <div className="grid gap-2.5 overflow-y-auto min-h-0 max-h-[26vh] shrink pr-1">
-            {referenceLangs.length === 0 ? (
-              <p className="opacity-70">Sem outros idiomas nesta linha.</p>
-            ) : (
-              referenceLangs.map((lang) => (
-                <div key={lang.code}>
-                  <span className="text-xs font-semibold opacity-75">
-                    {lang.name} ({lang.code})
-                  </span>
-                  <GameTextView
-                    className="mt-0.5"
-                    text={row?.original?.[lang.code] ?? ''}
-                    fallback="—"
-                  />
-                </div>
-              ))
-            )}
+          <div className="group/refs relative flex min-h-0 shrink flex-col">
+            <div className="grid gap-2.5 overflow-y-auto min-h-0 max-h-[26vh] pr-1">
+              {referenceLangs.length === 0 ? (
+                <p className="opacity-70">Sem outros idiomas nesta linha.</p>
+              ) : (
+                referenceLangs.map((lang) => (
+                  <div key={lang.code}>
+                    <span className="text-xs font-semibold opacity-75">
+                      {lang.name} ({lang.code})
+                    </span>
+                    <GameTextView
+                      className="mt-0.5"
+                      text={row?.original?.[lang.code] ?? ''}
+                      fallback="—"
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+            {/* Copiar a área inteira: o botão fica no canto superior direito,
+                só à vista no hover/focus (a área rola por baixo dele — por
+                isso é irmão do scroller, não filho). Copia texto puro, com
+                quebras, sem os chips de conversão das tags de controle. */}
+            {referencesForCopy ? (
+              <div className="pointer-events-none absolute right-3 top-0 z-10 flex justify-end opacity-0 transition-opacity duration-150 ease-out group-hover/refs:opacity-100 group-focus-within/refs:opacity-100 motion-reduce:transition-none">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="pointer-events-auto rounded-md border bg-background/85 shadow-sm backdrop-blur hover:bg-muted"
+                  title="Copiar referências como texto (sem tags nem formatação)"
+                  aria-label="Copiar referências como texto"
+                  onClick={copyReferences}
+                >
+                  <Copy size={14} />
+                </Button>
+              </div>
+            ) : null}
           </div>
 
           {/* Piso da edição (label + toolbar + caixa min-h-40), com teto
