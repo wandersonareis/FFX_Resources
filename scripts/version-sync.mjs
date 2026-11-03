@@ -53,8 +53,17 @@ syncJSON(
   (info) => {
     info.fixed = info.fixed ?? {};
     info.fixed.file_version = version;
+    // `fixed.product_version` passou a existir no template do wails 3.1.
+    info.fixed.product_version = version;
     info.info = info.info ?? {};
-    info.info["0000"] = { ...(info.info["0000"] ?? {}), ProductVersion: version };
+    // O template antigo usava o bloco neutro "0000" com só ProductVersion;
+    // o novo usa um bloco por idioma ("0409") com FileVersion + ProductVersion.
+    // Percorrer os blocos cobre os dois formatos sem duplicar recursos.
+    if (Object.keys(info.info).length === 0) info.info["0409"] = {};
+    for (const block of Object.values(info.info)) {
+      block.FileVersion = version;
+      block.ProductVersion = version;
+    }
   },
   "\t"
 );

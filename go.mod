@@ -7,7 +7,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
 	github.com/rs/zerolog v1.35.1
-	github.com/wailsapp/wails/v3 v3.0.0
+	github.com/wailsapp/wails/v3 v3.1.0
 	github.com/woozymasta/bcn v0.7.0
 	github.com/xuri/excelize/v2 v2.11.1-0.20261003002531-6258dcebc4e2
 	golang.org/x/sys v0.49.0
@@ -16,8 +16,8 @@ require (
 )
 
 require (
-	github.com/adrg/xdg v0.5.3 // indirect
 	github.com/coder/websocket v1.8.15 // indirect
+	github.com/ebitengine/purego v0.11.1 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
@@ -36,6 +36,7 @@ require (
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/tools v0.51.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

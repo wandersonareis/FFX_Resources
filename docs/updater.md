@@ -7,7 +7,7 @@
 
 **Origem:** `github.com/wandersonareis/FFX_Resources` · releases em
 `https://github.com/wandersonareis/FFX_Resources/releases`
-**Versão do framework:** `github.com/wailsapp/wails/v3 v3.0.0-beta.33`
+**Versão do framework:** `github.com/wailsapp/wails/v3 v3.1.0`
 (`pkg/updater` presente — não há dependência extra a instalar)
 
 ---

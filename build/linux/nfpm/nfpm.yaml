@@ -3,26 +3,26 @@
 #
 # The lines below are called `modelines`. See `:help modeline`
 
-name: "refprobe.exe"
+name: "spira"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.1.0"
+version: "2.3.1"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "A refprobe application"
-vendor: "My Company"
+description: "Editor de recursos do FINAL FANTASY X and X-2 HD Remaster"
+vendor: "Wanderson A. dos Reis"
 homepage: "https://wails.io"
 license: "MIT"
 release: "1"
 
 contents:
-  - src: "./bin/refprobe.exe"
-    dst: "/usr/local/bin/refprobe.exe"
+  - src: "./bin/spira"
+    dst: "/usr/local/bin/spira"
   - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/128x128/apps/refprobe.exe.png"
-  - src: "./build/linux/refprobe.exe.desktop"
-    dst: "/usr/share/applications/refprobe.exe.desktop"
+    dst: "/usr/share/icons/hicolor/128x128/apps/spira.png"
+  - src: "./build/linux/spira.desktop"
+    dst: "/usr/share/applications/spira.desktop"
 
 # Default dependencies for the GTK4 + WebKitGTK 6.0 stack (Ubuntu 24.04+ / Debian 13+)
 depends:

@@ -1,13 +1,13 @@
 [Desktop Entry]
 Version=1.0
-Name=My Product
-Comment=A refprobe application
+Name=FINAL FANTASY X and X-2 HD Remaster Resources Editor
+Comment=Editor de recursos do FINAL FANTASY X and X-2 HD Remaster
 # The Exec line includes %u to pass the URL to the application
-Exec=/usr/local/bin/refprobe.exe %u
+Exec=/usr/local/bin/spira %u
 Terminal=false
 Type=Application
-Icon=refprobe.exe
+Icon=spira
 Categories=Utility;
-StartupWMClass=refprobe.exe
+StartupWMClass=spira
 
  
