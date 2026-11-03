@@ -21,6 +21,11 @@
 //     verdade só na saída do app (appClosing). As modais (config/about)
 //     NÃO reusam: AttachModal desabilita a principal e o re-enable só
 //     acontece no destroy — Hide congelaria o app.
+//   - Grupo de foco (focusgroup.go): toda janela NÃO-MODAL entra nele.
+//     Clicar em qualquer uma traz as outras para a frente e propaga o foco
+//     (Restore/Focus via Wails — ver registerCompanion/propagateFocus).
+//     Modal não entra: ela já é owner real da principal (AttachModal) e
+//     desabilita a principal enquanto está aberta.
 package appwindows
 
 import (
@@ -101,6 +106,12 @@ type spec struct {
 	// a do updater do framework — pinta no primeiro quadro, sem Next no
 	// caminho. Sem a flag, a janela é frameless servindo a rota /w.
 	html bool
+	// modal: a janela é ligada à principal por AttachModal (owner real,
+	// principal desabilitada enquanto ela existe). Quem NÃO é modal entra
+	// no grupo de foco (focusgroup.go) — clicar em qualquer janela do grupo
+	// traz as outras para a frente. Fonte única da distinção: não há como
+	// ser modal e companheira ao mesmo tempo.
+	modal bool
 	// sidebar: janela COMPANHEIRA na lateral direita da principal (logs).
 	// Diferente das modal: NÃO AttachModal (o app segue usável com ela
 	// aberta), nasce posicionada à direita da principal COM A ALTURA DELA
@@ -119,12 +130,12 @@ var specs = map[string]spec{
 	// Altura do config = titlebar do WindowChrome (h-9 = 36px) + conteúdo
 	// (~389px): sem espaço morto embaixo. Abaixo disso o overflow-auto do
 	// chrome rola (hints quebram mais linhas na largura mínima).
-	"config": {title: "Configurações", width: 720, height: 425, minWidth: 560, minHght: 420},
-	"about":  {title: "Sobre", width: 580, height: 480, minWidth: 480, minHght: 420, html: true},
+	"config": {title: "Configurações", width: 720, height: 425, minWidth: 560, minHght: 420, modal: true},
+	"about":  {title: "Sobre", width: 580, height: 480, minWidth: 480, minHght: 420, html: true, modal: true},
 	// logs: a altura 600 é provisória — positionRightOfMain sobrescreve com
 	// a altura da principal no momento da PRIMEIRA abertura; nas reaberturas
 	// (reuso) a geometria persiste e restoreSidebar só valida se ela ainda
-	// está em alguma tela.
+	// está em alguma tela. Não é modal → participa do grupo de foco.
 	"logs": {title: "Logs", width: 480, height: 600, minWidth: 360, minHght: 280, sidebar: true},
 }
 
@@ -203,10 +214,19 @@ func Open(name string) error {
 			}
 			a.Event.Emit(logsClosedEvent)
 		})
-		return nil
 	}
-	w.Center()
-	attachToMain(a, w)
+	if !s.modal {
+		// Janela NÃO-bloqueante: entra no grupo de foco. É a ÚNICA linha
+		// necessária para uma janela futura herdar o comportamento.
+		registerCompanion(a, w)
+	}
+	// Modal é a flag que decide o vínculo — não "não ser sidebar". Uma janela
+	// não-bloqueante futura (com ou sem geometria própria) não cai mais no
+	// AttachModal por acidente.
+	if s.modal {
+		w.Center()
+		attachToMain(a, w)
+	}
 	return nil
 }
 

@@ -23,6 +23,41 @@ operação liga o gravador em `common` no ponto em que os binários são
 escritos — nenhum escritor de formato muda, e o `.vbf` pode usar o mesmo
 gancho depois.
 
+## Janela e foco
+
+A janela de logs é uma janela **top-level não-modal** (o app segue usável com
+ela aberta) e o fechar (X/Esc/Alt+F4) vira `Hide` com reuso — ver
+`backend/appwindows`.
+
+Como a principal e a de logs são top-level independentes, clicar em uma delas
+não levantava a outra (que podia ficar atrás de janelas de outros apps, ou
+minimizada). O **grupo de foco** (`backend/appwindows/focusgroup.go`) corrige
+isso usando só a API do Wails:
+
+- toda janela do `appwindows` **sem `modal: true`** participa do grupo;
+- o foco é **detectado** por janela (`events.Common.WindowFocus`) e
+  **propagado** com `Restore()` (nas minimizadas) + `Focus()` nas demais,
+  terminando com `Focus()` na janela clicada — o grupo inteiro vem para a
+  frente, com a clicada ativa e por cima;
+- **minimizar é sincronizado** (`minimisedGroup`): minimizar uma janela ativa
+  a outra, e sem esse estado a propagação restauraria a que o usuário acabou
+  de minimizar. Só restaura companheira minimizada quando a janela focada
+  **também** estava minimizada — isto é, quando o grupo está voltando do
+  taskbar. Minimizada por escolha do usuário fica minimizada;
+- **maximizar não propaga**: `Focus()` não desmaximiza e só uma janela pode
+  estar maximizada por vez na tela;
+- foco é exclusivo e os eventos chegam de forma assíncrona, então a
+  propagação usa uma janela de silêncio de 300 ms (`focusPropagationQuiet`)
+  para não entrar em ping-pong com os `WindowFocus` que ela mesma gera;
+- janelas ocultas (sidebar fechada no reuso) são ignoradas — não ressurgem;
+- com modal aberta (config/about) a propagação não roda: a principal está
+  desabilitada pelo `AttachModal`.
+
+**Ao adicionar uma janela nova:** declare a spec sem `modal: true` e crie-a
+pelo `Open` — o registro no grupo é automático. Modal (config/about) fica
+fora: ela é owner real da principal via `AttachModal` e desabilita a
+principal enquanto está aberta.
+
 ## Linhas
 
 ### Linha de ação (`Info`, `Success`, `Warn`, `Error`)
