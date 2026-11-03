@@ -1,3 +1,4 @@
+import type { DisplayHotkey } from '@tanstack/react-hotkeys';
 import { formatForDisplay } from '@tanstack/react-hotkeys';
 
 /**
@@ -48,12 +49,18 @@ export const SHORTCUTS = {
   },
 } as const;
 
-/** Tecla formatada para a plataforma: `Ctrl+S` no Windows, `⌘S` no macOS. */
-export function hotkeyLabel(keys: string): string {
+/**
+ * Tecla formatada para a plataforma: `Ctrl+S` no Windows, `⌘S` no macOS.
+ *
+ * O parâmetro é `DisplayHotkey` (o tipo que o `formatForDisplay` aceita desde
+ * a 0.22): `string` genérico não compila. As chaves vêm do catálogo `as const`,
+ * então continuam validadas em tempo de compilação.
+ */
+export function hotkeyLabel(keys: DisplayHotkey): string {
   return formatForDisplay(keys);
 }
 
 /** Texto pronto para tooltip/`title`: rótulo + tecla formatada. */
-export function shortcutTip(label: string, keys: string): string {
+export function shortcutTip(label: string, keys: DisplayHotkey): string {
   return `${label} · ${hotkeyLabel(keys)}`;
 }

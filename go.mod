@@ -1,6 +1,6 @@
 module ffxresources
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/bouine-cache/xxhash/v3 v3.0.1

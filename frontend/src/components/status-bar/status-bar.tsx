@@ -1,5 +1,6 @@
 'use client';
 
+import type { DisplayHotkey } from '@tanstack/react-hotkeys';
 import { useSelector } from '@tanstack/react-store';
 import { cn } from 'cn';
 import { AlertTriangle, Info, X } from 'lucide-react';
@@ -41,7 +42,7 @@ const NAV_HINTS = [
  * volta — o sentido depende do FOCO, então um clique aqui seria
  * ambíguo.
  */
-function ArrowHint({ hotkey, label }: { hotkey: string; label: string }) {
+function ArrowHint({ hotkey, label }: { hotkey: DisplayHotkey; label: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
